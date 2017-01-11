@@ -52,6 +52,9 @@ void setup() {
   
   Serial.println("Connected to wifi");
   printWifiStatus();
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
 
   Serial.println("\nStarting connection to server...");
   // if you get a connection, report back via serial:

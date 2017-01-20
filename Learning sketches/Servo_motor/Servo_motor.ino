@@ -1,5 +1,5 @@
 int sensorPin = 0;
-int servoPin = 9;
+int servoPin = 12;
 
 #include <Servo.h>
 
@@ -17,6 +17,6 @@ void loop() {
   
   int servo_val = map(val, 1023, 0, 179, 0);
   
-  Servomotor.write(servo_val);
+  Servomotor.write(90);
 
 }

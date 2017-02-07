@@ -10,6 +10,7 @@ const int scanSensor = 8;
 const int greenLedPin = 10;
 const int yellowLedPin = 11;
 const int redLedPin = 12;
+const int photoPin = 0;
 
 //Setup default positions
 int loadServoPosition = 100;
@@ -33,17 +34,17 @@ Servo SelectServo;
 
 // Function for turning the bottom motor
 void turn_SelectServo(int degree) {
-  int limited_degree = constrain(degree, 40, 170);
+  int limited_degree = constrain(degree, 40, 175);
   if(selectServoPosition < limited_degree) {
     for(int i = selectServoPosition; i <=limited_degree ; i++) {
     SelectServo.write(i);
-    delay(3);
+    delay(4);
     }
   }
   else if (selectServoPosition > limited_degree) {
     for(int i = selectServoPosition; i >= limited_degree; i--) {
     SelectServo.write(i);
-    delay(3);
+    delay(4);
     }
   }
   selectServoPosition = limited_degree;
@@ -89,26 +90,36 @@ void scan() {
   // Reading the output frequency
   f_BLUE = pulseIn(scanSensor, LOW);
   delay(100);
+  
+  /*Serial.print("R= ");//printing name
+  Serial.print(f_RED);//printing RED color frequency
+  Serial.print("  ");
+  Serial.print("G= ");//printing name
+  Serial.print(f_GREEN);//printing RED color frequency
+  Serial.print("  ");
+  Serial.print("G= ");//printing name
+  Serial.print(f_BLUE);//printing RED color frequency
+  Serial.println("  ");*/
 }
 
-//Function for detecting color (All devices connected via Arduino)
-String defineColorOld(int r, int g, int b) {
-  if(r>=33 && r<=41 && g>=37 && g<=39 && b>=21 && b<=29){
+//Function for detecting color (color scanne covered with schield, evening)
+String defineColor(int r, int g, int b) {
+  if(r>=26 && r<=28 && g>=26 && g<=29 && b>=19 && b<=23){
     return "blue";
   }
-  else if(r>=25 && r<=32 && g>=42 && g<=45 && b>=34 && b<=37){
+  else if(r>=20 && r<=23 && g>=30 && g<=33 && b>=25 && b<=28){
     return "red";
   }
-  else if(r>=30 && r<=35 && g>=28 && g<=35 && b>=29 && b<=34){
+  else if(r>=21 && r<=25 && g>=23 && g<=26 && b>=23 && b<=25){
     return "green";
   }
-  else if(r>=22 && r<=25 && g>=21 && g<=30 && b>=29 && b<=32){
+  else if(r>=15 && r<=18 && g>=19 && g<=22 && b>=22 && b<=25){
     return "yellow";
   }
-  else if(r>=24 && r<=27 && g>=35 && g<=39 && b>=31 && b<=35){
+  else if(r>=16 && r<=20 && g>=25 && g<=29 && b>=23 && b<=27){
     return "orange";
   }
-  else if(r>=33 && r<=39 && g>=40 && g<=45 && b>=35 && b<=38){
+  else if(r>=25 && r<=28 && g>=30 && g<=33 && b>=25 && b<=28){
     return "brown";
   }
   else {
@@ -116,12 +127,12 @@ String defineColorOld(int r, int g, int b) {
   }
 }
 
-//Function for detecting color (All devices and Arduino connected to power supply)
-String defineColor(int r, int g, int b) {
+//Function for detecting color (All devices connected to power supply via Arduino)
+String defineColorOld2(int r, int g, int b) {
   if(r>=29 && r<=32 && g>=28 && g<=31 && b>=19 && b<=23){
     return "blue";
   }
-  else if(r>=23 && r<=26 && g>=32 && g<=35 && b>=26 && b<=29){
+  else if(r>=22 && r<=27 && g>=32 && g<=35 && b>=25 && b<=29){
     return "red";
   }
   else if(r>=25 && r<=28 && g>=24 && g<=28 && b>=23 && b<=27){
@@ -133,7 +144,32 @@ String defineColor(int r, int g, int b) {
   else if(r>=19 && r<=22 && g>=27 && g<=31 && b>=24 && b<=27){
     return "orange";
   }
-  else if(r>=28 && r<=31 && g>=32 && g<=35 && b>=26 && b<=29){
+  else if(r>=28 && r<=35 && g>=33 && g<=37 && b>=27 && b<=30){
+    return "brown";
+  }
+  else {
+    return "undefined";
+  }
+}
+
+//Function for detecting color (All devices and Arduino connected to power supply)
+String defineColorOld(int r, int g, int b) {
+  if(r>=32 && r<=36 && g>=30 && g<=34 && b>=21 && b<=24){
+    return "blue";
+  }
+  else if(r>=24 && r<=28 && g>=35 && g<=38 && b>=28 && b<=31){
+    return "red";
+  }
+  else if(r>=27 && r<=31 && g>=27 && g<=30 && b>=26 && b<=29){
+    return "green";
+  }
+  else if(r>=7 && r<=22 && g>=23 && g<=26 && b>=25 && b<=28){
+    return "yellow";
+  }
+  else if(r>=20 && r<=24 && g>=30 && g<=34 && b>=26 && b<=30){
+    return "orange";
+  }
+  else if(r>=30 && r<=36 && g>=36 && g<=39 && b>=26 && b<=32){
     return "brown";
   }
   else {
@@ -166,16 +202,16 @@ void selectContainer(String color){
     turn_SelectServo(66);
   }
   else if(color == "green") {
-    turn_SelectServo(92);
+    turn_SelectServo(87);
   }
   else if(color == "yellow") {
-    turn_SelectServo(118);
+    turn_SelectServo(115);
   }
   else if(color == "orange") {
     turn_SelectServo(144);
   }
   else if(color == "brown") {
-    turn_SelectServo(170);
+    turn_SelectServo(175);
   }
   else {
     digitalWrite(greenLedPin, LOW);
@@ -183,6 +219,26 @@ void selectContainer(String color){
     delay(3000);
   }
   delay(1000); 
+}
+
+//Function for determining if the intem is present in the loader
+void loadTrayEmpty() {
+  delay(100);
+  int light = analogRead(photoPin);
+  //Serial.print("Photoresistance= ");
+  //Serial.println(light);
+  if (light > 900) {
+     digitalWrite(greenLedPin, LOW);
+     while (analogRead(photoPin) > 900) {
+       digitalWrite(yellowLedPin, HIGH);
+       delay(500);
+       digitalWrite(yellowLedPin, LOW);
+       delay(500);
+     }
+   digitalWrite(greenLedPin, HIGH);
+  }
+  
+  
 }
 
 //Supportive function for device calibration
@@ -204,7 +260,7 @@ void calibrate() {
   frequency = pulseIn(scanSensor, LOW);
   // Printing the value on the serial monitor
   Serial.print("G= ");//printing name
-  Serial.print(frequency);//printing RED color frequency
+  Serial.print(frequency);//printing GREEN color frequency
   Serial.print("  ");
   delay(100);
   // Setting Blue filtered photodiodes to be read
@@ -214,7 +270,7 @@ void calibrate() {
   frequency = pulseIn(scanSensor, LOW);
   // Printing the value on the serial monitor
   Serial.print("B= ");//printing name
-  Serial.print(frequency);//printing RED color frequency
+  Serial.print(frequency);//printing BLUE color frequency
   Serial.println("  ");
   delay(100);
 
@@ -252,7 +308,7 @@ void setup() {
   // Initial check of servomotors movements
   
   //turn_LoadServo(loadPosition);
-  //delay(1000);
+  delay(1000);
   turn_LoadServo(scanPosition);
   delay(1000);
   turn_SelectServo(100);
@@ -265,21 +321,23 @@ void loop() {
   digitalWrite(greenLedPin, HIGH);
   digitalWrite(yellowLedPin, LOW);
   digitalWrite(redLedPin, LOW);
-  
+  turn_LoadServo(130);
+  delay(100);
   turn_LoadServo(loadPosition);
-  delay(6000);
+  delay(200);
+  loadTrayEmpty();
+  delay(300);
   
   turn_LoadServo(scanPosition);
-  calibrate();
   delay(1000);
   String color = scanResult();
-  Serial.print("Color= ");//printing name
-  Serial.println(color);
+  //Serial.print("Color= ");//printing name
+  //Serial.println(color);
   
   selectContainer(color);
-  //calibrate();
-  //calibrate();
-  //calibrate();
+  calibrate();
+  calibrate();
+  calibrate();
   //delay(1000);
   
   turn_LoadServo(dropPosition);

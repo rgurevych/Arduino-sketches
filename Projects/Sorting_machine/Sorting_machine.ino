@@ -1,15 +1,16 @@
 
 // Setup the constants with pin numbers
-const int loadServoPin = 2;
-const int selectServoPin = 3;
-const int S0 = 4;
-const int S1 = 5;
-const int S2 = 6;
-const int S3 = 7;
-const int scanSensor = 8;
-const int greenLedPin = 10;
-const int yellowLedPin = 11;
-const int redLedPin = 12;
+const int buttonPin = 3;
+const int loadServoPin = 4;
+const int selectServoPin = 5;
+const int S0 = 6;
+const int S1 = 7;
+const int S2 = 8;
+const int S3 = 9;
+const int scanSensor = 10;
+const int greenLedPin = 11;
+const int yellowLedPin = 12;
+const int redLedPin = 13;
 const int photoPin = 0;
 
 //Setup default positions
@@ -19,11 +20,14 @@ int loadPosition = 122;
 int scanPosition = 72;
 int dropPosition = 30;
 
-// Initialize the variable for color frequences
+//Initialize the variable for color frequences
 int frequency = 0;
 int f_RED = 0;
 int f_GREEN = 0;
 int f_BLUE = 0;
+
+//Initialize flags
+boolean waitForButton = true;
 
 // Initialize servo library
 #include <Servo.h>
@@ -49,6 +53,7 @@ void turn_SelectServo(int degree) {
   }
   selectServoPosition = limited_degree;
 }
+
 
 // Function for turning the upper motor
 void turn_LoadServo(int degree) {
@@ -90,7 +95,6 @@ void scan() {
   // Reading the output frequency
   f_BLUE = pulseIn(scanSensor, LOW);
   delay(100);
-  
   /*Serial.print("R= ");//printing name
   Serial.print(f_RED);//printing RED color frequency
   Serial.print("  ");
@@ -101,6 +105,7 @@ void scan() {
   Serial.print(f_BLUE);//printing RED color frequency
   Serial.println("  ");*/
 }
+
 
 //Function for detecting color (color scanne covered with schield, evening)
 String defineColor(int r, int g, int b) {
@@ -127,30 +132,6 @@ String defineColor(int r, int g, int b) {
   }
 }
 
-//Function for detecting color (All devices connected to power supply via Arduino)
-String defineColorOld2(int r, int g, int b) {
-  if(r>=29 && r<=32 && g>=28 && g<=31 && b>=19 && b<=23){
-    return "blue";
-  }
-  else if(r>=22 && r<=27 && g>=32 && g<=35 && b>=25 && b<=29){
-    return "red";
-  }
-  else if(r>=25 && r<=28 && g>=24 && g<=28 && b>=23 && b<=27){
-    return "green";
-  }
-  else if(r>=17 && r<=20 && g>=21 && g<=24 && b>=22 && b<=26){
-    return "yellow";
-  }
-  else if(r>=19 && r<=22 && g>=27 && g<=31 && b>=24 && b<=27){
-    return "orange";
-  }
-  else if(r>=28 && r<=35 && g>=33 && g<=37 && b>=27 && b<=30){
-    return "brown";
-  }
-  else {
-    return "undefined";
-  }
-}
 
 //Function for detecting color (All devices and Arduino connected to power supply)
 String defineColorOld(int r, int g, int b) {
@@ -176,6 +157,7 @@ String defineColorOld(int r, int g, int b) {
     return "undefined";
   }
 }
+
 
 //Function that repeats scanning up to 3 times if the color was not defined
 String scanResult(){
@@ -216,10 +198,12 @@ void selectContainer(String color){
   else {
     digitalWrite(greenLedPin, LOW);
     digitalWrite(redLedPin, HIGH);
-    delay(3000);
+    waitForButton = true;
+    buttonPressed();
   }
   delay(1000); 
 }
+
 
 //Function for determining if the intem is present in the loader
 void loadTrayEmpty() {
@@ -229,17 +213,16 @@ void loadTrayEmpty() {
   //Serial.println(light);
   if (light > 900) {
      digitalWrite(greenLedPin, LOW);
-     while (analogRead(photoPin) > 900) {
+     while (analogRead(photoPin) > 900 || digitalRead(buttonPin) == LOW) {
        digitalWrite(yellowLedPin, HIGH);
        delay(500);
        digitalWrite(yellowLedPin, LOW);
        delay(500);
      }
    digitalWrite(greenLedPin, HIGH);
-  }
-  
-  
+  } 
 }
+
 
 //Supportive function for device calibration
 void calibrate() {
@@ -273,9 +256,18 @@ void calibrate() {
   Serial.print(frequency);//printing BLUE color frequency
   Serial.println("  ");
   delay(100);
-
 }
 
+
+//Function for checking if the button is pressed
+void buttonPressed() {
+  if (waitForButton == true) {
+    while (digitalRead(buttonPin) == LOW){
+      delay(50);
+    }
+  waitForButton = false;
+  }
+}
 
 
 void setup() {
@@ -317,7 +309,7 @@ void setup() {
 }
 
 void loop() {
-  
+  buttonPressed();
   digitalWrite(greenLedPin, HIGH);
   digitalWrite(yellowLedPin, LOW);
   digitalWrite(redLedPin, LOW);

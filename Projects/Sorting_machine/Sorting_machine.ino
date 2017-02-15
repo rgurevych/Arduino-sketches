@@ -1,5 +1,6 @@
 
 // Setup the constants with pin numbers
+const int buttonIntPin = 2;
 const int buttonPin = 3;
 const int loadServoPin = 4;
 const int selectServoPin = 5;
@@ -16,7 +17,7 @@ const int photoPin = 0;
 //Setup default positions
 int loadServoPosition = 100;
 int selectServoPosition = 100;
-int loadPosition = 122;
+int loadPosition = 121;
 int scanPosition = 72;
 int dropPosition = 30;
 
@@ -27,7 +28,18 @@ int f_GREEN = 0;
 int f_BLUE = 0;
 
 //Initialize flags
-boolean waitForButton = true;
+boolean startCalibration = false;
+boolean startOperation = true;
+volatile boolean buttonIsPressed = false;
+
+//Calibration matrix
+int f[][6] = { {26, 28, 26, 29, 19, 23},
+               {20, 23, 30, 33, 25, 28},
+               {21, 25, 23, 26, 23, 25},
+               {15, 18, 19, 22, 22, 25},
+               {16, 20, 25, 29, 23, 27},
+               {25, 28, 30, 33, 25, 28}
+               };
 
 // Initialize servo library
 #include <Servo.h>
@@ -76,7 +88,7 @@ void turn_LoadServo(int degree) {
 
 //Function for scanning the item once
 void scan() {
-  delay(200);
+  delay(100);
   // Setting red filtered photodiodes to be read
   digitalWrite(S2,LOW);
   digitalWrite(S3,LOW);
@@ -95,62 +107,27 @@ void scan() {
   // Reading the output frequency
   f_BLUE = pulseIn(scanSensor, LOW);
   delay(100);
-  /*Serial.print("R= ");//printing name
-  Serial.print(f_RED);//printing RED color frequency
-  Serial.print("  ");
-  Serial.print("G= ");//printing name
-  Serial.print(f_GREEN);//printing RED color frequency
-  Serial.print("  ");
-  Serial.print("G= ");//printing name
-  Serial.print(f_BLUE);//printing RED color frequency
-  Serial.println("  ");*/
-}
-
-
-//Function for detecting color (color scanne covered with schield, evening)
-String defineColor(int r, int g, int b) {
-  if(r>=26 && r<=28 && g>=26 && g<=29 && b>=19 && b<=23){
-    return "blue";
-  }
-  else if(r>=20 && r<=23 && g>=30 && g<=33 && b>=25 && b<=28){
-    return "red";
-  }
-  else if(r>=21 && r<=25 && g>=23 && g<=26 && b>=23 && b<=25){
-    return "green";
-  }
-  else if(r>=15 && r<=18 && g>=19 && g<=22 && b>=22 && b<=25){
-    return "yellow";
-  }
-  else if(r>=16 && r<=20 && g>=25 && g<=29 && b>=23 && b<=27){
-    return "orange";
-  }
-  else if(r>=25 && r<=28 && g>=30 && g<=33 && b>=25 && b<=28){
-    return "brown";
-  }
-  else {
-    return "undefined";
-  }
 }
 
 
 //Function for detecting color (All devices and Arduino connected to power supply)
-String defineColorOld(int r, int g, int b) {
-  if(r>=32 && r<=36 && g>=30 && g<=34 && b>=21 && b<=24){
+String defineColor(int r, int g, int b) {
+  if(r>=f[0][0] && r<=f[0][1] && g>=f[0][2] && g<=f[0][3] && b>=f[0][4] && b<=f[0][5]){
     return "blue";
   }
-  else if(r>=24 && r<=28 && g>=35 && g<=38 && b>=28 && b<=31){
+  else if(r>=f[1][0] && r<=f[1][1] && g>=f[1][2] && g<=f[1][3] && b>=f[1][4] && b<=f[1][5]){
     return "red";
   }
-  else if(r>=27 && r<=31 && g>=27 && g<=30 && b>=26 && b<=29){
+  else if(r>=f[2][0] && r<=f[2][1] && g>=f[2][2] && g<=f[2][3] && b>=f[2][4] && b<=f[2][5]){
     return "green";
   }
-  else if(r>=7 && r<=22 && g>=23 && g<=26 && b>=25 && b<=28){
+  else if(r>=f[3][0] && r<=f[3][1] && g>=f[3][2] && g<=f[3][3] && b>=f[3][4] && b<=f[3][5]){
     return "yellow";
   }
-  else if(r>=20 && r<=24 && g>=30 && g<=34 && b>=26 && b<=30){
+  else if(r>=f[4][0] && r<=f[4][1] && g>=f[4][2] && g<=f[4][3] && b>=f[4][4] && b<=f[4][5]){
     return "orange";
   }
-  else if(r>=30 && r<=36 && g>=36 && g<=39 && b>=26 && b<=32){
+  else if(r>=f[5][0] && r<=f[5][1] && g>=f[5][2] && g<=f[5][3] && b>=f[5][4] && b<=f[5][5]){
     return "brown";
   }
   else {
@@ -198,10 +175,9 @@ void selectContainer(String color){
   else {
     digitalWrite(greenLedPin, LOW);
     digitalWrite(redLedPin, HIGH);
-    waitForButton = true;
-    buttonPressed();
+    waitForButtonPressed();
   }
-  delay(1000); 
+  delay(100); 
 }
 
 
@@ -209,16 +185,17 @@ void selectContainer(String color){
 void loadTrayEmpty() {
   delay(100);
   int light = analogRead(photoPin);
-  //Serial.print("Photoresistance= ");
-  //Serial.println(light);
   if (light > 900) {
      digitalWrite(greenLedPin, LOW);
-     while (analogRead(photoPin) > 900 || digitalRead(buttonPin) == LOW) {
+     buttonIsPressed = false;
+     while (analogRead(photoPin) > 900 || buttonIsPressed == false) {
+       buttonIsPressed = false;
        digitalWrite(yellowLedPin, HIGH);
        delay(500);
        digitalWrite(yellowLedPin, LOW);
        delay(500);
      }
+   buttonIsPressed = false;
    digitalWrite(greenLedPin, HIGH);
   } 
 }
@@ -259,16 +236,130 @@ void calibrate() {
 }
 
 
-//Function for checking if the button is pressed
-void buttonPressed() {
-  if (waitForButton == true) {
-    while (digitalRead(buttonPin) == LOW){
-      delay(50);
-    }
-  waitForButton = false;
-  }
+void rainbowBlink() {
+  digitalWrite(greenLedPin, HIGH);
+  digitalWrite(yellowLedPin, LOW);
+  digitalWrite(redLedPin, LOW);
+  delay(500);
+  digitalWrite(greenLedPin, LOW);
+  digitalWrite(yellowLedPin, HIGH);
+  digitalWrite(redLedPin, LOW);
+  delay(500);
+  digitalWrite(greenLedPin, LOW);
+  digitalWrite(yellowLedPin, LOW);
+  digitalWrite(redLedPin, HIGH);
+  delay(500);
+  digitalWrite(greenLedPin, HIGH);
+  digitalWrite(yellowLedPin, LOW);
+  digitalWrite(redLedPin, LOW);
 }
 
+
+//Function for checking if the button is pressed
+void waitForButtonPressed() {
+  buttonIsPressed = false;
+  while (buttonIsPressed == false) {
+      delay(10);
+    }
+  buttonIsPressed = false;
+}
+
+
+//Interruption function for detecting pressed button
+void buttonPressed() {
+  buttonIsPressed = true;
+}
+
+
+//Function for sortning arrays
+void sort(int a[15]) {
+    for(int i=0; i<(14); i++) {
+        for(int o=0; o<(15-(i+1)); o++) {
+                if(a[o] > a[o+1]) {
+                    int t = a[o];
+                    a[o] = a[o+1];
+                    a[o+1] = t;
+                }
+        }
+    }
+}
+
+
+//Function that describes normal operation
+void operate() {
+  digitalWrite(greenLedPin, HIGH);
+  digitalWrite(yellowLedPin, LOW);
+  digitalWrite(redLedPin, LOW);
+  turn_LoadServo(130);
+  delay(50);
+  turn_LoadServo(loadPosition);
+  delay(100);
+  loadTrayEmpty();
+  turn_LoadServo(scanPosition);
+  delay(100);
+  String color = scanResult();
+  selectContainer(color);
+  turn_LoadServo(dropPosition);
+  delay(100);
+}
+
+
+void autoCalibrate() {
+  rainbowBlink();
+  String colorSequence[6]= {"blue", "red", "green", "yellow", "orange", "brown"};
+  int redArray[15];
+  int greenArray[15];
+  int blueArray[15];
+  for(int colorCount=0; colorCount<6; colorCount++) {
+     int arrayElement = 0;
+     for(int item=0; item<3; item++){
+        turn_LoadServo(130);
+        delay(50);
+        turn_LoadServo(loadPosition);
+        delay(100);
+        loadTrayEmpty();
+        turn_LoadServo(scanPosition);
+        delay(100);
+        for(int scanCount=1; scanCount<6; scanCount++) {
+            scan();
+            delay(50);
+            redArray[arrayElement] = f_RED;
+            greenArray[arrayElement] = f_GREEN;
+            blueArray[arrayElement] = f_BLUE;
+            arrayElement ++;
+          }
+        selectContainer(colorSequence[colorCount]);
+        delay(100);
+        turn_LoadServo(dropPosition);
+        delay(100);
+      }
+     sort(redArray);
+     sort(greenArray);
+     sort(blueArray);
+     f[colorCount][0] = redArray[2]-1;
+     f[colorCount][1] = redArray[12]+1;
+     f[colorCount][2] = greenArray[2]-1;
+     f[colorCount][3] = greenArray[12]+1;
+     f[colorCount][4] = blueArray[2]-1;
+     f[colorCount][5] = blueArray[12]+1;
+  }
+  turn_LoadServo(scanPosition);
+  delay(100);
+  rainbowBlink();
+  digitalWrite(greenLedPin, LOW);
+  digitalWrite(yellowLedPin, HIGH);
+  digitalWrite(redLedPin, LOW);
+  
+  for (int i=0; i<6; i++) {
+    Serial.print(i);
+    Serial.print(": ");
+      for (int j=0; j<6; j++) {
+        Serial.print(f[i][j]);
+        Serial.print(" ");
+      }
+    Serial.println(" ");
+  }
+}
 
 void setup() {
   // Initialize servo motors
@@ -292,46 +383,34 @@ void setup() {
   // Initialize the serial connection
   Serial.begin(9600);
 
+  // Initialise interruption pin
+  attachInterrupt (0, buttonPressed, RISING);
+
   // Start initial checkings
   digitalWrite(greenLedPin, LOW);
-  digitalWrite(yellowLedPin, HIGH);
-  digitalWrite(redLedPin, LOW);
+  digitalWrite(yellowLedPin, LOW);
+  digitalWrite(redLedPin, HIGH);
+  if (digitalRead(buttonPin) == HIGH) startCalibration = true;
   
   // Initial check of servomotors movements
-  
-  //turn_LoadServo(loadPosition);
-  delay(1000);
+  delay(200);
   turn_LoadServo(scanPosition);
-  delay(1000);
+  delay(200);
   turn_SelectServo(100);
-  delay(1000);
-
+  delay(500);
+  digitalWrite(yellowLedPin, HIGH);
+  digitalWrite(redLedPin, LOW);
 }
 
 void loop() {
-  buttonPressed();
-  digitalWrite(greenLedPin, HIGH);
-  digitalWrite(yellowLedPin, LOW);
-  digitalWrite(redLedPin, LOW);
-  turn_LoadServo(130);
-  delay(100);
-  turn_LoadServo(loadPosition);
-  delay(200);
-  loadTrayEmpty();
-  delay(300);
+  if (startCalibration == true) {
+    autoCalibrate();
+    startCalibration = false;
+  }
   
-  turn_LoadServo(scanPosition);
-  delay(1000);
-  String color = scanResult();
-  //Serial.print("Color= ");//printing name
-  //Serial.println(color);
-  
-  selectContainer(color);
-  calibrate();
-  calibrate();
-  calibrate();
-  //delay(1000);
-  
-  turn_LoadServo(dropPosition);
-  delay(1000);
+  if (startOperation == true) {
+    waitForButtonPressed();
+    startOperation = false;
+  }
+  operate();
 }

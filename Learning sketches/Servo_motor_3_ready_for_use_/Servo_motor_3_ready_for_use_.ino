@@ -47,18 +47,13 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  turnMotor2(105, 5);
-  delay(200);
-  turnMotor3(90, 2);
-  delay(200);
+  int val_1 = analogRead(A1);
+  int val_2 = analogRead(A2);
+  int val_3 = analogRead(A3);
   
-  //int val_1 = analogRead(A1);
-  //int val_2 = analogRead(A2);
-  //int val_3 = analogRead(A3);
-  
-  //servo_val_1 = map(val_1, 0, 1023, 0, 179);
-  //servo_val_2 = map(val_2, 0, 1023, 0, 179);
-  //servo_val_3 = map(val_3, 0, 1023, 0, 179);
+  servo_val_1 = map(val_1, 0, 1023, 0, 179);
+  servo_val_2 = map(val_2, 0, 1023, 0, 179);
+  servo_val_3 = map(val_3, 0, 1023, 0, 179);
   
   //turnMotor1(servo_val_1, 2);
   //turnMotor2(servo_val_2, 3);
@@ -66,29 +61,10 @@ void loop() {
   //Motor1.write(servo_val_1);
   //Motor2.write(servo_val_2);
   //Motor3.write(servo_val_3);
-  /*delay(3000);
-  turnCubeStraight();
+  
+  turnMotor1(4, 2);
   delay(3000);
   push();
-  delay(3000);
-  turnCubeCW();
-  delay(3000);
-  push();
-  delay(3000);
-  turnCubeStraight();
-  delay(3000);
-  push();
-  delay(3000);
-  turnCubeCCW();
-  delay(3000);
-  push();
-  delay(3000);
-  turnCubeStraight();
-  delay(5000);*/
-  downCCW();
-  delay(1000);
-  downCW();
-  delay(1000);
 
 }
 
@@ -167,66 +143,6 @@ void push() {
   turnMotor2(105, 5);
   delay(200);
   turnMotor3(90, 2);
-  delay(200);
+  
 }
 
-
-void turnCubeCW() {
-  turnMotor2(95, 5);
-  delay(200);
-  turnMotor1(5, 3);
-  delay(200);
-  turnMotor2(105, 5);
-  delay(200);
-}
-
-
-void turnCubeCCW() {
-  turnMotor2(95, 5);
-  delay(200);
-  turnMotor1(171, 3);
-  delay(200);
-  turnMotor2(105, 5);
-  delay(200);
-}
-
-void turnCubeStraight() {
-  turnMotor2(95, 5);
-  delay(200);
-  turnMotor1(89, 3);
-  delay(200);
-  turnMotor2(105, 5);
-  delay(200);
-}
-
-void downCW() {
-  turnCubeCW();
-  turnMotor3(45, 2);
-  delay(200);
-  turnMotor2(135, 5);
-  delay(200);
-  turnMotor1(95, 3);
-  delay(300);
-  turnMotor1(88, 3);
-  delay(200);
-  turnMotor2(105, 5);
-  delay(200);
-  turnMotor3(90, 2);
-  delay(200);
-}
-
-void downCCW() {
-  turnCubeCCW();
-  turnMotor3(45, 2);
-  delay(200);
-  turnMotor2(135, 5);
-  delay(200);
-  turnMotor1(80, 3);
-  delay(300);
-  turnMotor1(88, 3);
-  delay(200);
-  turnMotor2(105, 5);
-  delay(200);
-  turnMotor3(90, 2);
-  delay(200);
-}

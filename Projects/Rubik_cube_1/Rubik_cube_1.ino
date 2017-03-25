@@ -1,11 +1,16 @@
 
 //Defining pins
-#define rotateMotorPin 11
-#define carriageMotorPin 12
-#define pusherMotorPin 13
-#define scannerMotorPin 10
+#define rotateMotorPin 4
+#define carriageMotorPin 5
+#define pusherMotorPin 6
+#define scannerMotorPin 7
 #define leftButtonPin 2
 #define rightButtonPin 3
+#define S0 9
+#define S1 10
+#define S2 11
+#define S3 12
+#define scanSensor 13
 
 //Including libraries
 #include <Servo.h>
@@ -16,9 +21,20 @@
 
 //Defining variables
 
-//Temporary variables
-byte motor_1_angle;
-byte motor_4_angle;
+//Initialize the variables for color frequences
+int frequency = 0;
+int f_RED = 0;
+int f_GREEN = 0;
+int f_BLUE = 0;
+
+//Calibration matrix
+byte f[][6] = {{15, 20, 16, 22, 13, 17},         //white
+               {14, 18, 22, 27, 25, 31},         //yellow
+               {14, 19, 29, 37, 25, 33},         //orange
+               {23, 31, 39, 52, 33, 43},         //red
+               {34, 40, 28, 34, 31, 37},         //green
+               {39, 50, 36, 49, 25, 32}          //blue
+               };
 
 //Default motors positions
 byte motor_1_Position = 90;
@@ -44,8 +60,10 @@ volatile boolean operateFlag = false;
 
 //Data arrays and matrixes
 //Arrays for color scanning
-byte Motor_1_ScanAngles [] = {44, 85, 122, 4, 4, 168, 134, 96, 58};
-byte Motor_4_ScanAngles [] = {71, 75, 71, 75, 83, 74, 96, 91, 95};
+byte Motor_1_ScanAngles [] = {44, 85, 120, 4, 4, 168, 134, 96, 58};
+byte Motor_4_ScanAngles [] = {71, 74, 70, 74, 82, 73, 94, 90, 94};
+String SideScanResult [9];
+String ScannedCube = "";
 
 //Initializing motors and LCD
 Servo Motor1;
@@ -57,17 +75,26 @@ LiquidCrystal_I2C lcd(0x3f,16,2);
 
 //Setup method
 void setup() {
-  // put your setup code here, to run once:
+  // Initializing pins modes
   pinMode(A0, INPUT);
   pinMode(A1, INPUT);
   pinMode(A2, INPUT);
   pinMode(A3, INPUT);
+  pinMode(S0, OUTPUT);
+  pinMode(S1, OUTPUT);
+  pinMode(S2, OUTPUT);
+  pinMode(S3, OUTPUT);
+  pinMode(scanSensor, INPUT);
   //pinMode(leftButtonPin, INPUT_PULLUP);
   //pinMode(rightButtonPin, INPUT_PULLUP);
+  
+  //Attaching the motors
   Motor1.attach(rotateMotorPin);
   Motor2.attach(carriageMotorPin);
   Motor3.attach(pusherMotorPin);
   Motor4.attach(scannerMotorPin);
+  
+  //Starting serial connection
   Serial.begin(9600);
   
   turnMotor1(89, 3);
@@ -79,9 +106,13 @@ void setup() {
   turnMotor4(35, 7);
   delay(200);
 
-  // Initialise interruption pin
+  // Initialise interruption pins
   attachInterrupt (0, leftButtonPressed, RISING);
   attachInterrupt (1, rightButtonPressed, RISING);
+
+  // Setting frequency-scaling to 20%
+  digitalWrite(S0, HIGH);
+  digitalWrite(S1, LOW);
 
   //Initialize LCD
   lcd.init();
@@ -93,27 +124,24 @@ void setup() {
 
 //Main operation method
 void loop() {
-  // put your main code here, to run repeatedly:
+  
   operateOrNot();
+
+  scanCube();
+  //ScannedCube = "oyyorgwwwborowwoworrrrbbobywygbobbwbbygryyrrgggwgggyoy";
+
+
   
   //String movementString = "RLFBRLFBRLFB";
   //assembleCube(movementString);
 
-  scanTopSide();
-  
-  /*byte motor_1_angle = map(analogRead(A0), 0, 1023, 0, 179);
-  byte motor_4_angle = map(analogRead(A1), 0, 1023, 0, 179);
-    
-  turnMotor1(motor_1_angle, 3);
-  turnMotor4(motor_4_angle, 3);
+  //scanTopSide();
+  //printSide(SideScanResult);
+  //addSideToScanCubeString(SideScanResult);
 
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Motor_1  Motor_4");
-  lcd.setCursor(0, 1);
-  lcd.print(motor_1_angle);
-  lcd.setCursor(8, 1);
-  lcd.print(motor_4_angle);*/
+  
+  
+  //calibrationScan();
   
   delay(5000);
 
@@ -126,13 +154,7 @@ void loop() {
 
 //Method for dealing with timer interruption
 void timerInterupt() {
-  //Serial.print("Servo1_angle= ");
-  //Serial.print(servo_val_1);
-  //Serial.print(";  Servo2_angle= ");
-  //Serial.print(servo_val_2);
-  //Serial.print(";  Servo3_angle= ");
-  //Serial.println(servo_val_3);
-  
+
   Serial.print("Left_button= ");
   Serial.print(leftButtonIsPressed);
   Serial.print("  Right_button= ");
@@ -195,7 +217,118 @@ void operateOrNot() {
 }
 
 /////////////////////////////////////////////////METHODS FOR SCANNING AND SCANNER CALIBRATION////////////////////////
-void scanTopSide() {
+
+//Method for scanning the cube
+void scanCube() {  
+  ScannedCube = "";
+  //Print process on LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Scanning cube");
+  lcd.setCursor(0, 1);
+  lcd.print("Side      of 6");
+  lcd.setCursor(5, 1);
+  lcd.print("1(U)");
+  
+  scanTopSide();
+  addSideToScanCubeString(SideScanResult);
+  
+  push();
+  turnCubeCW();
+  push();
+  turnCubeStraight();
+  lcd.setCursor(5, 1);
+  lcd.print("2(R)");
+  scanTopSide();
+  addSideToScanCubeString(SideScanResult);
+  
+  turnCubeCCW();
+  push();
+  turnCubeStraight();
+  lcd.setCursor(5, 1);
+  lcd.print("3(F)");
+  scanTopSide();
+  addSideToScanCubeString(SideScanResult);
+  
+  push();
+  lcd.setCursor(5, 1);
+  lcd.print("4(D)");
+  scanTopSide();
+  addSideToScanCubeString(SideScanResult);
+
+  push();
+  push();
+  push();
+  turnCubeCCW();
+  push();
+  turnCubeStraight();
+  lcd.setCursor(5, 1);
+  lcd.print("5(L)");
+  scanTopSide();
+  addSideToScanCubeString(SideScanResult);
+
+  turnCubeCCW();
+  push();
+  turnCubeStraight();
+  lcd.setCursor(5, 1);
+  lcd.print("6(B)");
+  scanTopSide();
+  addSideToScanCubeString(SideScanResult);
+
+  turnCubeCW();
+  push();
+  push();
+  turnCubeStraight();
+  push();
+  push();
+  push();
+
+  verifyScannedCube(ScannedCube);
+  
+}
+
+//Method for verifying whether the cube was scanned correctly
+void verifyScannedCube(String scannedCube) {
+  boolean scanErrorFlag = false;
+  byte w_count = 0;
+  byte y_count = 0;
+  byte o_count = 0;
+  byte r_count = 0;
+  byte g_count = 0;
+  byte b_count = 0;
+  if (scannedCube.length() != 54) {scanErrorFlag = true;}
+  else {
+    for (byte i=0; i<54; i++) {
+      if (String(scannedCube[i]) == "w") {w_count++;}
+      else if (String(scannedCube[i]) == "y") {y_count++;}
+      else if (String(scannedCube[i]) == "o") {o_count++;}
+      else if (String(scannedCube[i]) == "r") {r_count++;}
+      else if (String(scannedCube[i]) == "g") {g_count++;}
+      else if (String(scannedCube[i]) == "b") {b_count++;}
+      else {scanErrorFlag = true;}
+    }
+    if ((w_count != 9) || (y_count != 9) || (o_count != 9) || (r_count != 9) || (g_count != 9) || (b_count != 9)) {scanErrorFlag = true;}
+  }
+
+  if (scanErrorFlag == true) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Scan error");
+    lcd.setCursor(0, 1);
+    lcd.print("Repeat scan");
+  }
+  else {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Scan completed");
+    lcd.setCursor(0, 1);
+    lcd.print("successfully");
+  }
+  
+}
+
+//Method for caibration scan of one side - scan each item once and print the RGB values
+void calibrationScan() {
   turnMotor2(95, 5);
   delay(200);
   turnMotor4(35, 7);
@@ -203,10 +336,153 @@ void scanTopSide() {
   for (int i = 0; i<9; i++) {
     turnMotor1(Motor_1_ScanAngles[i], 4);
     turnMotor4(Motor_4_ScanAngles[i], 7);
-    delay(2000);
+    delay(200);
+    calibrate();
+    delay(200);
   }
   turnMotor4(35, 7);
   turnCubeStraight();
+}
+
+
+//Method for scanning cube's top side
+void scanTopSide() {
+  turnMotor2(95, 5);
+  delay(200);
+  turnMotor4(35, 7);
+  delay(200);
+  for (int i = 0; i<9; i++) {
+    turnMotor1(Motor_1_ScanAngles[i], 4);
+    delay(50);
+    turnMotor4(Motor_4_ScanAngles[i], 5);
+    delay(200);
+    SideScanResult[i] = scanResult();
+    delay(200);
+  }
+  turnMotor4(35, 7);
+  turnCubeStraight();
+}
+
+
+//Method to add the scanned side to the common scanCube variable
+void addSideToScanCubeString(String cubeSide[9]) {
+  for (byte i=0; i<9; i++) {
+    ScannedCube += SideScanResult[i];
+  }
+  Serial.println(ScannedCube);
+}
+
+
+//Method for scanning one item
+void scan_item() {
+  delay(50);
+  // Setting red filtered photodiodes to be read
+  digitalWrite(S2,LOW);
+  digitalWrite(S3,LOW);
+  // Reading the output frequency
+  f_RED = pulseIn(scanSensor, LOW);
+  delay(50);
+  // Setting Green filtered photodiodes to be read
+  digitalWrite(S2,HIGH);
+  digitalWrite(S3,HIGH);
+  // Reading the output frequency
+  f_GREEN = pulseIn(scanSensor, LOW);
+  delay(50);
+  // Setting Blue filtered photodiodes to be read
+  digitalWrite(S2,LOW);
+  digitalWrite(S3,HIGH);
+  // Reading the output frequency
+  f_BLUE = pulseIn(scanSensor, LOW);
+  delay(50);
+}
+
+
+//Function for detecting color (All devices and Arduino connected to power supply)
+String defineColor(int r, int g, int b) {
+  if(r>=f[0][0] && r<=f[0][1] && g>=f[0][2] && g<=f[0][3] && b>=f[0][4] && b<=f[0][5]){
+    return "w";
+  }
+  else if(r>=f[1][0] && r<=f[1][1] && g>=f[1][2] && g<=f[1][3] && b>=f[1][4] && b<=f[1][5]){
+    return "y";
+  }
+  else if(r>=f[2][0] && r<=f[2][1] && g>=f[2][2] && g<=f[2][3] && b>=f[2][4] && b<=f[2][5]){
+    return "o";
+  }
+  else if(r>=f[3][0] && r<=f[3][1] && g>=f[3][2] && g<=f[3][3] && b>=f[3][4] && b<=f[3][5]){
+    return "r";
+  }
+  else if(r>=f[4][0] && r<=f[4][1] && g>=f[4][2] && g<=f[4][3] && b>=f[4][4] && b<=f[4][5]){
+    return "g";
+  }
+  else if(r>=f[5][0] && r<=f[5][1] && g>=f[5][2] && g<=f[5][3] && b>=f[5][4] && b<=f[5][5]){
+    return "b";
+  }
+  else {
+    return "undefined";
+  }
+}
+
+
+//Function that repeats scanning up to 3 times if the color was not defined
+String scanResult(){
+  String color = " ";
+  int wrongScan = 0;
+  do{
+    scan_item();
+    color = defineColor(f_RED, f_GREEN, f_BLUE);
+    wrongScan++ ;
+    if (color != "undefined") { 
+      break;
+      }
+  } while (wrongScan < 10);
+  return color;
+}
+
+//Supportive function for device calibration
+void calibrate() {
+  // Setting red filtered photodiodes to be read
+  digitalWrite(S2,LOW);
+  digitalWrite(S3,LOW);
+  // Reading the output frequency
+  frequency = pulseIn(scanSensor, LOW);
+  // Printing the value on the serial monitor
+  Serial.print("R= ");//printing name
+  Serial.print(frequency);//printing RED color frequency
+  Serial.print("  ");
+  delay(100);
+  // Setting Green filtered photodiodes to be read
+  digitalWrite(S2,HIGH);
+  digitalWrite(S3,HIGH);
+  // Reading the output frequency
+  frequency = pulseIn(scanSensor, LOW);
+  // Printing the value on the serial monitor
+  Serial.print("G= ");//printing name
+  Serial.print(frequency);//printing GREEN color frequency
+  Serial.print("  ");
+  delay(100);
+  // Setting Blue filtered photodiodes to be read
+  digitalWrite(S2,LOW);
+  digitalWrite(S3,HIGH);
+  // Reading the output frequency
+  frequency = pulseIn(scanSensor, LOW);
+  // Printing the value on the serial monitor
+  Serial.print("B= ");//printing name
+  Serial.print(frequency);//printing BLUE color frequency
+  Serial.println("  ");
+  delay(100);
+}
+
+void printSide(String side[]) {
+  byte e = 0; 
+  for (byte i=0; i<3; i++) {
+    for (byte j=0; j<3; j++) {
+      Serial.print("[");
+      Serial.print(side[e]);
+      Serial.print("]");
+      e++;
+    }
+    Serial.println("");
+  }
 }
 
 

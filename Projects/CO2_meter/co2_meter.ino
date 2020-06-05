@@ -1,11 +1,14 @@
 #include <GyverTimer.h>         //Library for work with timer
 #include <SoftwareSerial.h>     //Library for work with serial port
 #include <DHT.h>                //Library for work with DHT sensor
+#include <MHZ19_uart.h>         //Library for work with MH-19Z sensor
 // #include <Wire.h>               //Library for work with LED display
 
 
 // Pins:
-#define DHTPIN 2
+#define DHTPIN 2   //DHT-22 signal pin
+#define RX_PIN 8   //Serial rx pin no
+#define TX_PIN 9   //Serial tx pin no
 
 
 // Timers:
@@ -15,9 +18,7 @@ GTimer hourlyTimer(MS, 3600000);
 
 
 // CO2 sensor:
-SoftwareSerial mySerial(8,9); // RX,TX
-byte cmd[9] = {0xFF,0x01,0x86,0x00,0x00,0x00,0x00,0x00,0x79}; 
-unsigned char response[9];
+MHZ19_uart mhz19;
 
 
 // DHT Sensor:
@@ -36,10 +37,27 @@ float current_hum = 0;
 void setup() {
   // Serial
   Serial.begin(9600);
-  mySerial.begin(9600);
+
+  // MH-Z19
+  mhz19.begin(RX_PIN, TX_PIN);
+  //mhz19.setAutoCalibration(false);  //  uncomment this to disable autocalibration
+  mhz19.getStatus();    // first request, should return -1
+  delay(500);
+  if (mhz19.getStatus() == 0) {
+    Serial.println(F("MH-Z19 OK"));
+  } 
+  else {
+    Serial.println(F("MH-Z19 ERROR"));
+  }
   
   // DHT
   dht.begin();
+  if (isnan(measureTemp()) || isnan(measureHum())) {
+    Serial.println(F("DHT ERROR"));
+  }
+  else {
+    Serial.println(F("DHT OK"));
+  }
 }
 
 
@@ -68,27 +86,8 @@ void loop(){
 
 
 int measureCO2(){
-  mySerial.write(cmd, 9);
-  memset(response, 0, 9);
-  mySerial.readBytes(response, 9);
-  int i;
-  byte crc = 0;
-  for (i = 1; i < 8; i++) crc+=response[i];
-  crc = 255 - crc;
-  crc++;
-  if ( !(response[0] == 0xFF && response[1] == 0x86 && response[8] == crc) ) {
-    Serial.println("CRC error: " + String(crc) + " / "+ String(response[8]));
-    while (mySerial.available()) {
-        mySerial.read();       
-        }
-    return -1;
-  } 
-  else {
-    unsigned int responseHigh = (unsigned int) response[2];
-    unsigned int responseLow = (unsigned int) response[3];
-    unsigned int ppm = (256*responseHigh) + responseLow;
-    return ppm;
-  }
+  int ppm = mhz19.getPPM();
+  return ppm;
 }
 
 

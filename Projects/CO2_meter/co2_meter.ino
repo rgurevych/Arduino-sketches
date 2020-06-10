@@ -51,10 +51,12 @@ float current_hum = 0;
 
 int yellow_ppm_level = 850;
 int red_ppm_level = 1200;
+int alarm_ppm_level = 1600;
 
 int minHourPpmArray[12], maxHourPpmArray[12];
 int minDayPpmArray[24], maxDayPpmArray[24];
 
+boolean ledState = HIGH;
 
 // Flags
 boolean warmedUpFlag = false;
@@ -99,6 +101,7 @@ void loop(){
   measure();
   printSerialCurrentValues();
   updateData();
+  switchLed(current_ppm);
   
 }
 
@@ -121,16 +124,11 @@ float measureHum(){
 }
 
 
-void measure(){
-  if (warmingTimer.isReady()){
-    warmedUpFlag = true;
-  }
-  
+void measure(){  
   if (measureTimer.isReady()){
     current_ppm = measureCO2();
     current_temp = measureTemp();
     current_hum = measureHum();
-    switchLed(current_ppm);
   }
 }
 
@@ -247,7 +245,15 @@ void printSerialCurrentValues(){
 }
 
 void switchLed(int ppm_level){
-  if (ppm_level <= yellow_ppm_level){
+  if (warmingTimer.isReady()){
+    warmedUpFlag = true;
+  }
+  
+  if (!warmedUpFlag) {
+    blinkLed(YELLOW_LED_PIN);
+  }
+  
+  else if (ppm_level <= yellow_ppm_level){
     digitalWrite(RED_LED_PIN, LOW);
     digitalWrite(YELLOW_LED_PIN, LOW);
     digitalWrite(GREEN_LED_PIN, HIGH);
@@ -259,9 +265,22 @@ void switchLed(int ppm_level){
     digitalWrite(GREEN_LED_PIN, LOW);
   }
 
-  else {
+  else if (ppm_level > red_ppm_level && ppm_level <= alarm_ppm_level){
     digitalWrite(RED_LED_PIN, HIGH);
     digitalWrite(YELLOW_LED_PIN, LOW);
     digitalWrite(GREEN_LED_PIN, LOW);
   }
+
+  else {
+    blinkLed(RED_LED_PIN);
+    digitalWrite(YELLOW_LED_PIN, LOW);
+    digitalWrite(GREEN_LED_PIN, LOW);
+  }
+}
+
+void blinkLed(byte led_pin){
+  if (blinkTimer.isReady()){
+      digitalWrite(led_pin, ledState);
+      ledState =! ledState;
+    } 
 }

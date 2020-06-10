@@ -1,8 +1,9 @@
-#include <GyverTimer.h>         //Library for work with timer
-#include <SoftwareSerial.h>     //Library for work with serial port
-#include <DHT.h>                //Library for work with DHT sensor
-#include <MHZ19_uart.h>         //Library for work with MH-19Z sensor
-// #include <Wire.h>               //Library for work with LED display
+#include <GyverTimer.h>         //Library for working with timer
+#include <SoftwareSerial.h>     //Library for working with serial port
+#include <DHT.h>                //Library for working with DHT sensor
+#include <MHZ19_uart.h>         //Library for working with MH-19Z sensor
+#include <GyverButton.h>        //Library for working with button
+// #include <Wire.h>               //Library for working with LED display
 
 
 // Pins:
@@ -29,6 +30,10 @@ GTimer fiveMinTimer(MS, 300000);
 GTimer hourlyTimer(MS, 3600000);
 GTimer warmingTimer(MS);
 GTimer blinkTimer(MS, BLINK_TIMEOUT);
+
+
+// Buttons
+GButton button1(BUTTON1_PIN);
 
 
 // CO2 sensor:
@@ -97,7 +102,9 @@ void setup() {
 
 
 void loop(){
-  
+
+  button1.tick();
+  checkButtons();
   measure();
   printSerialCurrentValues();
   updateData();
@@ -140,28 +147,12 @@ void updateData(){
   }
   
   if (fiveMinTimer.isReady()){
-    Serial.print(F("Max value for last 5 minutes: ")); Serial.print(max_5min_ppm); Serial.print(F("; Min value for last 5 minutes:")); Serial.println(min_5min_ppm);
-
     for (byte i = 0; i < 11; i++) {
       minHourPpmArray[i] = minHourPpmArray[i + 1];
       maxHourPpmArray[i] = maxHourPpmArray[i + 1];
     }
     minHourPpmArray[11] = min_5min_ppm;
     maxHourPpmArray[11] = max_5min_ppm;
-
-    Serial.print(F("maxHourPpmArray = "));
-    for (byte i = 0; i < 12; i++) {
-      Serial.print(maxHourPpmArray[i]);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("minHourPpmArray = "));
-    for (byte i = 0; i < 12; i++) {
-      Serial.print(minHourPpmArray[i]);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
      
     max_5min_ppm = 0;
     min_5min_ppm = 5000;
@@ -172,31 +163,12 @@ void updateData(){
     max_hour_ppm = calculateMaxFromArray(maxHourPpmArray, 12);
     min_hour_ppm = calculateMinFromArray(minHourPpmArray, 12);
     
-    Serial.print(F("Max value for last hour: ")); 
-    Serial.print(max_hour_ppm); 
-    Serial.print(F("; Min value for last hour:")); 
-    Serial.println(min_hour_ppm);
-
     for (byte i = 0; i < 23; i++) {
       minDayPpmArray[i] = minDayPpmArray[i + 1];
       maxDayPpmArray[i] = maxDayPpmArray[i + 1];
     }
     minDayPpmArray[23] = min_hour_ppm;
     maxDayPpmArray[23] = max_hour_ppm;
-
-    Serial.print(F("maxDayPpmArray = "));
-    for (byte i = 0; i < 24; i++) {
-      Serial.print(maxDayPpmArray[i]);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("minDayPpmArray = "));
-    for (byte i = 0; i < 24; i++) {
-      Serial.print(minDayPpmArray[i]);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
   }
 }
 
@@ -283,4 +255,70 @@ void blinkLed(byte led_pin){
       digitalWrite(led_pin, ledState);
       ledState =! ledState;
     } 
+}
+
+void checkButtons(){
+  if (button1.isClick()){
+
+    // Print out hourly array values
+    Serial.print(F("maxHourPpmArray = "));
+    for (byte i = 0; i < 12; i++) {
+      Serial.print(maxHourPpmArray[i]);
+      Serial.print(F("; "));
+    }
+    Serial.println(F(""));
+
+    Serial.print(F("minHourPpmArray = "));
+    for (byte i = 0; i < 12; i++) {
+      Serial.print(minHourPpmArray[i]);
+      Serial.print(F("; "));
+    }
+    Serial.println(F(""));
+    
+    // Print out daily array values
+    Serial.print(F("maxDayPpmArray = "));
+    for (byte i = 0; i < 24; i++) {
+      Serial.print(maxDayPpmArray[i]);
+      Serial.print(F("; "));
+    }
+    Serial.println(F(""));
+
+    Serial.print(F("minDayPpmArray = "));
+    for (byte i = 0; i < 24; i++) {
+      Serial.print(minDayPpmArray[i]);
+      Serial.print(F("; "));
+    }
+    Serial.println(F(""));
+
+    // Print out min and max values for last 5 minutes
+    Serial.print(F("Max value for last 5 minutes: ")); 
+    Serial.print(max_5min_ppm); 
+    Serial.print(F("; Min value for last 5 minutes:")); 
+    Serial.println(min_5min_ppm);
+
+    // Calculate and print out min and max values for last hour
+    int current_max_hour_ppm = calculateMaxFromArray(maxHourPpmArray, 12);
+    int current_min_hour_ppm = calculateMinFromArray(minHourPpmArray, 12);
+
+    current_max_hour_ppm = max(current_max_hour_ppm, max_5min_ppm);
+    current_min_hour_ppm = min(current_min_hour_ppm, min_5min_ppm);
+
+    Serial.print(F("Max value for last hour: ")); 
+    Serial.print(current_max_hour_ppm); 
+    Serial.print(F("; Min value for last hour:")); 
+    Serial.println(current_min_hour_ppm);
+
+    // Calculate and print out min and max values for last day
+    int current_max_day_ppm = calculateMaxFromArray(maxDayPpmArray, 24);
+    int current_min_day_ppm = calculateMinFromArray(minDayPpmArray, 24);
+
+    current_max_day_ppm = max(current_max_day_ppm, current_max_hour_ppm);
+    current_min_day_ppm = min(current_min_day_ppm, current_min_hour_ppm);
+
+    Serial.print(F("Max value for last 24 hours: ")); 
+    Serial.print(current_max_day_ppm); 
+    Serial.print(F("; Min value for last 24 hours:")); 
+    Serial.println(current_min_day_ppm);
+  
+  }
 }

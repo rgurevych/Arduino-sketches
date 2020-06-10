@@ -6,15 +6,20 @@
 
 
 // Pins:
-#define DHTPIN 2   //DHT-22 signal pin
-#define RX_PIN 8   //Serial rx pin no
-#define TX_PIN 9   //Serial tx pin no
+#define DHTPIN 2            //DHT-22 signal pin
+#define RX_PIN 3            //Serial rx pin no
+#define TX_PIN 4            //Serial tx pin no
+#define BUTTON1_PIN 7       //Button 1 pin
+#define RED_LED_PIN 11      //Red LED pin
+#define YELLOW_LED_PIN 10   //Yellow LED pin
+#define GREEN_LED_PIN 9     //Green LED pin
 
 
 // Timer durations
-#define MEASURE_TIMEOUT 15000
-#define PRINT_TIMEOUT 30000
-#define WARMING_UP_TIMEOUT 175000
+#define MEASURE_TIMEOUT 15000             //Interval between measure occurs
+#define PRINT_TIMEOUT 30000               //Interval between serial printout occurs
+#define WARMING_UP_TIMEOUT 175000         //Duration of warming up period
+#define BLINK_TIMEOUT 1000                //LED blinking interval
 
 
 // Timers:
@@ -23,6 +28,7 @@ GTimer printTimer(MS, PRINT_TIMEOUT);
 GTimer fiveMinTimer(MS, 300000);
 GTimer hourlyTimer(MS, 3600000);
 GTimer warmingTimer(MS);
+GTimer blinkTimer(MS, BLINK_TIMEOUT);
 
 
 // CO2 sensor:
@@ -43,6 +49,9 @@ int min_hour_ppm = 5000;
 float current_temp = 0;
 float current_hum = 0;
 
+int yellow_ppm_level = 850;
+int red_ppm_level = 1200;
+
 int minHourPpmArray[12], maxHourPpmArray[12];
 int minDayPpmArray[24], maxDayPpmArray[24];
 
@@ -53,6 +62,11 @@ boolean warmedUpFlag = false;
 void setup() {
   // Serial
   Serial.begin(9600);
+
+  //Pin modes
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(YELLOW_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
 
   // Start warming up timer
   warmingTimer.setTimeout(WARMING_UP_TIMEOUT);
@@ -116,6 +130,7 @@ void measure(){
     current_ppm = measureCO2();
     current_temp = measureTemp();
     current_hum = measureHum();
+    switchLed(current_ppm);
   }
 }
 
@@ -159,7 +174,10 @@ void updateData(){
     max_hour_ppm = calculateMaxFromArray(maxHourPpmArray, 12);
     min_hour_ppm = calculateMinFromArray(minHourPpmArray, 12);
     
-    Serial.print(F("Max value for last hour: ")); Serial.print(max_hour_ppm); Serial.print(F("; Min value for last hour:")); Serial.println(min_hour_ppm);
+    Serial.print(F("Max value for last hour: ")); 
+    Serial.print(max_hour_ppm); 
+    Serial.print(F("; Min value for last hour:")); 
+    Serial.println(min_hour_ppm);
 
     for (byte i = 0; i < 23; i++) {
       minDayPpmArray[i] = minDayPpmArray[i + 1];
@@ -225,5 +243,25 @@ void printSerialCurrentValues(){
     Serial.print(current_temp); 
     Serial.println(F(" *C."));
     t += PRINT_TIMEOUT/1000; 
+  }
+}
+
+void switchLed(int ppm_level){
+  if (ppm_level <= yellow_ppm_level){
+    digitalWrite(RED_LED_PIN, LOW);
+    digitalWrite(YELLOW_LED_PIN, LOW);
+    digitalWrite(GREEN_LED_PIN, HIGH);
+  }
+
+  else if (ppm_level > yellow_ppm_level && ppm_level <= red_ppm_level){
+    digitalWrite(RED_LED_PIN, LOW);
+    digitalWrite(YELLOW_LED_PIN, HIGH);
+    digitalWrite(GREEN_LED_PIN, LOW);
+  }
+
+  else {
+    digitalWrite(RED_LED_PIN, HIGH);
+    digitalWrite(YELLOW_LED_PIN, LOW);
+    digitalWrite(GREEN_LED_PIN, LOW);
   }
 }

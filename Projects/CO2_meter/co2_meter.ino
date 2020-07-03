@@ -3,7 +3,8 @@
 #include <DHT.h>                //Library for working with DHT sensor
 #include <MHZ19_uart.h>         //Library for working with MH-19Z sensor
 #include <GyverButton.h>        //Library for working with button
-// #include <Wire.h>               //Library for working with LED display
+#include <Wire.h>               //Library for working with LED display
+#include <LiquidCrystal_I2C.h>  //Library for working with LED display
 
 
 // Pins:
@@ -11,6 +12,7 @@
 #define RX_PIN 3            //Serial rx pin no
 #define TX_PIN 4            //Serial tx pin no
 #define BUTTON1_PIN 7       //Button 1 pin
+#define BUTTON2_PIN 8       //Button 1 pin
 #define RED_LED_PIN 11      //Red LED pin
 #define YELLOW_LED_PIN 10   //Yellow LED pin
 #define GREEN_LED_PIN 9     //Green LED pin
@@ -21,6 +23,11 @@
 #define PRINT_TIMEOUT 30000               //Interval between serial printout occurs
 #define WARMING_UP_TIMEOUT 175000         //Duration of warming up period
 #define BLINK_TIMEOUT 1000                //LED blinking interval
+
+
+// Settings
+#define RESET_CLOCK 0                     //Should the clock be reset on start
+#define DEBUG 1                           //Debug mode, in which the data is printed to serial port
 
 
 // Timers:
@@ -34,6 +41,7 @@ GTimer blinkTimer(MS, BLINK_TIMEOUT);
 
 // Buttons
 GButton button1(BUTTON1_PIN);
+GButton button2(BUTTON2_PIN);
 
 
 // CO2 sensor:
@@ -42,6 +50,10 @@ MHZ19_uart mhz19;
 
 // DHT Sensor:
 DHT dht(DHTPIN, DHT22);
+
+
+//Liquid Crystal LCD:
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 
 // Initial variables:
@@ -79,6 +91,8 @@ boolean ledState = HIGH;
 
 // Flags
 boolean warmedUpFlag = false;
+boolean lcdBacklight = true;
+
 
 void setup() {
   // Serial
@@ -92,25 +106,44 @@ void setup() {
   // Start warming up timer
   warmingTimer.setTimeout(WARMING_UP_TIMEOUT);
 
+  //LCD
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+
   // MH-Z19
   mhz19.begin(RX_PIN, TX_PIN);
   mhz19.setAutoCalibration(false);  //  uncomment this to disable autocalibration
   mhz19.getStatus();    // first request, should return -1
   delay(500);
+  lcd.setCursor(0, 0);
   if (mhz19.getStatus() == 0) {
-    Serial.println(F("MH-Z19 OK"));
+    lcd.print(F("MH-Z19 OK"));
+    if (DEBUG) {
+      Serial.println(F("MH-Z19 OK"));
+      }
   } 
   else {
+    lcd.print(F("MH-Z19 ERROR"));
+    if (DEBUG) {
     Serial.println(F("MH-Z19 ERROR"));
+    }
   }
   
   // DHT
   dht.begin();
+  lcd.setCursor(0, 1);
   if (isnan(measureTemp()) || isnan(measureHum())) {
+    lcd.print(F("DHT ERROR"));
+    if (DEBUG) {
     Serial.println(F("DHT ERROR"));
+    }
   }
   else {
+    lcd.print(F("DHT OK"));
+    if (DEBUG) {
     Serial.println(F("DHT OK"));
+    }
   }
 }
 
@@ -118,9 +151,10 @@ void setup() {
 void loop(){
 
   button1.tick();
+  button2.tick();
   checkButtons();
   measure();
-  printSerialCurrentValues();
+  printCurrentValues();
   updateData();
   switchLed(current_ppm);
   
@@ -242,13 +276,14 @@ int calculateMinFromArray(int *dataArray, byte arrSize) {
 }
 
 
-void printSerialCurrentValues(){  
+void printCurrentValues(){  
   if (printTimer.isReady()){
+    if (DEBUG) {
     Serial.print(String(t)); 
     Serial.print(F(" - CO2: "));
     if (!warmedUpFlag){
       Serial.print(F("**"));
-    }
+      }
     Serial.print(current_ppm); 
     Serial.print(F(" ppm\t"));
     Serial.print(F("Humidity: ")); 
@@ -257,9 +292,26 @@ void printSerialCurrentValues(){
     Serial.print(F("Temperature: ")); 
     Serial.print(current_temp / 10.0, 1); 
     Serial.println(F(" *C."));
-    t += PRINT_TIMEOUT/1000; 
+    t += PRINT_TIMEOUT/1000;
+    }
+  
+    //print to LCD:
+    if (warmedUpFlag) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(F("CO2:"));
+    lcd.print(current_ppm);
+    lcd.print(F(" ppm"));
+    lcd.setCursor(0, 1);
+    lcd.print(F("T:"));
+    lcd.print(current_temp / 10.0, 1);
+    lcd.print(F("C H:"));
+    lcd.print(current_hum / 10.0, 1);
+    lcd.print(F("%"));
+    }
   }
 }
+
 
 void switchLed(int ppm_level){
   if (warmingTimer.isReady()){
@@ -295,6 +347,7 @@ void switchLed(int ppm_level){
   }
 }
 
+
 void blinkLed(byte led_pin){
   if (blinkTimer.isReady()){
       digitalWrite(led_pin, ledState);
@@ -302,10 +355,26 @@ void blinkLed(byte led_pin){
     } 
 }
 
+
 void checkButtons(){
   if (button1.isClick()){
+    printOutAllArrays();
+  }
 
-    // Print out hourly array values
+  if (button2.isClick()){
+    switchLcdBacklight();
+  }
+}
+
+
+void switchLcdBacklight(){
+  lcdBacklight = !lcdBacklight;
+  lcd.setBacklight(lcdBacklight);
+}
+
+
+void printOutAllArrays(){
+  // Print out hourly array values
     Serial.print(F("maxHourPpmArray = "));
     for (byte i = 0; i < 12; i++) {
       Serial.print(maxHourPpmArray[i]);
@@ -466,6 +535,4 @@ void checkButtons(){
     Serial.print(current_max_day_hum / 10.0, 1); 
     Serial.print(F("; Min Humidity value for last 24 hours:")); 
     Serial.println(current_min_day_hum / 10.0, 1);
-  
-  }
 }

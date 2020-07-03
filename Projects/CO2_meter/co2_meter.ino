@@ -5,6 +5,7 @@
 #include <GyverButton.h>        //Library for working with button
 #include <Wire.h>               //Library for working with LED display
 #include <LiquidCrystal_I2C.h>  //Library for working with LED display
+#include <RTClib.h>             //Library for working with RTC clock module
 
 
 // Pins:
@@ -56,7 +57,13 @@ DHT dht(DHTPIN, DHT22);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 
+//Real Time Clock:
+RTC_DS3231 rtc;
+DateTime now;
+
+
 // Initial variables:
+int8_t hrs, mins, secs;
 long t = PRINT_TIMEOUT/1000;
 int current_ppm = 0;
 int max_5min_ppm = 0;
@@ -145,6 +152,15 @@ void setup() {
     Serial.println(F("DHT OK"));
     }
   }
+
+  // RTC module
+  if (RESET_CLOCK || rtc.lostPower())
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
+  now = rtc.now();
+  secs = now.second();
+  mins = now.minute();
+  hrs = now.hour();
 }
 
 
@@ -278,8 +294,20 @@ int calculateMinFromArray(int *dataArray, byte arrSize) {
 
 void printCurrentValues(){  
   if (printTimer.isReady()){
+    now = rtc.now();
+    secs = now.second();
+    mins = now.minute();
+    hrs = now.hour();
+    
     if (DEBUG) {
-    Serial.print(String(t)); 
+    Serial.print(String(t));
+    Serial.print(F(" - "));
+    Serial.print(hrs);
+    Serial.print(F(":"));
+    Serial.print(mins);
+    Serial.print(F(":"));
+    Serial.print(secs);
+    
     Serial.print(F(" - CO2: "));
     if (!warmedUpFlag){
       Serial.print(F("**"));

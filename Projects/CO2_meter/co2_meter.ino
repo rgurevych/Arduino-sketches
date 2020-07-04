@@ -97,7 +97,7 @@ int minDayHumArray[24], maxDayHumArray[24];
 
 boolean ledState = HIGH;
 
-byte LCD_BRIGHTNESS = 200;
+byte LCD_BRIGHTNESS = 25;
 
 // Flags
 boolean warmedUpFlag = false;
@@ -414,7 +414,7 @@ void switchLcdBacklight(){
 // Change the LCD backlight brightness
 void updateLcdBrightness(){
   if (LCD_BRIGHTNESS == 200) {
-    LCD_BRIGHTNESS = 0;
+    LCD_BRIGHTNESS = 25;
   }
   else {
     LCD_BRIGHTNESS += 25;

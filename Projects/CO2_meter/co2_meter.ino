@@ -17,6 +17,7 @@
 #define RED_LED_PIN 11      //Red LED pin
 #define YELLOW_LED_PIN 10   //Yellow LED pin
 #define GREEN_LED_PIN 9     //Green LED pin
+#define BACKLIGHT 5         //LCD backlight pin
 
 
 // Timer durations
@@ -96,6 +97,8 @@ int minDayHumArray[24], maxDayHumArray[24];
 
 boolean ledState = HIGH;
 
+byte LCD_BRIGHTNESS = 200;
+
 // Flags
 boolean warmedUpFlag = false;
 boolean lcdBacklight = true;
@@ -109,11 +112,13 @@ void setup() {
   pinMode(RED_LED_PIN, OUTPUT);
   pinMode(YELLOW_LED_PIN, OUTPUT);
   pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(BACKLIGHT, OUTPUT);
 
   // Start warming up timer
   warmingTimer.setTimeout(WARMING_UP_TIMEOUT);
 
   //LCD
+  analogWrite(BACKLIGHT, LCD_BRIGHTNESS);
   lcd.init();
   lcd.backlight();
   lcd.clear();
@@ -392,12 +397,34 @@ void checkButtons(){
   if (button2.isClick()){
     switchLcdBacklight();
   }
+
+  if (button2.isHolded()){
+    updateLcdBrightness();
+  }
 }
 
 
+// Switch LCD backlight on and off
 void switchLcdBacklight(){
   lcdBacklight = !lcdBacklight;
   lcd.setBacklight(lcdBacklight);
+}
+
+
+// Change the LCD backlight brightness
+void updateLcdBrightness(){
+  if (LCD_BRIGHTNESS == 200) {
+    LCD_BRIGHTNESS = 0;
+  }
+  else {
+    LCD_BRIGHTNESS += 25;
+  }
+
+  if (!lcdBacklight) {
+    switchLcdBacklight();
+  }
+  
+  analogWrite(BACKLIGHT, LCD_BRIGHTNESS);
 }
 
 

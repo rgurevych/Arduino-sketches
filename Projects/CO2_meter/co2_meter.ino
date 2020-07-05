@@ -39,6 +39,7 @@ GTimer fiveMinTimer(MS, 300000);
 GTimer hourlyTimer(MS, 3600000);
 GTimer warmingTimer(MS);
 GTimer blinkTimer(MS, BLINK_TIMEOUT);
+GTimer clockTimer(MS, 1000);
 
 
 // Buttons
@@ -65,7 +66,6 @@ DateTime now;
 
 // Initial variables:
 int8_t hrs, mins, secs;
-long t = PRINT_TIMEOUT/1000;
 int current_ppm = 0;
 int max_5min_ppm = 0;
 int min_5min_ppm = 5000;
@@ -114,6 +114,16 @@ void setup() {
   pinMode(GREEN_LED_PIN, OUTPUT);
   pinMode(BACKLIGHT, OUTPUT);
 
+  // RTC module
+  rtc.begin();
+  if (RESET_CLOCK || rtc.lostPower()){
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+  now = rtc.now();
+  secs = now.second();
+  mins = now.minute();
+  hrs = now.hour();
+
   // Start warming up timer
   warmingTimer.setTimeout(WARMING_UP_TIMEOUT);
 
@@ -158,14 +168,17 @@ void setup() {
     }
   }
 
-  // RTC module
-  if (RESET_CLOCK || rtc.lostPower())
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  // Check all LEDs
+  lightRedLed();
+  delay(1000);
+  lightYellowLed();
+  delay(1000);
+  lightGreenLed();
+  delay(1000);
+  
 
-  now = rtc.now();
-  secs = now.second();
-  mins = now.minute();
-  hrs = now.hour();
+  
+  lcd.clear();
 }
 
 
@@ -176,6 +189,7 @@ void loop(){
   checkButtons();
   measure();
   printCurrentValues();
+  printMainScreen();
   updateData();
   switchLed(current_ppm);
   
@@ -305,8 +319,6 @@ void printCurrentValues(){
     hrs = now.hour();
     
     if (DEBUG) {
-    Serial.print(String(t));
-    Serial.print(F(" - "));
     Serial.print(hrs);
     Serial.print(F(":"));
     Serial.print(mins);
@@ -325,22 +337,50 @@ void printCurrentValues(){
     Serial.print(F("Temperature: ")); 
     Serial.print(current_temp / 10.0, 1); 
     Serial.println(F(" *C."));
-    t += PRINT_TIMEOUT/1000;
     }
-  
-    //print to LCD:
-    if (warmedUpFlag) {
-    lcd.clear();
+  }
+}
+
+
+void printMainScreen(){
+  if (clockTimer.isReady()) {
+    // get time
+    now = rtc.now();
+    secs = now.second();
+    mins = now.minute();
+    hrs = now.hour();
+
+    // print time to LCD
+    //lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print(F("CO2:"));
-    lcd.print(current_ppm);
-    lcd.print(F(" ppm"));
-    lcd.setCursor(0, 1);
-    lcd.print(F("T:"));
-    lcd.print(current_temp / 10.0, 1);
-    lcd.print(F("C H:"));
-    lcd.print(current_hum / 10.0, 1);
-    lcd.print(F("%"));
+    if (hrs < 10) lcd.print(F("0"));
+    lcd.print(hrs);
+    lcd.print(F(":"));
+
+    // lcd.setCursor(0, 0);
+    if (mins < 10) lcd.print(F("0"));
+    lcd.print(mins);
+    lcd.print(F(":"));
+
+    // lcd.setCursor(0, 0);
+    if (secs < 10) lcd.print("0");
+    lcd.print(secs);
+
+    if (warmedUpFlag){
+      // print temperature, CO2 level and humidity
+      lcd.setCursor(11, 0);
+      lcd.print(current_temp / 10.0, 1);
+      lcd.print(F("C"));
+      lcd.setCursor(0, 1);
+      lcd.print(current_ppm);
+      lcd.print(F("ppm "));
+      lcd.setCursor(11, 1);
+      lcd.print(current_hum / 10.0, 1);
+      lcd.print(F("%"));
+      }
+    else {
+      lcd.setCursor(0, 1);
+      lcd.print(F("Warming up..."));
     }
   }
 }
@@ -348,29 +388,26 @@ void printCurrentValues(){
 
 void switchLed(int ppm_level){
   if (warmingTimer.isReady()){
+    lcd.clear();
     warmedUpFlag = true;
   }
   
   if (!warmedUpFlag) {
     blinkLed(YELLOW_LED_PIN);
+    digitalWrite(RED_LED_PIN, LOW);
+    digitalWrite(GREEN_LED_PIN, LOW);
   }
   
   else if (ppm_level <= yellow_ppm_level){
-    digitalWrite(RED_LED_PIN, LOW);
-    digitalWrite(YELLOW_LED_PIN, LOW);
-    digitalWrite(GREEN_LED_PIN, HIGH);
+    lightGreenLed();
   }
 
   else if (ppm_level > yellow_ppm_level && ppm_level <= red_ppm_level){
-    digitalWrite(RED_LED_PIN, LOW);
-    digitalWrite(YELLOW_LED_PIN, HIGH);
-    digitalWrite(GREEN_LED_PIN, LOW);
+    lightYellowLed();
   }
 
   else if (ppm_level > red_ppm_level && ppm_level <= alarm_ppm_level){
-    digitalWrite(RED_LED_PIN, HIGH);
-    digitalWrite(YELLOW_LED_PIN, LOW);
-    digitalWrite(GREEN_LED_PIN, LOW);
+    lightRedLed();
   }
 
   else {
@@ -378,6 +415,27 @@ void switchLed(int ppm_level){
     digitalWrite(YELLOW_LED_PIN, LOW);
     digitalWrite(GREEN_LED_PIN, LOW);
   }
+}
+
+
+void lightGreenLed(){
+  digitalWrite(RED_LED_PIN, LOW);
+  digitalWrite(YELLOW_LED_PIN, LOW);
+  digitalWrite(GREEN_LED_PIN, HIGH);
+}
+
+
+void lightYellowLed(){
+  digitalWrite(RED_LED_PIN, LOW);
+  digitalWrite(YELLOW_LED_PIN, HIGH);
+  digitalWrite(GREEN_LED_PIN, LOW);
+}
+
+
+void lightRedLed(){
+  digitalWrite(RED_LED_PIN, HIGH);
+  digitalWrite(YELLOW_LED_PIN, LOW);
+  digitalWrite(GREEN_LED_PIN, LOW);
 }
 
 

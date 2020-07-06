@@ -25,6 +25,7 @@
 #define PRINT_TIMEOUT 30000               //Interval between serial printout occurs
 #define WARMING_UP_TIMEOUT 175000         //Duration of warming up period
 #define BLINK_TIMEOUT 1000                //LED blinking interval
+#define RESET_MODE_TIMEOUT 10000          //Timeout before the mode is reset to default screen
 
 
 // Settings
@@ -40,6 +41,7 @@ GTimer hourlyTimer(MS, 3600000);
 GTimer warmingTimer(MS);
 GTimer blinkTimer(MS, BLINK_TIMEOUT);
 GTimer clockTimer(MS, 1000);
+GTimer resetModeTimer(MS);
 
 
 // Buttons
@@ -99,9 +101,12 @@ boolean ledState = HIGH;
 
 byte LCD_BRIGHTNESS = 25;
 
+byte mode = 0;
+
 // Flags
 boolean warmedUpFlag = false;
 boolean lcdBacklight = true;
+boolean changeModeFlag = false;
 
 
 void setup() {
@@ -175,9 +180,6 @@ void setup() {
   delay(1000);
   lightGreenLed();
   delay(1000);
-  
-
-  
   lcd.clear();
 }
 
@@ -189,7 +191,7 @@ void loop(){
   checkButtons();
   measure();
   printCurrentValues();
-  printMainScreen();
+  displayScreen();
   updateData();
   switchLed(current_ppm);
   
@@ -447,9 +449,10 @@ void blinkLed(byte led_pin){
 }
 
 
+// Check each button state
 void checkButtons(){
   if (button1.isClick()){
-    printOutAllArrays();
+    switchMode();
   }
 
   if (button2.isClick()){
@@ -461,6 +464,26 @@ void checkButtons(){
   }
 }
 
+
+// Switch mode
+void switchMode(){
+
+  if (!warmedUpFlag){
+    mode = 7;
+  }
+
+  else if (mode == 6){
+    mode = 0;
+  }
+  
+  else{
+    mode ++;
+  }
+
+  lcd.clear();
+  changeModeFlag = true;
+  resetModeTimer.setTimeout(RESET_MODE_TIMEOUT);
+}
 
 // Switch LCD backlight on and off
 void switchLcdBacklight(){
@@ -483,6 +506,88 @@ void updateLcdBrightness(){
   }
   
   analogWrite(BACKLIGHT, LCD_BRIGHTNESS);
+}
+
+
+// Change info on the screen depending on current mode
+void displayScreen(){
+
+  if (resetModeTimer.isReady()){
+    mode = 0;
+    lcd.clear();
+  }
+  
+  switch(mode){
+    case 0:
+      printMainScreen();
+      resetModeTimer.stop();
+      changeModeFlag = false;
+      break;
+
+    case 1:
+      if (changeModeFlag) {
+        lcd.setCursor(0, 0);
+        lcd.print(F("Case 1"));
+        Serial.print(F("Case 1"));
+        changeModeFlag = false;
+        }
+      break;
+
+    case 2:
+      if (changeModeFlag) {
+        lcd.setCursor(0, 0);
+        lcd.print(F("Case 2"));
+        Serial.print(F("Case 2"));
+        changeModeFlag = false;
+        }
+      break;
+
+    case 3:
+      if (changeModeFlag) {
+        lcd.setCursor(0, 0);
+        lcd.print(F("Case 3"));
+        Serial.print(F("Case 3"));
+        changeModeFlag = false;
+        }
+      break;
+
+    case 4:
+      if (changeModeFlag) {
+        lcd.setCursor(0, 0);
+        lcd.print(F("Case 4"));
+        Serial.print(F("Case 4"));
+        changeModeFlag = false;
+        }
+      break;
+
+    case 5:
+      if (changeModeFlag) {
+        lcd.setCursor(0, 0);
+        lcd.print(F("Case 5"));
+        Serial.print(F("Case 5"));
+        changeModeFlag = false;
+        }
+      break;
+
+    case 6:
+      if (changeModeFlag) {
+        lcd.setCursor(0, 0);
+        lcd.print(F("Case 6"));
+        Serial.print(F("Case 6"));
+        changeModeFlag = false;
+        }
+      break;
+
+    case 7:
+      if (changeModeFlag) {
+        lcd.setCursor(0, 0);
+        lcd.print(F("Not available"));
+        lcd.setCursor(0, 1);
+        lcd.print(F("while warming up"));
+        changeModeFlag = false;
+      }
+      break;
+  }
 }
 
 

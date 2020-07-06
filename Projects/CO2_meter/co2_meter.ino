@@ -111,7 +111,9 @@ boolean changeModeFlag = false;
 
 void setup() {
   // Serial
+  if (DEBUG){
   Serial.begin(9600);
+  }
 
   //Pin modes
   pinMode(RED_LED_PIN, OUTPUT);
@@ -198,6 +200,7 @@ void loop(){
 }
 
 
+// Get the sensors data
 int measureCO2(){
   int ppm = mhz19.getPPM();
   return ppm;
@@ -225,6 +228,7 @@ void measure(){
 }
 
 
+// Data update for saving hourly and daily values
 void updateData(){
   if (warmedUpFlag){
     if (current_ppm > max_5min_ppm) max_5min_ppm = current_ppm;
@@ -320,7 +324,6 @@ void printCurrentValues(){
     mins = now.minute();
     hrs = now.hour();
     
-    if (DEBUG) {
     Serial.print(hrs);
     Serial.print(F(":"));
     Serial.print(mins);
@@ -339,7 +342,6 @@ void printCurrentValues(){
     Serial.print(F("Temperature: ")); 
     Serial.print(current_temp / 10.0, 1); 
     Serial.println(F(" *C."));
-    }
   }
 }
 
@@ -388,6 +390,7 @@ void printMainScreen(){
 }
 
 
+// Working with LEDs
 void switchLed(int ppm_level){
   if (warmingTimer.isReady()){
     lcd.clear();
@@ -467,23 +470,20 @@ void checkButtons(){
 
 // Switch mode
 void switchMode(){
-
   if (!warmedUpFlag){
     mode = 7;
   }
-
   else if (mode == 6){
     mode = 0;
   }
-  
   else{
     mode ++;
   }
-
   lcd.clear();
   changeModeFlag = true;
   resetModeTimer.setTimeout(RESET_MODE_TIMEOUT);
 }
+
 
 // Switch LCD backlight on and off
 void switchLcdBacklight(){
@@ -540,36 +540,28 @@ void displayScreen(){
 
     case 3:
       if (changeModeFlag) {
-        lcd.setCursor(0, 0);
-        lcd.print(F("Case 3"));
-        Serial.print(F("Case 3"));
+        printHourTemp();
         changeModeFlag = false;
         }
       break;
 
     case 4:
       if (changeModeFlag) {
-        lcd.setCursor(0, 0);
-        lcd.print(F("Case 4"));
-        Serial.print(F("Case 4"));
+        printDayTemp();
         changeModeFlag = false;
         }
       break;
 
     case 5:
       if (changeModeFlag) {
-        lcd.setCursor(0, 0);
-        lcd.print(F("Case 5"));
-        Serial.print(F("Case 5"));
+        printHourHum();
         changeModeFlag = false;
         }
       break;
 
     case 6:
       if (changeModeFlag) {
-        lcd.setCursor(0, 0);
-        lcd.print(F("Case 6"));
-        Serial.print(F("Case 6"));
+        printDayHum();
         changeModeFlag = false;
         }
       break;
@@ -673,54 +665,6 @@ void printOutAllArrays(){
       Serial.print(F("; "));
     }
     Serial.println(F(""));
-
-    // Print out min and max values for last 5 minutes
-    Serial.print(F("Max CO2 value for last 5 minutes: ")); 
-    Serial.print(max_5min_ppm); 
-    Serial.print(F("; Min CO2 value for last 5 minutes:")); 
-    Serial.println(min_5min_ppm);
-
-    Serial.print(F("Max Temp value for last 5 minutes: ")); 
-    Serial.print(max_5min_temp / 10.0, 1); 
-    Serial.print(F("; Min Temp value for last 5 minutes:")); 
-    Serial.println(min_5min_temp / 10.0, 1);
-
-    Serial.print(F("Max Humidity value for last 5 minutes: ")); 
-    Serial.print(max_5min_hum / 10.0, 1); 
-    Serial.print(F("; Min Humidity value for last 5 minutes:")); 
-    Serial.println(min_5min_hum / 10.0, 1);
-    
-
-    
-    // Calculate and print out min and max values for last day
-    
-    int current_min_day_ppm = calculateMinFromArray(minDayPpmArray, 24);
-    int current_max_day_temp = calculateMaxFromArray(maxDayTempArray, 24);
-    int current_min_day_temp = calculateMinFromArray(minDayTempArray, 24);
-    int current_max_day_hum = calculateMaxFromArray(maxDayHumArray, 24);
-    int current_min_day_hum = calculateMinFromArray(minDayHumArray, 24);
-//
-//    
-//    current_min_day_ppm = min(current_min_day_ppm, current_min_hour_ppm);
-//    current_max_day_temp = max(current_max_day_temp, current_max_hour_temp);
-//    current_min_day_temp = min(current_min_day_temp, current_min_hour_temp);
-//    current_max_day_hum = max(current_max_day_hum, current_max_hour_hum);
-//    current_min_day_hum = min(current_min_day_hum, current_min_hour_hum);
-
-//    Serial.print(F("Max CO2 value for last 24 hours: ")); 
-//    Serial.print(current_max_day_ppm); 
-//    Serial.print(F("; Min CO2 value for last 24 hours:")); 
-//    Serial.println(current_min_day_ppm);
-    
-    Serial.print(F("Max Temp value for last 24 hours: ")); 
-    Serial.print(current_max_day_temp / 10.0, 1); 
-    Serial.print(F("; Min Temp value for last 24 hours:")); 
-    Serial.println(current_min_day_temp / 10.0, 1);
-    
-    Serial.print(F("Max Humidity value for last 24 hours: ")); 
-    Serial.print(current_max_day_hum / 10.0, 1); 
-    Serial.print(F("; Min Humidity value for last 24 hours:")); 
-    Serial.println(current_min_day_hum / 10.0, 1);
 }
 
 
@@ -736,6 +680,34 @@ int calculateCurrentMinHourPpm(){
     int current_min_hour_ppm = calculateMinFromArray(minHourPpmArray, 12);
     current_min_hour_ppm = min(current_min_hour_ppm, min_5min_ppm);
     return current_min_hour_ppm;
+}
+
+
+int calculateCurrentMaxHourTemp(){
+    int current_max_hour_temp = calculateMaxFromArray(maxHourTempArray, 12);
+    current_max_hour_temp = max(current_max_hour_temp, max_5min_temp);
+    return current_max_hour_temp;
+}
+
+
+int calculateCurrentMinHourTemp(){
+    int current_min_hour_temp = calculateMinFromArray(minHourTempArray, 12);
+    current_min_hour_temp = min(current_min_hour_temp, min_5min_temp);
+    return current_min_hour_temp;
+}
+
+
+int calculateCurrentMaxHourHum(){
+    int current_max_hour_hum = calculateMaxFromArray(maxHourHumArray, 12);
+    current_max_hour_hum = max(current_max_hour_hum, max_5min_hum);
+    return current_max_hour_hum;
+}
+
+
+int calculateCurrentMinHourHum(){
+    int current_min_hour_hum = calculateMinFromArray(minHourHumArray, 12);
+    current_min_hour_hum = min(current_min_hour_hum, min_5min_hum);
+    return current_min_hour_hum;
 }
 
 
@@ -755,15 +727,49 @@ int calculateCurrentMinDayPpm(){
 }
 
 
+int calculateCurrentMaxDayTemp(){
+    int current_max_day_temp = calculateMaxFromArray(maxDayTempArray, 24);
+    int current_max_hour_temp = calculateCurrentMaxHourTemp();
+    current_max_day_temp = max(current_max_day_temp, current_max_hour_temp);
+    return current_max_day_temp;
+}
+
+
+int calculateCurrentMinDayTemp(){
+    int current_min_day_temp = calculateMinFromArray(minDayTempArray, 24);
+    int current_min_hour_temp = calculateCurrentMinHourTemp();
+    current_min_day_temp = min(current_min_day_temp, current_min_hour_temp);
+    return current_min_day_temp;
+}
+
+
+int calculateCurrentMaxDayHum(){
+    int current_max_day_hum = calculateMaxFromArray(maxDayHumArray, 24);
+    int current_max_hour_hum = calculateCurrentMaxHourHum();
+    current_max_day_hum = max(current_max_day_hum, current_max_hour_hum);
+    return current_max_day_hum;
+}
+
+
+int calculateCurrentMinDayHum(){
+    int current_min_day_hum = calculateMinFromArray(minDayHumArray, 24);
+    int current_min_hour_hum = calculateCurrentMinHourHum();
+    current_min_day_hum = min(current_min_day_hum, current_min_hour_hum);
+    return current_min_day_hum;
+}
+
+
 //Print out min and max ppm values for last hour
 void printHourPpm(){
     int current_max_hour_ppm = calculateCurrentMaxHourPpm();
     int current_min_hour_ppm = calculateCurrentMinHourPpm();
     
+    if (DEBUG){
     Serial.print(F("Max CO2 value for last hour: ")); 
     Serial.print(current_max_hour_ppm); 
     Serial.print(F("; Min CO2 value for last hour:")); 
     Serial.println(current_min_hour_ppm);
+    }
 
     lcd.setCursor(0, 0);
     lcd.print(F("Min/Max CO2, ppm"));
@@ -778,15 +784,59 @@ void printHourPpm(){
 }
 
 
-//Print out min and max ppm values for last day
+void printHourTemp(){
+    int current_max_hour_temp = calculateCurrentMaxHourTemp();
+    int current_min_hour_temp = calculateCurrentMinHourTemp();
+
+    if (DEBUG){
+    Serial.print(F("Max Temp value for last hour: ")); 
+    Serial.print(current_max_hour_temp / 10.0, 1); 
+    Serial.print(F("; Min Temp value for last hour:")); 
+    Serial.println(current_min_hour_temp / 10.0, 1);
+    }
+
+    lcd.setCursor(0, 0);
+    lcd.print(F("Min/Max Temp, *C"));
+    lcd.setCursor(0, 1);
+    lcd.print(current_min_hour_temp / 10.0, 1);
+    lcd.setCursor(4, 1);
+    lcd.print(F("< 1 hr <"));
+    lcd.print(current_max_hour_temp / 10.0, 1);
+}
+
+
+void printHourHum(){
+    int current_max_hour_hum = calculateCurrentMaxHourHum();
+    int current_min_hour_hum = calculateCurrentMinHourHum();
+
+    if (DEBUG){
+    Serial.print(F("Max Humidity value for last hour: ")); 
+    Serial.print(current_max_hour_hum / 10.0, 1); 
+    Serial.print(F("; Min Humidity value for last hour:")); 
+    Serial.println(current_min_hour_hum / 10.0, 1);
+    }
+
+    lcd.setCursor(0, 0);
+    lcd.print(F("Min/Max Humid, %"));
+    lcd.setCursor(0, 1);
+    lcd.print(current_min_hour_hum / 10.0, 1);
+    lcd.setCursor(4, 1);
+    lcd.print(F("< 1 hr <"));
+    lcd.print(current_max_hour_hum / 10.0, 1);
+}
+
+
+//Print out min and max ppm values for last 24 hours
 void printDayPpm(){
     int current_max_day_ppm = calculateCurrentMaxDayPpm();
     int current_min_day_ppm = calculateCurrentMinDayPpm();
     
+    if (DEBUG){
     Serial.print(F("Max CO2 value for last day: ")); 
     Serial.print(current_max_day_ppm); 
     Serial.print(F("; Min CO2 value for last day:")); 
     Serial.println(current_min_day_ppm);
+    }
 
     lcd.setCursor(0, 0);
     lcd.print(F("Min/Max CO2, ppm"));
@@ -800,67 +850,44 @@ void printDayPpm(){
     lcd.print(current_max_day_ppm);
 }
 
-// Calculate and print out min and max temp values for last hour
-void calculateHourTemp(){
-    int current_max_hour_ppm = calculateMaxFromArray(maxHourPpmArray, 12);
-    int current_min_hour_ppm = calculateMinFromArray(minHourPpmArray, 12);
-    int current_max_hour_temp = calculateMaxFromArray(maxHourTempArray, 12);
-    int current_min_hour_temp = calculateMinFromArray(minHourTempArray, 12);
-    int current_max_hour_hum = calculateMaxFromArray(maxHourHumArray, 12);
-    int current_min_hour_hum = calculateMinFromArray(minHourHumArray, 12);
 
-    current_max_hour_ppm = max(current_max_hour_ppm, max_5min_ppm);
-    current_min_hour_ppm = min(current_min_hour_ppm, min_5min_ppm);
-    current_max_hour_temp = max(current_max_hour_temp, max_5min_temp);
-    current_min_hour_temp = min(current_min_hour_temp, min_5min_temp);
-    current_max_hour_hum = max(current_max_hour_hum, max_5min_hum);
-    current_min_hour_hum = min(current_min_hour_hum, min_5min_hum);
+void printDayTemp(){
+    int current_max_day_temp = calculateCurrentMaxDayTemp();
+    int current_min_day_temp = calculateCurrentMinDayTemp();
+    
+    if (DEBUG){
+    Serial.print(F("Max Temp value for last 24 hours: ")); 
+    Serial.print(current_max_day_temp / 10.0, 1); 
+    Serial.print(F("; Min Temp value for last 24 hours:")); 
+    Serial.println(current_min_day_temp / 10.0, 1);
+    }
 
-    Serial.print(F("Max CO2 value for last hour: ")); 
-    Serial.print(current_max_hour_ppm); 
-    Serial.print(F("; Min CO2 value for last hour:")); 
-    Serial.println(current_min_hour_ppm);
-
-    Serial.print(F("Max Temp value for last hour: ")); 
-    Serial.print(current_max_hour_temp / 10.0, 1); 
-    Serial.print(F("; Min Temp value for last hour:")); 
-    Serial.println(current_min_hour_temp / 10.0, 1);
-
-    Serial.print(F("Max Humidity value for last hour: ")); 
-    Serial.print(current_max_hour_hum / 10.0, 1); 
-    Serial.print(F("; Min Humidity value for last hour:")); 
-    Serial.println(current_min_hour_hum / 10.0, 1);
+    lcd.setCursor(0, 0);
+    lcd.print(F("Min/Max Temp, *C"));
+    lcd.setCursor(0, 1);
+    lcd.print(current_min_day_temp / 10.0, 1);
+    lcd.setCursor(4, 1);
+    lcd.print(F("<24 hrs<"));
+    lcd.print(current_max_day_temp / 10.0, 1);
 }
 
 
-// Calculate and print out min and max humidity values for last hour
-void calculateHourHum(){
-    int current_max_hour_ppm = calculateMaxFromArray(maxHourPpmArray, 12);
-    int current_min_hour_ppm = calculateMinFromArray(minHourPpmArray, 12);
-    int current_max_hour_temp = calculateMaxFromArray(maxHourTempArray, 12);
-    int current_min_hour_temp = calculateMinFromArray(minHourTempArray, 12);
-    int current_max_hour_hum = calculateMaxFromArray(maxHourHumArray, 12);
-    int current_min_hour_hum = calculateMinFromArray(minHourHumArray, 12);
+void printDayHum(){
+    int current_max_day_hum = calculateCurrentMaxDayHum();
+    int current_min_day_hum = calculateCurrentMinDayHum();
+    
+    if (DEBUG){
+    Serial.print(F("Max Humidity value for last 24 hours: ")); 
+    Serial.print(current_max_day_hum / 10.0, 1); 
+    Serial.print(F("; Min Humidity value for last 24 hours:")); 
+    Serial.println(current_min_day_hum / 10.0, 1);
+    }
 
-    current_max_hour_ppm = max(current_max_hour_ppm, max_5min_ppm);
-    current_min_hour_ppm = min(current_min_hour_ppm, min_5min_ppm);
-    current_max_hour_temp = max(current_max_hour_temp, max_5min_temp);
-    current_min_hour_temp = min(current_min_hour_temp, min_5min_temp);
-    current_max_hour_hum = max(current_max_hour_hum, max_5min_hum);
-    current_min_hour_hum = min(current_min_hour_hum, min_5min_hum);
-
-    Serial.print(F("Max CO2 value for last hour: ")); 
-    Serial.print(current_max_hour_ppm); 
-    Serial.print(F("; Min CO2 value for last hour:")); 
-    Serial.println(current_min_hour_ppm);
-
-    Serial.print(F("Max Temp value for last hour: ")); 
-    Serial.print(current_max_hour_temp / 10.0, 1); 
-    Serial.print(F("; Min Temp value for last hour:")); 
-    Serial.println(current_min_hour_temp / 10.0, 1);
-
-    Serial.print(F("Max Humidity value for last hour: ")); 
-    Serial.print(current_max_hour_hum / 10.0, 1); 
-    Serial.print(F("; Min Humidity value for last hour:")); 
-    Serial.println(current_min_hour_hum / 10.0, 1);
+    lcd.setCursor(0, 0);
+    lcd.print(F("Min/Max Humid, %"));
+    lcd.setCursor(0, 1);
+    lcd.print(current_min_day_hum / 10.0, 1);
+    lcd.setCursor(4, 1);
+    lcd.print(F("<24 hrs<"));
+    lcd.print(current_max_day_hum / 10.0, 1);
 }

@@ -9,9 +9,9 @@
 
 
 // Pins:
-#define DHTPIN 2            //DHT-22 signal pin
-#define RX_PIN 3            //Serial rx pin no
-#define TX_PIN 4            //Serial tx pin no
+#define DHTPIN 4            //DHT-22 signal pin
+#define RX_PIN 2            //Serial rx pin no
+#define TX_PIN 3            //Serial tx pin no
 #define BUTTON1_PIN 7       //Button 1 pin
 #define BUTTON2_PIN 8       //Button 1 pin
 #define RED_LED_PIN 11      //Red LED pin
@@ -24,7 +24,7 @@
 #define MEASURE_TIMEOUT 15000             //Interval between measure occurs
 #define PRINT_TIMEOUT 30000               //Interval between serial printout occurs
 #define WARMING_UP_TIMEOUT 175000         //Duration of warming up period
-#define BLINK_TIMEOUT 1000                //LED blinking interval
+#define BLINK_TIMEOUT 750                //LED blinking interval
 #define RESET_MODE_TIMEOUT 10000          //Timeout before the mode is reset to default screen
 
 
@@ -99,7 +99,7 @@ int minDayHumArray[24], maxDayHumArray[24];
 
 boolean ledState = HIGH;
 
-byte LCD_BRIGHTNESS = 25;
+byte LCD_BRIGHTNESS = 10;
 
 byte mode = 0;
 
@@ -494,11 +494,11 @@ void switchLcdBacklight(){
 
 // Change the LCD backlight brightness
 void updateLcdBrightness(){
-  if (LCD_BRIGHTNESS == 200) {
-    LCD_BRIGHTNESS = 25;
+  if (LCD_BRIGHTNESS >= 100) {
+    LCD_BRIGHTNESS = 10;
   }
   else {
-    LCD_BRIGHTNESS += 25;
+    LCD_BRIGHTNESS += 15;
   }
 
   if (!lcdBacklight) {

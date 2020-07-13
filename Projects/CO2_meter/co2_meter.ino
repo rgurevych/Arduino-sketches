@@ -99,8 +99,8 @@ int minDayHumArray[24], maxDayHumArray[24];
 
 boolean ledState = HIGH;
 
-byte LCD_BRIGHTNESS = 10;
-
+byte LCD_BRIGHTNESS = 5;
+byte LED_BRIGHTNESS = 100;
 byte mode = 0;
 
 // Flags
@@ -426,19 +426,19 @@ void switchLed(int ppm_level){
 void lightGreenLed(){
   digitalWrite(RED_LED_PIN, LOW);
   digitalWrite(YELLOW_LED_PIN, LOW);
-  digitalWrite(GREEN_LED_PIN, HIGH);
+  analogWrite(GREEN_LED_PIN, LED_BRIGHTNESS);
 }
 
 
 void lightYellowLed(){
   digitalWrite(RED_LED_PIN, LOW);
-  digitalWrite(YELLOW_LED_PIN, HIGH);
+  analogWrite(YELLOW_LED_PIN, LED_BRIGHTNESS);
   digitalWrite(GREEN_LED_PIN, LOW);
 }
 
 
 void lightRedLed(){
-  digitalWrite(RED_LED_PIN, HIGH);
+  analogWrite(RED_LED_PIN, LED_BRIGHTNESS);
   digitalWrite(YELLOW_LED_PIN, LOW);
   digitalWrite(GREEN_LED_PIN, LOW);
 }
@@ -446,7 +446,12 @@ void lightRedLed(){
 
 void blinkLed(byte led_pin){
   if (blinkTimer.isReady()){
-      digitalWrite(led_pin, ledState);
+      if (ledState){
+        analogWrite(led_pin, LED_BRIGHTNESS);
+      }
+      else{
+        digitalWrite(led_pin, LOW);
+      }
       ledState =! ledState;
     } 
 }
@@ -458,8 +463,12 @@ void checkButtons(){
     switchMode();
   }
 
-  if (button2.isClick()){
+  if (button2.isSingle()){
     switchLcdBacklight();
+  }
+
+  if (button2.isDouble()){
+    updateLedBrightness();
   }
 
   if (button2.isHolded()){
@@ -494,11 +503,11 @@ void switchLcdBacklight(){
 
 // Change the LCD backlight brightness
 void updateLcdBrightness(){
-  if (LCD_BRIGHTNESS >= 100) {
-    LCD_BRIGHTNESS = 10;
+  if (LCD_BRIGHTNESS >= 55) {
+    LCD_BRIGHTNESS = 5;
   }
   else {
-    LCD_BRIGHTNESS += 15;
+    LCD_BRIGHTNESS += 10;
   }
 
   if (!lcdBacklight) {
@@ -506,6 +515,17 @@ void updateLcdBrightness(){
   }
   
   analogWrite(BACKLIGHT, LCD_BRIGHTNESS);
+}
+
+
+// Change the LED brightness
+void updateLedBrightness(){
+  if (LED_BRIGHTNESS >= 200) {
+    LED_BRIGHTNESS = 50;
+  }
+  else {
+    LED_BRIGHTNESS += 50;
+  }
 }
 
 

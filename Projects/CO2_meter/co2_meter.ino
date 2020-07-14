@@ -107,6 +107,10 @@ byte mode = 0;
 boolean warmedUpFlag = false;
 boolean lcdBacklight = true;
 boolean changeModeFlag = false;
+boolean setTimeFlag = false;
+boolean setHours = true;
+boolean setMins = false;
+boolean setSecs = false;
 
 
 void setup() {
@@ -370,7 +374,11 @@ void printMainScreen(){
     if (secs < 10) lcd.print("0");
     lcd.print(secs);
 
-    if (warmedUpFlag){
+    if (setTimeFlag){
+      lcd.setCursor(0, 1);
+      lcd.print(F("Set time"));
+    }
+    else if (warmedUpFlag){
       // print temperature, CO2 level and humidity
       lcd.setCursor(11, 0);
       lcd.print(current_temp / 10.0, 1);
@@ -459,7 +467,14 @@ void blinkLed(byte led_pin){
 
 // Check each button state
 void checkButtons(){
-  if (button1.isClick()){
+  if (!setTimeFlag){
+    if (button1.isSingle()){
+      switchMode();
+    }
+  }
+
+  if (button1.isTriple()){
+    setTimeFlag = !setTimeFlag;
     switchMode();
   }
 
@@ -479,10 +494,13 @@ void checkButtons(){
 
 // Switch mode
 void switchMode(){
-  if (!warmedUpFlag){
+  if (setTimeFlag){
+    mode = 8;
+  }
+  else if (!warmedUpFlag){
     mode = 7;
   }
-  else if (mode == 6){
+  else if (mode == 6 || mode == 8){
     mode = 0;
   }
   else{
@@ -534,7 +552,12 @@ void displayScreen(){
 
   if (resetModeTimer.isReady()){
     mode = 0;
+    lcd.noBlink();
     lcd.clear();
+    setTimeFlag = false;
+    setHours = true;
+    setMins = false;
+    setSecs = false;
   }
   
   switch(mode){
@@ -595,7 +618,91 @@ void displayScreen(){
         changeModeFlag = false;
       }
       break;
+
+    case 8:
+      if (changeModeFlag) {
+        printMainScreen();
+        setTime();
+      }
+      break;
   }
+}
+
+
+void setTime(){
+  if (button1.isHolded()){
+    switchTimeSetMode();
+  }
+
+  if (button1.isSingle()){
+    now = rtc.now();
+    secs = now.second();
+    mins = now.minute();
+    hrs = now.hour();
+    int nowYear = now.year();
+    byte nowMonth = now.month();
+    byte nowDay = now.day();
+
+    if (setHours){
+      if (hrs == 23) {
+        hrs = 0;
+      }
+      else {
+        hrs ++;
+      }
+    }
+
+     else if (setMins){
+      if (mins == 59) {
+        mins = 0;
+      }
+      else {
+        mins ++;
+      }
+    }
+
+     else if (setSecs){
+      secs = 0;
+    }
+
+    rtc.adjust(DateTime(nowYear, nowMonth, nowDay, hrs, mins, secs));
+    resetModeTimer.setTimeout(RESET_MODE_TIMEOUT * 2);
+  }
+  
+  if (setHours){
+    lcd.setCursor(1, 0);
+    lcd.blink();
+  }
+
+  else if (setMins){
+    lcd.setCursor(4, 0);
+    lcd.blink();
+  }
+
+  else if (setSecs){
+    lcd.setCursor(7, 0);
+    lcd.blink();
+  }
+}
+
+
+void switchTimeSetMode(){
+  if (setHours){
+    setHours = false;
+    setMins = true;
+    setSecs = false;
+  }
+  else if (setMins){
+    setHours = false;
+    setMins = false;
+    setSecs = true;  
+  }
+  else {
+    setHours = true;
+    setMins = false;
+    setSecs = false;  
+  }
+  resetModeTimer.setTimeout(RESET_MODE_TIMEOUT * 2);
 }
 
 

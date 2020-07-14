@@ -30,7 +30,7 @@
 
 // Settings
 #define RESET_CLOCK 0                     //Should the clock be reset on start
-#define DEBUG 1                           //Debug mode, in which the data is printed to serial port
+#define DEBUG 0                           //Debug mode, in which the data is printed to serial port
 
 
 // Timers:
@@ -703,95 +703,6 @@ void switchTimeSetMode(){
     setSecs = false;  
   }
   resetModeTimer.setTimeout(RESET_MODE_TIMEOUT * 2);
-}
-
-
-void printOutAllArrays(){
-  // Print out hourly array values
-    Serial.print(F("maxHourPpmArray = "));
-    for (byte i = 0; i < 12; i++) {
-      Serial.print(maxHourPpmArray[i]);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("minHourPpmArray = "));
-    for (byte i = 0; i < 12; i++) {
-      Serial.print(minHourPpmArray[i]);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("maxHourTempArray = "));
-    for (byte i = 0; i < 12; i++) {
-      Serial.print(maxHourTempArray[i] / 10.0, 1);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("minHourTempArray = "));
-    for (byte i = 0; i < 12; i++) {
-      Serial.print(minHourTempArray[i] / 10.0, 1);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("maxHourHumArray = "));
-    for (byte i = 0; i < 12; i++) {
-      Serial.print(maxHourHumArray[i] / 10.0, 1);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("minHourHumArray = "));
-    for (byte i = 0; i < 12; i++) {
-      Serial.print(minHourHumArray[i] / 10.0, 1);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-    
-    // Print out daily array values
-    Serial.print(F("maxDayPpmArray = "));
-    for (byte i = 0; i < 24; i++) {
-      Serial.print(maxDayPpmArray[i]);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("minDayPpmArray = "));
-    for (byte i = 0; i < 24; i++) {
-      Serial.print(minDayPpmArray[i]);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("maxDayTempArray = "));
-    for (byte i = 0; i < 24; i++) {
-      Serial.print(maxDayTempArray[i] / 10.0, 1);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("minDayTempArray = "));
-    for (byte i = 0; i < 24; i++) {
-      Serial.print(minDayTempArray[i] / 10.0, 1);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("maxDayHumArray = "));
-    for (byte i = 0; i < 24; i++) {
-      Serial.print(maxDayHumArray[i] / 10.0, 1);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
-
-    Serial.print(F("minDayHumArray = "));
-    for (byte i = 0; i < 24; i++) {
-      Serial.print(minDayHumArray[i] / 10.0, 1);
-      Serial.print(F("; "));
-    }
-    Serial.println(F(""));
 }
 
 

@@ -4,12 +4,16 @@
 #include <Wire.h>               //Library for working with LED display
 #include <LiquidCrystal_I2C.h>  //Library for working with LED display
 #include <RTClib.h>             //Library for working with RTC clock module
+#include <Servo.h>              //Library for working with Servo motors
 
 
 // Pins:
 #define BUTTON1_PIN 7       //Button 1 pin
 #define BUTTON2_PIN 8       //Button 1 pin
 #define BACKLIGHT 5         //LCD backlight pin
+#define SERVO_HOURS_PIN 9   //Hours servo pin
+#define SERVO_MINS_PIN 10   //Minutes servo pin
+#define SERVO_SECS_PIN 11   //Seconds servo pin
 
 
 // Timer durations
@@ -35,6 +39,7 @@ GTimer resetModeTimer(MS);
 GButton button1(BUTTON1_PIN);
 GButton button2(BUTTON2_PIN);
 
+
 //Liquid Crystal LCD:
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -44,9 +49,18 @@ RTC_DS3231 rtc;
 DateTime now;
 
 
+//Servo motors;
+Servo servoHours;
+Servo servoMins;
+Servo servoSecs;
+
+
 // Initial variables:
 int8_t hrs, mins, secs, days, months;
 int years;
+byte motorHour = 0; 
+byte motorMin = 0;
+byte motorSec = 0;
 
 byte LCD_BRIGHTNESS = 5;
 
@@ -56,6 +70,7 @@ byte mode = 0;
 boolean lcdBacklight = true;
 boolean changeModeFlag = false;
 boolean setTimeFlag = false;
+boolean stopHands = false;
 boolean setHours = true;
 boolean setMins = false;
 boolean setSecs = false;
@@ -78,16 +93,20 @@ void setup() {
   if (RESET_CLOCK || rtc.lostPower()){
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
-  now = rtc.now();
-  secs = now.second();
-  mins = now.minute();
-  hrs = now.hour();
 
   //LCD
   analogWrite(BACKLIGHT, LCD_BRIGHTNESS);
   lcd.init();
   lcd.backlight();
   lcd.clear();
+
+  //Servo motors
+  servoHours.attach(SERVO_HOURS_PIN);
+  servoMins.attach(SERVO_MINS_PIN);
+  servoSecs.attach(SERVO_SECS_PIN);
+
+
+  
 }
 
 void loop(){
@@ -123,7 +142,6 @@ void printMainScreen(){
     years = now.year();
 
     // print time to LCD
-    //lcd.clear();
     lcd.setCursor(4, 0);
     if (hrs < 10) lcd.print(F("0"));
     lcd.print(hrs);
@@ -147,19 +165,50 @@ void printMainScreen(){
 
     lcd.print(years);
   }
+
+  if (!stopHands) {
+  turnMotors();
+  }
+}
+
+
+// Turn the motors if necessary
+void turnMotors(){
+  byte currentHour, currentMin, currentSec;
+  if (hrs > 12) currentHour = (hrs - 12) * 15; else currentHour = hrs * 15;
+  currentMin = mins * 3;
+  currentSec = secs * 3;
+  
+  if (currentHour != motorHour){
+    motorHour = currentHour;
+    servoHours.write(180 - currentHour);
+    //servoHours.write(1);
+  }
+  
+  if (currentMin != motorMin){
+    motorMin = currentMin;
+    servoMins.write(180 - currentMin);
+    //servoMins.write(1);
+  }
+
+  if (currentSec != motorSec){
+    motorSec = currentSec;
+    servoSecs.write(180 - currentSec);
+    //servoSecs.write(0);
+  }
+ 
 }
 
 
 // Check each button state
 void checkButtons(){
-  if (!setTimeFlag){
-    if (button1.isSingle()){
+  if (!setTimeFlag && button1.isClick()){
       switchMode();
-    }
+      stopHands = !stopHands;
   }
 
-  if (button1.isTriple()){
-    setTimeFlag = !setTimeFlag;
+  if (!setTimeFlag && button1.isHolded()){
+    setTimeFlag = true;
     switchMode();
   }
 
@@ -229,6 +278,7 @@ void displayScreen(){
   
   switch(mode){
     case 0:
+      lcd.noBlink();
       printMainScreen();
       resetModeTimer.stop();
       changeModeFlag = false;
@@ -245,11 +295,11 @@ void displayScreen(){
 
 
 void setTime(){
-  if (button1.isHolded()){
+  if (setTimeFlag && button1.isHolded()){
     switchTimeSetMode();
   }
 
-  if (button1.isSingle()){
+  if (setTimeFlag && button1.isSingle()){
     now = rtc.now();
     secs = now.second();
     mins = now.minute();

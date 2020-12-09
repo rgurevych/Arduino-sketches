@@ -121,16 +121,10 @@ void setup() {
 
 void loop() {
   encoderTick();  // check encoder
+  buttonTick();   // check button
   clockTick();    // считаем время
   alarmTick();    // обработка будильника
   settings();     // настройки
-//  dutyTick();     // управление лампой <-------------------------------------------- убрать
-
-  if (minuteFlag && mode == 0 && !alarm) {    // если новая минута и стоит режим часов и не орёт будильник
-    minuteFlag = false;
-    // выводим время
-    disp.displayClock(hrs, mins);
-  }
 }
 
 void calculateDawn() {
@@ -154,37 +148,51 @@ void calculateDawn() {
 //  }
 //}
 
-//----------------------ОБРАБОТЧИКИ ПРЕРЫВАНИЙ--------------------------
-void timer_interrupt() {          // прерывания таймера срабатывают каждые 40 мкс
+//---------------------- Interruption handling --------------------------
+void timer_interrupt() {
   if (duty > 0) {
-    tic++;                        // счетчик
-    if (tic > (255 - duty))       // если настало время включать ток
-      digitalWrite(DIM_PIN, 1);   // врубить ток
+    tic++; 
+    if (tic > (255 - duty))
+      digitalWrite(DIM_PIN, 1);
   }
 }
 
-void detect_up() {    // обработка внешнего прерывания на пересекание нуля снизу
+void detect_up() {
   if (duty > 0) {
-    tic = 0;                                  // обнулить счетчик
-    ResumeTimer1();                           // перезапустить таймер
-    attachInterrupt(0, detect_down, RISING);  // перенастроить прерывание
+    tic = 0; 
+    ResumeTimer1();
+    attachInterrupt(0, detect_down, RISING);
   }
 }
 
-void detect_down() {      // обработка внешнего прерывания на пересекание нуля сверху
+void detect_down() {
   if (duty > 0) {
-    tic = 0;                                  // обнулить счетчик
-    StopTimer1();                             // остановить таймер
-    digitalWrite(DIM_PIN, 0);                 // вырубить ток
-    attachInterrupt(0, detect_up, FALLING);   // перенастроить прерывание
+    tic = 0;
+    StopTimer1();
+    digitalWrite(DIM_PIN, 0);
+    attachInterrupt(0, detect_up, FALLING);
   }
 }
 
 
 void settings() {
-  // *********** РЕЖИМ УСТАНОВКИ БУДИЛЬНИКА **********
+  // *********** Save settings if needed when returning to mode 0 ************
+  if (mode == 0) {
+    if (newTimeFlag) {             // If new time was set - setup new time
+      newTimeFlag = false;
+      secs = 0;
+      rtc.adjust(DateTime(2014, 1, 21, hrs, mins, 0)); 
+    }
+
+    if (minuteFlag && !alarm) {    // if it's a new minute and not alarm show time
+      minuteFlag = false;
+      disp.displayClock(hrs, mins);
+    }
+  }
+  
+  // *********** Alarm setup mode **********
   if (mode == 1) {
-    if (timeoutTimer.isReady()) mode = 0;   // если сработал таймаут, вернёмся в режим 0
+    if (timeoutTimer.isReady()) mode = 0;   // return to mode 0 if timeout
     if (enc.isRight()) {
       alm_mins++;
       if (alm_mins > 59) {
@@ -209,9 +217,9 @@ void settings() {
       alm_hrs--;
       if (alm_hrs < 0) alm_hrs = 23;
     }
-    if (enc.isTurn() && !blinkFlag) {     // вывести свежие изменения при повороте
-      disp.displayClock(alm_hrs, alm_mins);
-      timeoutTimer.reset();               // сбросить таймаут
+    if (enc.isTurn() && !blinkFlag) {
+      disp.displayClock(alm_hrs, alm_mins); //<----------------------Это странно, по идее можно вынести за if
+      timeoutTimer.reset();
     }
     if (blinkTimer.isReady()) {
       if (blinkFlag) {
@@ -228,10 +236,10 @@ void settings() {
     }
   }
 
-  // *********** РЕЖИМ УСТАНОВКИ ВРЕМЕНИ **********
+  // *********** Clock setup mode **********
   if (mode == 2) {
-    if (timeoutTimer.isReady()) mode = 0;   // если сработал таймаут, вернёмся в режим 0
-    if (!newTimeFlag) newTimeFlag = true;   // флаг на изменение времени
+    if (timeoutTimer.isReady()) mode = 0;   // return to mode 0 if timeout
+    if (!newTimeFlag) newTimeFlag = true;   // enable flag for time change
     if (enc.isRight()) {
       mins++;
       if (mins > 59) {
@@ -256,12 +264,11 @@ void settings() {
       hrs--;
       if (hrs < 0) hrs = 23;
     }
-    if (enc.isTurn() && !blinkFlag) { // вывести свежие изменения при повороте
-      disp.displayClock(hrs, mins);
-      timeoutTimer.reset();           // сбросить таймаут
+    if (enc.isTurn() && !blinkFlag) {
+      disp.displayClock(hrs, mins); //<----------------------Это странно, по идее можно вынести за if
+      timeoutTimer.reset();
     }
     if (blinkTimer.isReady()) {
-      // прикол с перенастройкой таймера, чтобы цифры дольше горели
       disp.point(1);
       if (blinkFlag) {
         blinkFlag = false;
@@ -275,6 +282,11 @@ void settings() {
     }
   }
 }
+
+void buttonTick(){
+  button.tick();  //tick the button
+}
+
 
 void encoderTick() {
   enc.tick();   // tick encoder
@@ -365,40 +377,34 @@ void alarmTick() {
 
 void clockTick() {
   if (halfsTimer.isReady()) {
-    if (newTimeFlag) {
-      newTimeFlag = false;
-      secs = 0;
-      rtc.adjust(DateTime(2014, 1, 21, hrs, mins, 0)); // установка нового времени в RTC
-    }
     dotFlag = !dotFlag;
-    if (mode == 0) disp.point(dotFlag);                 // выкл/выкл точки
-    if (mode == 0) disp.displayClock(hrs, mins);        // костыль, без него подлагивает дисплей
-    if (alarmFlag) {
-      if (dotFlag) analogWrite(LED_PIN, LED_BRIGHT);    // мигаем светодиодом что стоит аларм
-      else digitalWrite(LED_PIN, 0);
+    if (mode == 0){
+      disp.point(dotFlag);                 // switch the dots
+      disp.displayClock(hrs, mins);        // needed to avoid display lags
     }
 
-    if (dotFlag) {          // каждую секунду пересчёт времени
+    if (alarmFlag) {
+      if (dotFlag) analogWrite(LED_PIN, LED_BRIGHT);    // blink with LED if alarm is enabled
+      else digitalWrite(LED_PIN, LOW);
+    }
+
+    if (dotFlag) {          // recalculate time every second
       secs++;
-      if (secs > 59) {      // каждую минуту
-        secs = 0;
-        mins++;
-        minuteFlag = true;
-      }
-      if (mins > 59) {      // каждый час
+      if (secs > 59) {      // read time every minute
         DateTime now = rtc.now();
         secs = now.second();
         mins = now.minute();
         hrs = now.hour();
+        minuteFlag = true;
       }
 
-      // после пересчёта часов проверяем будильник!
-      if (dotFlag) {
+      // recalculate dawn and alarm start time every minute
+      if (minuteFlag) {
         if (dwn_hrs == hrs && dwn_mins == mins && alarmFlag && !dawn_start) {
-          duty = DAWN_MIN;
           dawn_start = true;
+          duty = DAWN_MIN;
         }
-        if (alm_hrs == hrs && alm_mins == mins && alarmFlag && dawn_start && !alarm) {
+        if (alm_hrs == hrs && alm_mins == mins && alarmFlag && !alarm) {
           alarm = true;
           alarmTimeout.reset();
         }

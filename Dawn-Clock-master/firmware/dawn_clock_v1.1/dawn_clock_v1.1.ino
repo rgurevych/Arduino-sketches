@@ -18,66 +18,62 @@
    Установка часов: двоеточие горит, цифры моргают
 */
 
-// *************************** НАСТРОЙКИ ***************************
-#define DAWN_TIME 20      // продолжительность рассвета (в минутах)
-#define ALARM_TIMEOUT 80  // таймаут на автоотключение будильника, секунды
-#define ALARM_BLINK 0     // 1 - мигать лампой при будильнике, 0 - не мигать
-#define CLOCK_EFFECT 1    // эффект перелистывания часов: 0 - обычный, 1 - прокрутка, 2 - скрутка
-#define BUZZ 1            // пищать пищалкой (1 вкл, 0 выкл)
-#define BUZZ_FREQ 800     // частота писка (Гц)
+// *************************** INCLUDES  ***************************
+#include <GyverEncoder.h>
+#include <GyverTM1637.h>
+#include <CyberLib.h>
+#include <GyverButton.h>
+#include <EEPROM.h>
+#include <Wire.h>
+#include <RTClib.h>
+#include <GyverTimer.h>
 
-#define DAWN_TYPE 0       // 1 - мосфет (DC диммер), 0 - симистор (AC диммер) СМОТРИ СХЕМЫ
-#define DAWN_MIN 50       // начальная яркость лампы (0 - 255) (для сетевых матриц начало света примерно с 50)
-#define DAWN_MAX 200      // максимальная яркость лампы (0 - 255)
-
-#define MAX_BRIGHT 7      // яркость дисплея дневная (0 - 7)
-#define MIN_BRIGHT 1      // яркость дисплея ночная (0 - 7)
-#define	NIGHT_START 22	  // час перехода на ночную подсветку (MIN_BRIGHT)
-#define NIGHT_END 8       // час перехода на дневную подсветку (MAX_BRIGHT)
-#define LED_BRIGHT 50     // яркость светодиода индикатора (0 - 255)
-
+// *************************** SETTINGS ***************************
+#define DAWN_TIME 10      // Dawn duration
+#define ALARM_TIMEOUT 60  // Timeout for switching off the alarm
+#define ALARM_BLINK 0     // 1 - blink with lamp, 0 - no blink
+#define BUZZ 1            // enable buzzer (1 on, 0 off)
+#define BUZZ_FREQ 800     // Buzzer frequency (Hz)
+#define DAWN_MIN 60       // Minimum lamp brightness (0 - 255)
+#define DAWN_MAX 200      // Maximum lamp brightness (0 - 255)
+#define DISPLAY_BRIGHT 1  // Display brightness
+#define LED_BRIGHT 50     // LED brightness (0 - 255)
 #define ENCODER_TYPE 1    // тип энкодера (0 или 1). Типы энкодеров расписаны на странице проекта
 
-// ************ ПИНЫ ************
-#define CLKe 9        // энкодер
-#define DTe 8         // энкодер
-#define SWe 10        // энкодер
+// ************ PINS ************
+#define CLKe 9        // encoder S1
+#define DTe 8         // encoder S2
+#define SWe 10        // encoder Key
 
-#define CLK 12        // дисплей
-#define DIO 11        // дисплей
+#define CLK 12        // display
+#define DIO 11        // display
 
-#define ZERO_PIN 2    // пин детектора нуля (Z-C) для диммера (если он используется)
-#define DIM_PIN 5     // мосфет / DIM(PWM) пин диммера
+#define ZERO_PIN 2    // (Z-C) detector for dimmer
+#define DIM_PIN 5     // DIM(PWM) pin for dimmer
 
-#define BUZZ_PIN 7    // пищалка (по желанию)
-#define LED_PIN 6	    // светодиод индикатор
+#define BUZZ_PIN 7    // Buzzer
+#define LED_PIN 6     // LED
+#define BUTTON_PIN 4  // Button
 
-// ***************** ОБЪЕКТЫ И ПЕРЕМЕННЫЕ *****************
-#include "GyverTimer.h"
+// ***************** OBJECTS *****************
+Encoder enc(CLKe, DTe, SWe);  // Encoder
+GyverTM1637 disp(CLK, DIO);   // LED display
+GButton button(BUTTON_PIN);   // Button
+RTC_DS3231 rtc;               // RTC module
+
+// ***************** TIMERS *****************
 GTimer_ms halfsTimer(500);
 GTimer_ms blinkTimer(800);
 GTimer_ms timeoutTimer(15000);
 GTimer_ms dutyTimer((long)DAWN_TIME * 60 * 1000 / (DAWN_MAX - DAWN_MIN));
 GTimer_ms alarmTimeout((long)ALARM_TIMEOUT * 1000);
 
-#include "GyverEncoder.h"
-Encoder enc(CLKe, DTe, SWe);
-
-#include "GyverTM1637.h"
-GyverTM1637 disp(CLK, DIO);
-
-#include "EEPROM.h"
-#include <CyberLib.h> // шустрая библиотека для таймера
-
-#include <Wire.h>
-#include "RTClib.h"
-RTC_DS3231 rtc;
-
+// ***************** VARIABLES *****************
 boolean dotFlag, alarmFlag, minuteFlag, blinkFlag, newTimeFlag;
 int8_t hrs = 21, mins = 55, secs;
 int8_t alm_hrs, alm_mins;
 int8_t dwn_hrs, dwn_mins;
-byte mode;  // 0 - часы, 1 - уст. будильника, 2 - уст. времени
+byte mode;  // 0 - clock, 1 - alarm setup, 2 - clock setup
 
 boolean dawn_start = false;
 boolean alarm = false;
@@ -88,17 +84,20 @@ void setup() {
   pinMode(DIM_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
 
-#if (DAWN_TYPE == 0)
+  // Setting PWM for dimmer
   pinMode(ZERO_PIN, INPUT);
   attachInterrupt(0, detect_up, FALLING);
-  StartTimer1(timer_interrupt, 40);        // время для одного разряда ШИМ
-  StopTimer1();                            // остановить таймер
-#endif
+  StartTimer1(timer_interrupt, 40);        // One PWM period time
+  StopTimer1();                            // stop timer
 
-  enc.setType(ENCODER_TYPE);     // тип энкодера TYPE1 одношаговый, TYPE2 двухшаговый. Если ваш энкодер работает странно, смените тип
+  // Setting up encoder type
+  enc.setType(ENCODER_TYPE);     // Set encoder type
+  
+  // Setting up display
   disp.clear();
-  disp.brightness(MIN_BRIGHT);
+  disp.brightness(DISPLAY_BRIGHT);
 
+  // Setting up RTC module and display time
   rtc.begin();
   if (rtc.lostPower()) {
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
@@ -109,57 +108,52 @@ void setup() {
   hrs = now.hour();
 
   disp.displayClock(hrs, mins);
+
+  // Read out alarm settings
   alm_hrs = EEPROM.read(0);
   alm_mins = EEPROM.read(1);
   alarmFlag = EEPROM.read(2);
   alm_hrs = constrain(alm_hrs, 0, 23);
   alm_mins = constrain(alm_mins, 0, 59);
-  calculateDawn();      // расчёт времени рассвета
+  calculateDawn();      // calculate dawn start time
   alarmFlag = constrain(alarmFlag, 0, 1);
-
-  // установка яркости от времени суток
-  if ( (hrs >= NIGHT_START && hrs <= 23)
-       || (hrs >= 0 && hrs <= NIGHT_END) ) disp.brightness(MIN_BRIGHT);
-  else disp.brightness(MAX_BRIGHT);
 }
 
 void loop() {
-  encoderTick();  // отработка энкодера
+  encoderTick();  // check encoder
   clockTick();    // считаем время
   alarmTick();    // обработка будильника
   settings();     // настройки
-  dutyTick();     // управление лампой
+//  dutyTick();     // управление лампой <-------------------------------------------- убрать
 
   if (minuteFlag && mode == 0 && !alarm) {    // если новая минута и стоит режим часов и не орёт будильник
     minuteFlag = false;
     // выводим время
-    if (CLOCK_EFFECT == 0) disp.displayClock(hrs, mins);
-    else if (CLOCK_EFFECT == 1) disp.displayClockScroll(hrs, mins, 70);
-    else disp.displayClockTwist(hrs, mins, 35);
+    disp.displayClock(hrs, mins);
   }
 }
 
 void calculateDawn() {
-  // расчёт времени рассвета
-  if (alm_mins > DAWN_TIME) {         // если минут во времени будильника больше продолжительности рассвета
-    dwn_hrs = alm_hrs;                // час рассвета равен часу будильника
-    dwn_mins = alm_mins - DAWN_TIME;  // минуты рассвета = минуты будильника - продолж. рассвета
-  } else {                            // если минут во времени будильника меньше продолжительности рассвета
-    dwn_hrs = alm_hrs - 1;            // значит рассвет будет часом раньше
-    if (dwn_hrs < 0) dwn_hrs = 23;    // защита от совсем поехавших
-    dwn_mins = 60 - (DAWN_TIME - alm_mins);   // находим минуту рассвета в новом часе
+  // Dawn start calculation
+  if (alm_mins > DAWN_TIME) {
+    dwn_hrs = alm_hrs;
+    dwn_mins = alm_mins - DAWN_TIME;
+  }
+  else {
+    dwn_hrs = alm_hrs - 1;
+    if (dwn_hrs < 0) dwn_hrs = 23;
+    dwn_mins = 60 - (DAWN_TIME - alm_mins);
   }
 }
 
-void dutyTick() {
-  if (dawn_start || alarm) {        // если рассвет или уже будильник
-    if (DAWN_TYPE) {                // если мосфет
-      analogWrite(DIM_PIN, duty);   // жарим ШИМ
-    }
-  }
-}
+//void dutyTick() {
+//  if (dawn_start || alarm) {        // если рассвет или уже будильник
+//    if (DAWN_TYPE) {                // если мосфет
+//      analogWrite(DIM_PIN, duty);   // жарим ШИМ
+//    }
+//  }
+//}
 
-#if (DAWN_TYPE == 0)  // если диммер
 //----------------------ОБРАБОТЧИКИ ПРЕРЫВАНИЙ--------------------------
 void timer_interrupt() {          // прерывания таймера срабатывают каждые 40 мкс
   if (duty > 0) {
@@ -185,7 +179,7 @@ void detect_down() {      // обработка внешнего прерыва�
     attachInterrupt(0, detect_up, FALLING);   // перенастроить прерывание
   }
 }
-#endif
+
 
 void settings() {
   // *********** РЕЖИМ УСТАНОВКИ БУДИЛЬНИКА **********
@@ -283,8 +277,8 @@ void settings() {
 }
 
 void encoderTick() {
-  enc.tick();   // работаем с энкодером
-  // *********** КЛИК ПО ЭНКОДЕРУ **********
+  enc.tick();   // tick encoder
+  // *********** Encoder click **********
   if (enc.isClick()) {        // клик по энкодеру
     minuteFlag = true;        // вывести минуты при следующем входе в режим 0
     mode++;                   // сменить режим
@@ -293,11 +287,6 @@ void encoderTick() {
       calculateDawn();        // расчёт времени рассвета
       EEPROM.update(0, alm_hrs);
       EEPROM.update(1, alm_mins);
-
-      // установка яркости от времени суток
-      if ( (hrs >= NIGHT_START && hrs <= 23)
-           || (hrs >= 0 && hrs <= NIGHT_END) ) disp.brightness(MIN_BRIGHT);
-      else disp.brightness(MAX_BRIGHT);
 
       disp.displayClock(hrs, mins);
     }
@@ -332,11 +321,6 @@ void encoderTick() {
       mode = 2;               // сменить режим
     } else if (mode == 2) {	  // кнопка удержана в режиме настройки часов
       mode = 0;               // сменить режим
-
-      // установка яркости от времени суток
-      if ( (hrs >= NIGHT_START && hrs <= 23)
-           || (hrs >= 0 && hrs <= NIGHT_END) ) disp.brightness(MIN_BRIGHT);
-      else disp.brightness(MAX_BRIGHT);
 
       disp.displayClock(hrs, mins);
     }
@@ -406,13 +390,6 @@ void clockTick() {
         secs = now.second();
         mins = now.minute();
         hrs = now.hour();
-
-        // меняем яркость
-        if (hrs == NIGHT_START) disp.brightness(MIN_BRIGHT);
-        if (hrs == NIGHT_END) disp.brightness(MAX_BRIGHT);
-        //mins = 0;
-        //hrs++;
-        //if (hrs > 23) hrs = 0;  // сутки!
       }
 
       // после пересчёта часов проверяем будильник!

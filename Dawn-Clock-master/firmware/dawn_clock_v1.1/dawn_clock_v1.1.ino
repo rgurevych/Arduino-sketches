@@ -294,11 +294,11 @@ void buttonTick(){
       if (buzz) noTone(BUZZ_PIN);
       return;
     }
-    else{
-      showAlarmMode();
-    }
   }
-
+  
+  if (button.isSingle() && mode == 0){  //tap the button to see current alarm mode
+    showAlarmMode();
+  }
   
   if (button.isHolded()){
     if (mode == 0 && !dawn_start && !alarm) {   // button is holded and it's not dawn and not alarm

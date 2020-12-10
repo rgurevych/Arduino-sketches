@@ -432,10 +432,9 @@ void clockTick() {
       disp.displayClock(hrs, mins);        // needed to avoid display lags
     }
 
-    if (alarmFlag) {
-      if (dotFlag) analogWrite(LED_PIN, LED_BRIGHT);    // blink with LED if alarm is enabled
-      else digitalWrite(LED_PIN, LOW);
-    }
+    if (alarmFlag) analogWrite(LED_PIN, LED_BRIGHT);    // blink with LED if alarm is enabled
+    else digitalWrite(LED_PIN, LOW);
+    
 
     if (dotFlag) {          // recalculate time every second
       secs++;

@@ -24,7 +24,6 @@
 #define DAWN_TIME 10      // Dawn duration
 #define ALARM_TIMEOUT 60  // Timeout for switching off the alarm
 #define ALARM_BLINK 0     // 1 - blink with lamp, 0 - no blink
-#define BUZZ 1            // enable buzzer (1 on, 0 off)
 #define BUZZ_FREQ 800     // Buzzer frequency (Hz)
 #define DAWN_MIN 60       // Minimum lamp brightness (0 - 255)
 #define DAWN_MAX 200      // Maximum lamp brightness (0 - 255)
@@ -61,14 +60,16 @@ GTimer_ms dutyTimer((long)DAWN_TIME * 60 * 1000 / (DAWN_MAX - DAWN_MIN));
 GTimer_ms alarmTimeout((long)ALARM_TIMEOUT * 1000);
 
 // ***************** VARIABLES *****************
-boolean dotFlag, alarmFlag, minuteFlag, blinkFlag, newTimeFlag;
+boolean dotFlag, alarmFlag, minuteFlag, blinkFlag, newTimeFlag, buzz;
 int8_t hrs = 21, mins = 55, secs;
 int8_t alm_hrs, alm_mins;
 int8_t dwn_hrs, dwn_mins;
-byte mode;  // 0 - clock, 1 - alarm setup, 2 - clock setup
+byte mode;                    // 0 - clock, 1 - alarm setup, 2 - clock setup
+byte alarmMode;               // 0 - dawn and buzz, 1 - buzz only, 2 - dawn only
 
 boolean dawn_start = false;
 boolean alarm = false;
+boolean alarmHoldFlag = false;
 volatile int tic, duty;
 
 void setup() {
@@ -99,16 +100,20 @@ void setup() {
   mins = now.minute();
   hrs = now.hour();
 
+  mode = 0;
+  buzz = true;
   disp.displayClock(hrs, mins);
 
   // Read out alarm settings
   alm_hrs = EEPROM.read(0);
   alm_mins = EEPROM.read(1);
   alarmFlag = EEPROM.read(2);
+  alarmMode = EEPROM.read(3);
   alm_hrs = constrain(alm_hrs, 0, 23);
   alm_mins = constrain(alm_mins, 0, 59);
   calculateDawn();      // calculate dawn start time
   alarmFlag = constrain(alarmFlag, 0, 1);
+  alarmMode = constrain(alarmMode, 0, 2);
 }
 
 void loop() {
@@ -227,7 +232,7 @@ void settings() {
   // *********** Clock setup mode **********
   if (mode == 2) {
     if (timeoutTimer.isReady()) mode = 0;   // return to mode 0 if timeout
-    if (!newTimeFlag) newTimeFlag = true;   // enable flag for time change
+
     if (enc.isRight()) {
       mins++;
       if (mins > 59) {
@@ -236,6 +241,7 @@ void settings() {
         if (hrs > 23) hrs = 0;
       }
     }
+    
     if (enc.isLeft()) {
       mins--;
       if (mins < 0) {
@@ -244,18 +250,23 @@ void settings() {
         if (hrs < 0) hrs = 23;
       }
     }
+    
     if (enc.isRightH()) {
       hrs++;
       if (hrs > 23) hrs = 0;
     }
+    
     if (enc.isLeftH()) {
       hrs--;
       if (hrs < 0) hrs = 23;
     }
+    
     if (enc.isTurn() && !blinkFlag) {
       disp.displayClock(hrs, mins);
       timeoutTimer.reset();
+      newTimeFlag = true;             // enable flag for new time saving only in case encoder was turned
     }
+    
     if (blinkTimer.isReady()) {
       disp.point(1);
       if (blinkFlag) {
@@ -278,11 +289,16 @@ void buttonTick(){
     if (dawn_start || alarm){         // if the button is pressed during dawn or alarm - switch off both modes
       dawn_start = false;
       alarm = false;
+      alarmHoldFlag = true;
       duty = 0;
       digitalWrite(DIM_PIN, 0);
-      if (BUZZ) noTone(BUZZ_PIN);
+      if (buzz) noTone(BUZZ_PIN);
       return;
     }
+  }
+  
+  if (button.isSingle() && mode == 0){  //tap the button to see current alarm mode
+    showAlarmMode();
   }
   
   if (button.isHolded()){
@@ -301,6 +317,38 @@ void buttonTick(){
       disp.displayClockScroll(hrs, mins, 70);
     }
   }
+
+  if (button.isDouble()){
+    alarmMode++;
+    if (alarmMode > 2) alarmMode = 0;
+    EEPROM.update(3, alarmMode);
+    showAlarmMode();
+  }
+}
+
+
+void showAlarmMode(){
+  byte normal_mode[] = {_L, _i, _G, _H, _t, _empty, _o, _n, _empty, _B, _E, _E, _P, _empty, _o, _n};
+  byte dark_mode[] = {_L, _i, _G, _H, _t, _empty, _o, _F, _F, _empty, _B, _E, _E, _P, _empty, _o, _n};
+  byte silent_mode[] = {_L, _i, _G, _H, _t, _empty, _o, _n, _empty, _B, _E, _E, _P, _empty, _o, _F, _F};
+
+  disp.clear();
+  disp.point(1);
+  disp.displayClockScroll(alm_hrs, alm_mins, 70);
+  delay(2000);
+  disp.point(0);
+  
+  if (alarmMode == 0){
+    disp.runningString(normal_mode, sizeof(normal_mode), 200);
+  }
+  else if (alarmMode == 1){
+    disp.runningString(dark_mode, sizeof(dark_mode), 200);
+  }
+  else if (alarmMode == 2){
+    disp.runningString(silent_mode, sizeof(silent_mode), 200);
+  }
+  
+  disp.displayClockScroll(hrs, mins, 70);
 }
 
 
@@ -351,7 +399,7 @@ void alarmTick() {
       alarm = false;
       duty = 0;
       digitalWrite(DIM_PIN, 0);
-      if (BUZZ) noTone(BUZZ_PIN);
+      if (buzz) noTone(BUZZ_PIN);
     }
     
     if (blinkTimer.isReady()) {   // blink with digits on LED screen and beep with buzzer
@@ -361,7 +409,7 @@ void alarmTick() {
         disp.point(1);
         disp.displayClock(hrs, mins);
         if (ALARM_BLINK) duty = DAWN_MAX;
-        if (BUZZ) tone(BUZZ_PIN, BUZZ_FREQ);
+        if (buzz) tone(BUZZ_PIN, BUZZ_FREQ);
       } 
       else {
         blinkFlag = true;
@@ -369,7 +417,7 @@ void alarmTick() {
         disp.point(0);
         disp.clear();
         if (ALARM_BLINK) duty = DAWN_MIN;
-        if (BUZZ) noTone(BUZZ_PIN);
+        if (buzz) noTone(BUZZ_PIN);
       }
     }
   }
@@ -401,13 +449,24 @@ void clockTick() {
 
       // recalculate dawn and alarm start time every minute
       if (minuteFlag) {
-        if (dwn_hrs == hrs && dwn_mins == mins && alarmFlag && !dawn_start) {
+        if (alarmMode == 2){
+          buzz = false;
+        }
+        else {
+          buzz = true;
+        }
+
+        
+        if (dwn_hrs == hrs && dwn_mins == mins && alarmFlag && !dawn_start && mode == 0 && alarmMode != 1) {
           dawn_start = true;
           duty = DAWN_MIN;
         }
-        if (alm_hrs == hrs && alm_mins == mins && alarmFlag && !alarm) {
+        if (alm_hrs == hrs && alm_mins == mins && alarmFlag && !alarm && mode == 0 && !alarmHoldFlag) {
           alarm = true;
           alarmTimeout.reset();
+        }
+        if (alm_hrs == hrs && alm_mins == mins && alarmHoldFlag) {
+          alarmHoldFlag = false;
         }
       }
     }

@@ -1,12 +1,4 @@
 /*
-  Скетч к проекту "Будильник - рассвет"
-  Страница проекта (схемы, описания): https://alexgyver.ru/dawn-clock/
-  Исходники на GitHub: https://github.com/AlexGyver/dawn-clock
-  Нравится, как написан и закомментирован код? Поддержи автора! https://alexgyver.ru/support_alex/
-  Автор: AlexGyver Technologies, 2018
-  http://AlexGyver.ru/
-*/
-/*
    Клик в режиме часов -> установка будильника
    Клик в режиме установки будильника -> режим часов
    Удержание в режиме часов -> вкл/выкл будильник
@@ -122,9 +114,9 @@ void setup() {
 void loop() {
   encoderTick();  // check encoder
   buttonTick();   // check button
-  clockTick();    // считаем время
-  alarmTick();    // обработка будильника
-  settings();     // настройки
+  clockTick();    // perform time calculations
+  alarmTick();    // check alarm
+  settings();     // settings
 }
 
 void calculateDawn() {
@@ -140,13 +132,6 @@ void calculateDawn() {
   }
 }
 
-//void dutyTick() {
-//  if (dawn_start || alarm) {        // если рассвет или уже будильник
-//    if (DAWN_TYPE) {                // если мосфет
-//      analogWrite(DIM_PIN, duty);   // жарим ШИМ
-//    }
-//  }
-//}
 
 //---------------------- Interruption handling --------------------------
 void timer_interrupt() {
@@ -192,7 +177,10 @@ void settings() {
   
   // *********** Alarm setup mode **********
   if (mode == 1) {
-    if (timeoutTimer.isReady()) mode = 0;   // return to mode 0 if timeout
+    if (timeoutTimer.isReady()) {
+      mode = 0;                               // return to mode 0 if timeout
+      updateAlarm();
+    }
     if (enc.isRight()) {
       alm_mins++;
       if (alm_mins > 59) {
@@ -218,7 +206,7 @@ void settings() {
       if (alm_hrs < 0) alm_hrs = 23;
     }
     if (enc.isTurn() && !blinkFlag) {
-      disp.displayClock(alm_hrs, alm_mins); //<----------------------Это странно, по идее можно вынести за if
+      disp.displayClock(alm_hrs, alm_mins);
       timeoutTimer.reset();
     }
     if (blinkTimer.isReady()) {
@@ -265,7 +253,7 @@ void settings() {
       if (hrs < 0) hrs = 23;
     }
     if (enc.isTurn() && !blinkFlag) {
-      disp.displayClock(hrs, mins); //<----------------------Это странно, по идее можно вынести за if
+      disp.displayClock(hrs, mins);
       timeoutTimer.reset();
     }
     if (blinkTimer.isReady()) {
@@ -285,40 +273,22 @@ void settings() {
 
 void buttonTick(){
   button.tick();  //tick the button
-}
 
-
-void encoderTick() {
-  enc.tick();   // tick encoder
-  // *********** Encoder click **********
-  if (enc.isClick()) {        // клик по энкодеру
-    minuteFlag = true;        // вывести минуты при следующем входе в режим 0
-    mode++;                   // сменить режим
-    if (mode > 1) {           // выход с режима установки будильника и часов
-      mode = 0;
-      calculateDawn();        // расчёт времени рассвета
-      EEPROM.update(0, alm_hrs);
-      EEPROM.update(1, alm_mins);
-
-      disp.displayClock(hrs, mins);
-    }
-    timeoutTimer.reset();     // сбросить таймаут
-  }
-
-  // *********** УДЕРЖАНИЕ ЭНКОДЕРА **********
-  if (enc.isHolded()) {       // кнопка удержана
-    minuteFlag = true;        // вывести минуты при следующем входе в режим 0
-    if (dawn_start) {         // если удержана во время рассвета или будильника
-      dawn_start = false;     // прекратить рассвет
-      alarm = false;          // и будильник
+  if (button.isPress()){
+    if (dawn_start || alarm){         // if the button is pressed during dawn or alarm - switch off both modes
+      dawn_start = false;
+      alarm = false;
       duty = 0;
       digitalWrite(DIM_PIN, 0);
       if (BUZZ) noTone(BUZZ_PIN);
       return;
     }
-    if (mode == 0 && !dawn_start) {   // кнопка удержана в режиме часов и сейчас не рассвет
-      disp.point(0);              // гасим кнопку
-      alarmFlag = !alarmFlag;     // переключаем будильник
+  }
+  
+  if (button.isHolded()){
+    if (mode == 0 && !dawn_start && !alarm) {   // button is holded and it's not dawn and not alarm
+      disp.point(0);
+      alarmFlag = !alarmFlag;                   // switch alarm flag
       if (alarmFlag) {
         disp.scrollByte(_empty, _o, _n, _empty, 70);
         analogWrite(LED_PIN, LED_BRIGHT);
@@ -329,41 +299,71 @@ void encoderTick() {
       EEPROM.update(2, alarmFlag);
       delay(1000);
       disp.displayClockScroll(hrs, mins, 70);
-    } else if (mode == 1) {   // кнопка удержана в режиме настройки будильника
-      mode = 2;               // сменить режим
-    } else if (mode == 2) {	  // кнопка удержана в режиме настройки часов
-      mode = 0;               // сменить режим
-
-      disp.displayClock(hrs, mins);
     }
-    timeoutTimer.reset();     // сбросить таймаут
   }
 }
 
+
+void encoderTick() {
+  enc.tick();   // tick encoder
+  // *********** Encoder click **********
+  if (enc.isClick() && mode > 0) {        // click encoder not in clock mode
+    minuteFlag = true;
+    mode = 0;
+    calculateDawn();
+    updateAlarm();
+    disp.displayClock(hrs, mins);
+    timeoutTimer.reset();
+  }
+
+  // *********** Encoder is holded **********
+  if (enc.isHolded()) {       // Hold the button to switch modes
+    minuteFlag = true;
+    mode++;
+    if (mode > 2) mode = 0;
+    disp.displayClock(hrs, mins);
+    timeoutTimer.reset();
+  }
+}
+
+
+void updateAlarm(){
+  int8_t _alm_hrs = EEPROM.read(0);
+  int8_t _alm_mins = EEPROM.read(1);
+  if (_alm_hrs != alm_hrs || _alm_mins != alm_mins){
+    EEPROM.update(0, alm_hrs);
+    EEPROM.update(1, alm_mins);
+  }
+}
+
+
 void alarmTick() {
   if (dawn_start && alarmFlag) {
-    if (dutyTimer.isReady()) {    // поднимаем яркость по таймеру
+    if (dutyTimer.isReady()) {    // raise duty step by step according to the timer
       duty++;
-      if (duty > DAWN_MAX) duty = DAWN_MAX;
+      duty = constrain(duty, DAWN_MIN, DAWN_MAX);
     }
   }
-  if (alarm) {                    // настало время будильника
-    if (alarmTimeout.isReady()) { // таймаут будильника
-      dawn_start = false;         // прекратить рассвет
-      alarm = false;              // и будильник
+  
+  if (alarm) {                    // alarm time came
+    if (alarmTimeout.isReady()) { // alarm timeout came
+      dawn_start = false;
+      alarm = false;
       duty = 0;
       digitalWrite(DIM_PIN, 0);
       if (BUZZ) noTone(BUZZ_PIN);
     }
-    if (blinkTimer.isReady()) {   // мигаем цифрами
+    
+    if (blinkTimer.isReady()) {   // blink with digits on LED screen and beep with buzzer
       if (blinkFlag) {
         blinkFlag = false;
         blinkTimer.setInterval(700);
         disp.point(1);
         disp.displayClock(hrs, mins);
-        if (ALARM_BLINK) duty = DAWN_MAX;     // мигаем светом
-        if (BUZZ) tone(BUZZ_PIN, BUZZ_FREQ);  // пищим
-      } else {
+        if (ALARM_BLINK) duty = DAWN_MAX;
+        if (BUZZ) tone(BUZZ_PIN, BUZZ_FREQ);
+      } 
+      else {
         blinkFlag = true;
         blinkTimer.setInterval(300);
         disp.point(0);
@@ -374,6 +374,7 @@ void alarmTick() {
     }
   }
 }
+
 
 void clockTick() {
   if (halfsTimer.isReady()) {

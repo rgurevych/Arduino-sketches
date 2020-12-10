@@ -113,7 +113,7 @@ void switch_led(){
 
 
 void check_brightness(){
-  if (button.isPress()){
+  if (button.isClick()){
     lcd_brightness++;
     led_brightness += 25;
     if (lcd_brightness > 7 ){

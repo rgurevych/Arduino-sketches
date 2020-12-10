@@ -101,7 +101,6 @@ void setup() {
   hrs = now.hour();
 
   mode = 0;
-  buzz = true;
   disp.displayClock(hrs, mins);
 
   // Read out alarm settings
@@ -287,9 +286,9 @@ void buttonTick(){
 
   if (button.isPress()){
     if (dawn_start || alarm){         // if the button is pressed during dawn or alarm - switch off both modes
+      if (dawn_start) alarmHoldFlag = true;
       dawn_start = false;
       alarm = false;
-      alarmHoldFlag = true;
       duty = 0;
       digitalWrite(DIM_PIN, 0);
       if (buzz) noTone(BUZZ_PIN);
@@ -308,6 +307,7 @@ void buttonTick(){
       if (alarmFlag) {
         disp.scrollByte(_empty, _o, _n, _empty, 70);
         analogWrite(LED_PIN, LED_BRIGHT);
+        alarmHoldFlag = true;
       } else {
         disp.scrollByte(_empty, _o, _F, _F, 70);
         digitalWrite(LED_PIN, 0);
@@ -458,6 +458,7 @@ void clockTick() {
         
         if (dwn_hrs == hrs && dwn_mins == mins && alarmFlag && !dawn_start && mode == 0 && alarmMode != 1) {
           dawn_start = true;
+          alarmHoldFlag = false;
           duty = DAWN_MIN;
         }
         if (alm_hrs == hrs && alm_mins == mins && alarmFlag && !alarm && mode == 0 && !alarmHoldFlag) {

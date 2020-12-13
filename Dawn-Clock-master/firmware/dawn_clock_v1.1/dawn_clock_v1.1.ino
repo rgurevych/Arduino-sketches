@@ -21,12 +21,12 @@
 #include <GyverTimer.h>
 
 // *************************** SETTINGS ***************************
-#define DAWN_TIME 10      // Dawn duration
+#define DAWN_TIME 5      // Dawn duration
 #define ALARM_TIMEOUT 60  // Timeout for switching off the alarm
 #define ALARM_BLINK 0     // 1 - blink with lamp, 0 - no blink
 #define BUZZ_FREQ 800     // Buzzer frequency (Hz)
 #define DAWN_MIN 60       // Minimum lamp brightness (0 - 255)
-#define DAWN_MAX 200      // Maximum lamp brightness (0 - 255)
+#define DAWN_MAX 150      // Maximum lamp brightness (0 - 255)
 #define DISPLAY_BRIGHT 1  // Display brightness
 #define LED_BRIGHT 50     // LED brightness (0 - 255)
 #define ENCODER_TYPE 1    // тип энкодера (0 или 1). Типы энкодеров расписаны на странице проекта
@@ -60,7 +60,7 @@ GTimer_ms dutyTimer((long)DAWN_TIME * 60 * 1000 / (DAWN_MAX - DAWN_MIN));
 GTimer_ms alarmTimeout((long)ALARM_TIMEOUT * 1000);
 
 // ***************** VARIABLES *****************
-boolean dotFlag, alarmFlag, minuteFlag, blinkFlag, newTimeFlag, buzz;
+boolean dotFlag, alarmFlag, minuteFlag, blinkFlag, newTimeFlag, buzz, blockAlarmShowFlag;
 int8_t hrs = 21, mins = 55, secs;
 int8_t alm_hrs, alm_mins;
 int8_t dwn_hrs, dwn_mins;
@@ -284,20 +284,24 @@ void settings() {
 void buttonTick(){
   button.tick();  //tick the button
 
-  if (button.isPress()){
-    if (dawn_start || alarm){         // if the button is pressed during dawn or alarm - switch off both modes
-      if (dawn_start) alarmHoldFlag = true;
-      dawn_start = false;
-      alarm = false;
-      duty = 0;
-      digitalWrite(DIM_PIN, 0);
-      if (buzz) noTone(BUZZ_PIN);
-      return;
-    }
+  if (button.isPress() && (dawn_start || alarm)){         // if the button is pressed during dawn or alarm - switch off both modes
+    if (dawn_start) alarmHoldFlag = true;
+    dawn_start = false;
+    alarm = false;
+    blockAlarmShowFlag = true;
+    duty = 0;
+    digitalWrite(DIM_PIN, 0);
+    if (buzz) noTone(BUZZ_PIN);
+    return;
   }
   
-  if (button.isSingle() && mode == 0){  //tap the button to see current alarm mode
-    showAlarmMode();
+  if (button.isSingle() && mode == 0 && !dawn_start && !alarm){  //tap the button to see current alarm mode
+    if (blockAlarmShowFlag){
+      blockAlarmShowFlag = false;
+    }
+    else{
+      showAlarmMode();
+    }
   }
   
   if (button.isHolded()){
@@ -307,7 +311,7 @@ void buttonTick(){
       if (alarmFlag) {
         disp.scrollByte(_empty, _o, _n, _empty, 70);
         analogWrite(LED_PIN, LED_BRIGHT);
-        alarmHoldFlag = true;
+        alarmHoldFlag = false;
       } else {
         disp.scrollByte(_empty, _o, _F, _F, 70);
         digitalWrite(LED_PIN, 0);
@@ -335,8 +339,9 @@ void showAlarmMode(){
   disp.clear();
   disp.point(1);
   disp.displayClockScroll(alm_hrs, alm_mins, 70);
-  delay(2000);
+  delay(1500);
   disp.point(0);
+  alarmHoldFlag = false;
   
   if (alarmMode == 0){
     disp.runningString(normal_mode, sizeof(normal_mode), 200);

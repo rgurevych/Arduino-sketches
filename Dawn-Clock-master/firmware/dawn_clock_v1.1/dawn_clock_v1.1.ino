@@ -125,7 +125,7 @@ void loop() {
 
 void calculateDawn() {
   // Dawn start calculation
-  if (alm_mins > DAWN_TIME) {
+  if (alm_mins >= DAWN_TIME) {
     dwn_hrs = alm_hrs;
     dwn_mins = alm_mins - DAWN_TIME;
   }

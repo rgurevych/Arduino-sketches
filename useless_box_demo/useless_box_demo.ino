@@ -5,9 +5,9 @@
 // Includes
 #include <GyverEncoder.h>
 #include <GyverTM1637.h>
-#include <Servo.h>
-//#include <ServoSmooth.h>
-
+//#include <Servo.h>
+#include <ServoSmooth.h>
+#include <GyverTimer.h>
 #include <CyberLib.h>
 #include <GyverButton.h>
 
@@ -33,21 +33,23 @@
 
 
 // Timers
+GTimer delayTimer(MS, 2000);
 
 
 // Objects
 Encoder enc(CLKe, DTe, SWe);
 GyverTM1637 disp(CLK, DIO);
 
-//ServoSmooth servoHand;
-Servo servoHand;
+ServoSmooth servoHand;
+//Servo servoHand;
 
 // Variables
 int motor = 0;
-boolean led_flag; 
+boolean led_flag, hand_servo_state;
 boolean operate_flag = false;
 byte lcd_brightness = 7;
 byte led_brightness = 25;
+byte operation_step = 0;
 
 uint32_t myTimer;
 
@@ -62,22 +64,22 @@ void setup() {
   disp.clear();
   disp.brightness(lcd_brightness);
 
-  servoHand.attach(SERVO_HAND_PIN);
-  //servoHand.smoothStart();
-  //servoHand.setTargetDeg(180);
-  //servoHand.setAccel(0);
-  //servoHand.setSpeed(300);
+  servoHand.attach(SERVO_HAND_PIN, 180);
+  servoHand.smoothStart();
+  servoHand.setTargetDeg(180);
+  servoHand.setAccel(0);
+  servoHand.setSpeed(300);
   servoHand.write(180);
 }
 
 
 void loop() {
-
+  hand_servo_state = servoHand.tick();
   enc.tick();
   update_motor();
   switch_led();
   check_switch();
- // operate();
+  operate();
 }
 
 
@@ -113,15 +115,26 @@ void switch_led(){
 void check_switch(){
   if (digitalRead(SWITCH_PIN) == HIGH && !operate_flag){
     operate_flag = true;
-    operate();
   }
 }
 
 void operate(){
   if (operate_flag){
-    servoHand.write(15);
-    delay(1000);
-    servoHand.write(180);
-    operate_flag = false;
+    if (operation_step == 0){
+      operation_step ++;
+      delayTimer.setTimeout(1500);
+      servoHand.setTargetDeg(19);
+    }
+
+    if (operation_step == 1 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.start();
+      servoHand.setTargetDeg(180);
+    }
+    
+    if (operation_step == 2 && delayTimer.isReady()){
+      operation_step = 0;
+      operate_flag = false;
+    }
   }
 }

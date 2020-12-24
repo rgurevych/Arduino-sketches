@@ -5,7 +5,8 @@
 // Includes
 #include <GyverEncoder.h>
 #include <GyverTM1637.h>
-#include <Servo.h> 
+#include <Servo.h>
+//#include <ServoSmooth.h>
 
 #include <CyberLib.h>
 #include <GyverButton.h>
@@ -26,7 +27,7 @@
 
 #define BUZZ_PIN 7    // пищалка (по желанию)
 #define LED_PIN 6     // светодиод индикатор
-#define BUTTON_PIN 4  // кнопка
+#define SWITCH_PIN 2  // Switch
 
 #define SERVO_HAND_PIN 5
 
@@ -37,20 +38,24 @@
 // Objects
 Encoder enc(CLKe, DTe, SWe);
 GyverTM1637 disp(CLK, DIO);
-GButton button(BUTTON_PIN);
-Servo servoHand;
 
+//ServoSmooth servoHand;
+Servo servoHand;
 
 // Variables
 int motor = 0;
-boolean led_flag;
+boolean led_flag; 
+boolean operate_flag = false;
 byte lcd_brightness = 7;
 byte led_brightness = 25;
+
+uint32_t myTimer;
 
 
 void setup() {
   Serial.begin(9600);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(SWITCH_PIN, INPUT);
   led_flag = false;
 
   enc.setType(ENCODER_TYPE);
@@ -58,15 +63,21 @@ void setup() {
   disp.brightness(lcd_brightness);
 
   servoHand.attach(SERVO_HAND_PIN);
-  servoHand.write(0);
+  //servoHand.smoothStart();
+  //servoHand.setTargetDeg(180);
+  //servoHand.setAccel(0);
+  //servoHand.setSpeed(300);
+  servoHand.write(180);
 }
 
 
 void loop() {
+
   enc.tick();
-  button.tick();
   update_motor();
   switch_led();
+  check_switch();
+ // operate();
 }
 
 
@@ -86,8 +97,31 @@ void switch_led(){
   if (enc.isClick()) led_flag =! led_flag;
   
   if (led_flag){
+  
+
+    
     analogWrite(LED_PIN, led_brightness);
-    servoHand.write(motor);
+    
+    if (millis() - myTimer >= 40) {
+    myTimer = millis();
+   // servoHand.setTargetDeg(motor);
+    }
   }
   else digitalWrite(LED_PIN, LOW);
+}
+
+void check_switch(){
+  if (digitalRead(SWITCH_PIN) == HIGH && !operate_flag){
+    operate_flag = true;
+    operate();
+  }
+}
+
+void operate(){
+  if (operate_flag){
+    servoHand.write(15);
+    delay(1000);
+    servoHand.write(180);
+    operate_flag = false;
+  }
 }

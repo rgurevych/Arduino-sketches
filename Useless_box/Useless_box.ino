@@ -46,13 +46,13 @@ void setup() {
   handServo.smoothStart();
   handServo.setTargetDeg(180);
   handServo.setAccel(0);
-  handServo.setSpeed(200);
+  handServo.setSpeed(180);
 
   boxServo.attach(SERVO_BOX_PIN, 180);
   boxServo.smoothStart();
   boxServo.setTargetDeg(180);
   boxServo.setAccel(0);
-  boxServo.setSpeed(200);
+  boxServo.setSpeed(100);
 }
 
 

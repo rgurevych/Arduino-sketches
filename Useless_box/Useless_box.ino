@@ -25,7 +25,7 @@
 
 // Timers
 GTimer delayTimer(MS);                //Delay timer used in each particular step
-GTimer switchDelayTimer(MS, 1000);    //Timer used between enabling switch and starting operation
+GTimer switchDelayTimer(MS, 500);    //Timer used between enabling switch and starting operation
 
 
 // Objects
@@ -37,7 +37,7 @@ ServoSmooth boxServo;
 boolean led_flag, hand_servo_state, box_servo_state;
 boolean operate_flag = false;
 byte operation_step = 0;
-byte mode = 0;
+byte mode = 1;
 
 uint32_t myTimer;
 
@@ -126,6 +126,56 @@ void mode_0(){
 
 
 void mode_1(){
+    if (operation_step == 0 && switchDelayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(1200);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+
+    if (operation_step == 1 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(1500);
+      handServo.setTargetDeg(MAX_HAND_SERVO);
+      handServo.tick();
+    }
+
+    if (operation_step == 2 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(1300);
+      handServo.setTargetDeg(180);
+      handServo.tick();
+    }
+
+    if (operation_step == 3 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(2500);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 4 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(3000);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+
+    if (operation_step == 5 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(800);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 6 && delayTimer.isReady()){
+      operation_step = 0;
+      operate_flag = false;
+    }
+}
+
+
+void mode_2(){
     if (operation_step == 0 && switchDelayTimer.isReady()){
       operation_step ++;
       delayTimer.setTimeout(1500);

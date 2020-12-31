@@ -37,7 +37,7 @@ ServoSmooth boxServo;
 boolean led_flag, hand_servo_state, box_servo_state;
 boolean operate_flag = false;
 byte operation_step = 0;
-byte mode = 1;
+byte mode = 3;
 
 uint32_t myTimer;
 
@@ -83,6 +83,9 @@ void operate(){
   if (operate_flag){
     if (mode == 0) mode_0();
     else if (mode == 1) mode_1();
+    else if (mode == 2) mode_2();
+    else if (mode == 3) mode_3();
+    else if (mode == 4) mode_4();
   }
 }
 
@@ -176,6 +179,95 @@ void mode_1(){
 
 
 void mode_2(){
+    if (operation_step == 0 && switchDelayTimer.isReady()){
+      operation_step ++;
+      boxServo.setSpeed(8);
+      delayTimer.setTimeout(3500);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+
+    if (operation_step == 1 && delayTimer.isReady()){
+      operation_step ++;
+      handServo.setSpeed(200);
+      delayTimer.setTimeout(900);
+      handServo.setTargetDeg(MAX_HAND_SERVO);
+      handServo.tick();
+    }
+    
+    if (operation_step == 2 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(900);
+      handServo.setTargetDeg(180);
+      handServo.tick();
+    }
+
+    if (operation_step == 3 && delayTimer.isReady()){
+      operation_step ++;
+      boxServo.setSpeed(10);
+      delayTimer.setTimeout(3500);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 4 && delayTimer.isReady()){
+      boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
+      handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
+      operation_step = 0;
+      operate_flag = false;
+    }
+}
+
+
+void mode_3(){
+    if (operation_step == 0 && switchDelayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(500);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+
+    if (operation_step == 1 && delayTimer.isReady()){
+      operation_step ++;
+      handServo.setSpeed(40);
+      delayTimer.setTimeout(4000);
+      handServo.setTargetDeg(MAX_HAND_SERVO + 15);
+      handServo.tick();
+    }
+
+    if (operation_step == 2 && delayTimer.isReady()){
+      operation_step ++;
+      handServo.setSpeed(200);
+      delayTimer.setTimeout(500);
+      handServo.setTargetDeg(MAX_HAND_SERVO);
+      handServo.tick();
+    }
+    
+    if (operation_step == 3 && delayTimer.isReady()){
+      operation_step ++;
+      handServo.setSpeed(50);
+      delayTimer.setTimeout(2600);
+      handServo.setTargetDeg(180);
+      handServo.tick();
+    }
+
+    if (operation_step == 4 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(500);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 5 && delayTimer.isReady()){
+      handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
+      boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
+      operation_step = 0;
+      operate_flag = false;
+    }
+}
+
+
+void mode_4(){
     if (operation_step == 0 && switchDelayTimer.isReady()){
       operation_step ++;
       delayTimer.setTimeout(1500);

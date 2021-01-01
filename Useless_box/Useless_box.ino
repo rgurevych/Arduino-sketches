@@ -40,14 +40,12 @@ ServoSmooth boxServo;
 // Variables
 boolean led_flag, hand_servo_state, box_servo_state;
 boolean operate_flag = false; 
-boolean led_simple_blink_flag = false, led_double_blink_flag = false;
+boolean led_simple_blink_flag = false, led_double_blink_flag = false, leds_on_flag = false;
 boolean buzz_simple_flag = false, buzz_double_flag = false;
 boolean led_1_flag = false, led_2_flag = false;
 boolean buzz_flag = false;
 byte operation_step = 0;
-byte mode = 14;
-
-uint32_t myTimer;
+byte mode = 15;
 
 
 void setup() {
@@ -112,6 +110,7 @@ void operate(){
     else if (mode == 12) mode_12();
     else if (mode == 13) mode_13();
     else if (mode == 14) mode_14();
+    else if (mode == 15) mode_15();
   }
 }
 
@@ -956,6 +955,51 @@ void mode_14(){
 }
 
 
+void mode_15(){
+    if (operation_step == 0 && switchDelayTimer.isReady()){
+      melody_1();
+      leds_on_flag = true;
+      operation_step ++;
+      boxServo.setSpeed(8);
+      delayTimer.setTimeout(2500);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+
+    if (operation_step == 1 && delayTimer.isReady()){
+      operation_step ++;
+      handServo.setSpeed(200);
+      delayTimer.setTimeout(900);
+      handServo.setTargetDeg(MAX_HAND_SERVO);
+      handServo.tick();
+    }
+    
+    if (operation_step == 2 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(900);
+      handServo.setTargetDeg(180);
+      handServo.tick();
+    }
+
+    if (operation_step == 3 && delayTimer.isReady()){
+      melody_2();
+      leds_on_flag = false;
+      operation_step ++;
+      boxServo.setSpeed(10);
+      delayTimer.setTimeout(3500);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 4 && delayTimer.isReady()){
+      boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
+      handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
+      operation_step = 0;
+      operate_flag = false;
+    }
+}
+
+
 void leds_function(){
   if (led_simple_blink_flag){
     if (blinkTimer.isReady()){
@@ -971,6 +1015,11 @@ void leds_function(){
       led_1_flag = led_2_flag;
       led_2_flag = !led_1_flag;
     }
+  }
+  
+  else if (leds_on_flag){
+    led_1_flag = true;
+    led_2_flag = true;
   }
   
   else{
@@ -1009,6 +1058,30 @@ void buzz_function(){
   }
   
   else{
+    noTone(BUZZ_PIN);
+  }
+}
+
+
+void melody_1(){
+  int notes_1[] = {392, 392, 392, 311, 466, 392, 311, 466, 392};
+  int times_1[] = {350, 350, 350, 250, 100, 350, 250, 100, 700};
+  
+  for (int i = 0; i < 9; i++){
+    tone(BUZZ_PIN, notes_1[i], times_1[i]*2);
+    delay(times_1[i]*2 + 25);
+    noTone(BUZZ_PIN);
+  }
+}
+
+
+void melody_2(){
+  int notes_2[] = {587, 587, 587, 622, 466, 369, 311, 466, 392};
+  int times_2[] = {350, 350, 350, 250, 100, 350, 250, 100, 700};
+  
+  for (int i = 0; i < 9; i++){
+    tone(BUZZ_PIN, notes_2[i], times_2[i]*2);
+    delay(times_2[i]*2 + 25);
     noTone(BUZZ_PIN);
   }
 }

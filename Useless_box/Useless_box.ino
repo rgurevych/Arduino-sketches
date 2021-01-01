@@ -45,7 +45,7 @@ boolean buzz_simple_flag = false;
 boolean led_1_flag = false, led_2_flag = false;
 boolean buzz_flag = false;
 byte operation_step = 0;
-byte mode = 11;
+byte mode = 12;
 
 uint32_t myTimer;
 
@@ -109,6 +109,7 @@ void operate(){
     else if (mode == 9) mode_9();
     else if (mode == 10) mode_10();
     else if (mode == 11) mode_11();
+    else if (mode == 12) mode_12();
   }
 }
 
@@ -756,7 +757,7 @@ void mode_11(){
 
     if (operation_step == 4 && delayTimer.isReady()){
       operation_step ++;
-      boxServo.setSpeed(10);
+      boxServo.setSpeed(15);
       delayTimer.setTimeout(2000);
       boxServo.setTargetDeg(180);
       boxServo.tick();
@@ -766,6 +767,85 @@ void mode_11(){
       operation_step = 0;
       operate_flag = false;
       boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
+    }
+}
+
+
+void mode_12(){
+    if (operation_step == 0 && switchDelayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(500);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+
+    if (operation_step == 1 && delayTimer.isReady()){
+      operation_step ++;
+      led_double_blink_flag = true;
+      delayTimer.setTimeout(3000);
+    }
+
+    if (operation_step == 2 && delayTimer.isReady()){
+      operation_step ++;
+      led_double_blink_flag = false;
+      delayTimer.setTimeout(1000);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+
+    if (operation_step == 3 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(500);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+
+    if (operation_step == 4 && delayTimer.isReady()){
+      operation_step ++;
+      buzz_simple_flag = true;
+      delayTimer.setTimeout(3000);
+    }
+    
+    if (operation_step == 5 && delayTimer.isReady()){
+      operation_step ++;
+      buzz_simple_flag = false;
+      delayTimer.setTimeout(1000);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+
+    if (operation_step == 6 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(500);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 7 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(1000);
+      handServo.setTargetDeg(MAX_HAND_SERVO);
+      handServo.tick();
+    }
+    
+    if (operation_step == 8 && delayTimer.isReady()){
+      operation_step ++;
+      handServo.setSpeed(50);
+      delayTimer.setTimeout(2500);
+      handServo.setTargetDeg(180);
+      handServo.tick();
+    }
+
+    if (operation_step == 9 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(500);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 10 && delayTimer.isReady()){
+      operation_step = 0;
+      operate_flag = false;
     }
 }
 

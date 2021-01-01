@@ -20,6 +20,7 @@
 #define SWITCH_PIN 2        //Switch pin
 
 #define BUZZ_PIN 3          // Buzzer
+#define SERVICE_LED_PIN 13
 #define LED_1_PIN 9         // LED 1
 #define LED_2_PIN 10        // LED 2
 
@@ -28,6 +29,7 @@
 GTimer delayTimer(MS);                //Delay timer used in each particular step
 GTimer switchDelayTimer(MS, 500);     //Timer used between enabling switch and starting operation
 GTimer blinkTimer(MS, 500);           //Timer used for blink functions
+GTimer buzzTimer(MS, 500);            //Timer used for buzz functions
 
 
 // Objects
@@ -38,10 +40,12 @@ ServoSmooth boxServo;
 // Variables
 boolean led_flag, hand_servo_state, box_servo_state;
 boolean operate_flag = false; 
-boolean led_simple_blink_flag = false;
+boolean led_simple_blink_flag = false, led_double_blink_flag = false;
+boolean buzz_simple_flag = false;
 boolean led_1_flag = false, led_2_flag = false;
+boolean buzz_flag = false;
 byte operation_step = 0;
-byte mode = 9;
+byte mode = 10;
 
 uint32_t myTimer;
 
@@ -49,6 +53,7 @@ uint32_t myTimer;
 void setup() {
   pinMode(LED_1_PIN, OUTPUT);
   pinMode(LED_2_PIN, OUTPUT);
+  pinMode(SERVICE_LED_PIN, OUTPUT);
   pinMode(SWITCH_PIN, INPUT);
   led_flag = false;
 
@@ -72,6 +77,7 @@ void loop() {
   check_switch();
   operate();
   leds_function();
+  buzz_function();
 }
 
 
@@ -80,14 +86,12 @@ void check_switch(){
     operate_flag = true;
     switchDelayTimer.start();
   }
-//  if (operate_flag){
-//    digitalWrite(LED_1_PIN, HIGH);
-//    digitalWrite(LED_2_PIN, LOW);
-//  }
-//  else{
-//    digitalWrite(LED_1_PIN, LOW);
-//    digitalWrite(LED_2_PIN, HIGH);
-//  }
+  if (operate_flag){
+    digitalWrite(SERVICE_LED_PIN, HIGH);
+  }
+  else{
+    digitalWrite(SERVICE_LED_PIN, LOW);
+  }
 }
 
 
@@ -103,6 +107,7 @@ void operate(){
     else if (mode == 7) mode_7();
     else if (mode == 8) mode_8();
     else if (mode == 9) mode_9();
+    else if (mode == 10) mode_10();
   }
 }
 
@@ -668,6 +673,97 @@ void mode_9(){
 }
 
 
+void mode_10(){
+    if (operation_step == 0 && switchDelayTimer.isReady()){
+      led_double_blink_flag = true;
+      operation_step ++;
+      delayTimer.setTimeout(1500);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+
+    if (operation_step == 1 && delayTimer.isReady()){
+      operation_step ++;
+      handServo.setSpeed(40);
+      delayTimer.setTimeout(4000);
+      handServo.setTargetDeg(MAX_HAND_SERVO + 15);
+      handServo.tick();
+    }
+
+    if (operation_step == 2 && delayTimer.isReady()){
+      operation_step ++;
+      handServo.setSpeed(200);
+      delayTimer.setTimeout(500);
+      handServo.setTargetDeg(MAX_HAND_SERVO);
+      handServo.tick();
+    }
+    
+    if (operation_step == 3 && delayTimer.isReady()){
+      led_double_blink_flag = false;
+      operation_step ++;
+      handServo.setSpeed(50);
+      delayTimer.setTimeout(2600);
+      handServo.setTargetDeg(180);
+      handServo.tick();
+    }
+
+    if (operation_step == 4 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(500);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 5 && delayTimer.isReady()){
+      handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
+      boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
+      operation_step = 0;
+      operate_flag = false;
+    }
+}
+
+
+void mode_11(){
+    if (operation_step == 0 && switchDelayTimer.isReady()){
+      buzz_simple_flag = true;
+      operation_step ++;
+      boxServo.setSpeed(8);
+      delayTimer.setTimeout(2000);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+
+    if (operation_step == 1 && delayTimer.isReady()){
+      operation_step ++;
+      buzz_simple_flag = false;
+      delayTimer.setTimeout(2500);
+      handServo.setTargetDeg(MAX_HAND_SERVO);
+      handServo.tick();
+    }
+
+    if (operation_step == 2 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(1500);
+      handServo.setTargetDeg(180);
+      handServo.tick();
+    }
+
+    if (operation_step == 3 && delayTimer.isReady()){
+      operation_step ++;
+      boxServo.setSpeed(10);
+      delayTimer.setTimeout(2000);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 4 && delayTimer.isReady()){
+      operation_step = 0;
+      operate_flag = false;
+      boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
+    }
+}
+
+
 void mode_100(){
     if (operation_step == 0 && switchDelayTimer.isReady()){
       operation_step ++;
@@ -713,6 +809,14 @@ void leds_function(){
     }
   }
 
+  else if (led_double_blink_flag){
+    if (blinkTimer.isReady()){
+      blinkTimer.start();
+      led_1_flag = led_2_flag;
+      led_2_flag = !led_1_flag;
+    }
+  }
+  
   else{
     led_1_flag = false;
     led_2_flag = false;
@@ -720,4 +824,25 @@ void leds_function(){
 
   digitalWrite(LED_1_PIN, led_1_flag);
   digitalWrite(LED_2_PIN, led_2_flag);
+}
+
+
+void buzz_function(){
+  if (buzz_simple_flag){
+    if (buzzTimer.isReady()){
+      buzzTimer.start();
+      buzz_flag = !buzz_flag;
+    }
+
+    if (buzz_flag){
+      tone(BUZZ_PIN, 800);
+    }
+    else{
+      noTone(BUZZ_PIN);
+    }
+  }
+
+  else{
+    noTone(BUZZ_PIN);
+  }
 }

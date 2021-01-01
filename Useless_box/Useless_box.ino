@@ -29,7 +29,7 @@
 GTimer delayTimer(MS);                //Delay timer used in each particular step
 GTimer switchDelayTimer(MS, 500);     //Timer used between enabling switch and starting operation
 GTimer blinkTimer(MS, 500);           //Timer used for blink functions
-GTimer buzzTimer(MS, 500);            //Timer used for buzz functions
+GTimer buzzTimer(MS, 700);            //Timer used for buzz functions
 
 
 // Objects
@@ -41,11 +41,11 @@ ServoSmooth boxServo;
 boolean led_flag, hand_servo_state, box_servo_state;
 boolean operate_flag = false; 
 boolean led_simple_blink_flag = false, led_double_blink_flag = false;
-boolean buzz_simple_flag = false;
+boolean buzz_simple_flag = false, buzz_double_flag = false;
 boolean led_1_flag = false, led_2_flag = false;
 boolean buzz_flag = false;
 byte operation_step = 0;
-byte mode = 12;
+byte mode = 13;
 
 uint32_t myTimer;
 
@@ -110,6 +110,7 @@ void operate(){
     else if (mode == 10) mode_10();
     else if (mode == 11) mode_11();
     else if (mode == 12) mode_12();
+    else if (mode == 13) mode_13();
   }
 }
 
@@ -850,6 +851,60 @@ void mode_12(){
 }
 
 
+void mode_13(){
+    if (operation_step == 0 && switchDelayTimer.isReady()){
+      buzz_double_flag = true;
+      operation_step ++;
+      delayTimer.setTimeout(3000);
+    }
+    
+    if (operation_step == 1 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(500);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+
+    if (operation_step == 2 && delayTimer.isReady()){
+      operation_step ++;
+      handServo.setSpeed(40);
+      delayTimer.setTimeout(4000);
+      handServo.setTargetDeg(MAX_HAND_SERVO + 15);
+      handServo.tick();
+    }
+
+    if (operation_step == 3 && delayTimer.isReady()){
+      operation_step ++;
+      handServo.setSpeed(200);
+      delayTimer.setTimeout(500);
+      handServo.setTargetDeg(MAX_HAND_SERVO);
+      handServo.tick();
+    }
+    
+    if (operation_step == 4 && delayTimer.isReady()){
+      buzz_double_flag = false;
+      operation_step ++;
+      handServo.setSpeed(80);
+      delayTimer.setTimeout(2000);
+      handServo.setTargetDeg(180);
+      handServo.tick();
+    }
+
+    if (operation_step == 5 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(500);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 6 && delayTimer.isReady()){
+      handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
+      operation_step = 0;
+      operate_flag = false;
+    }
+}
+
+
 void mode_100(){
     if (operation_step == 0 && switchDelayTimer.isReady()){
       operation_step ++;
@@ -928,6 +983,16 @@ void buzz_function(){
     }
   }
 
+  else if (buzz_double_flag){
+    if (buzzTimer.isReady()){
+      buzzTimer.start();
+      buzz_flag = !buzz_flag;
+
+      if (buzz_flag) tone(BUZZ_PIN, 349, 650);
+      else tone(BUZZ_PIN, 494, 650);
+    }
+  }
+  
   else{
     noTone(BUZZ_PIN);
   }

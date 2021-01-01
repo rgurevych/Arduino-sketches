@@ -45,7 +45,7 @@ boolean buzz_simple_flag = false, buzz_double_flag = false;
 boolean led_1_flag = false, led_2_flag = false;
 boolean buzz_flag = false;
 byte operation_step = 0;
-byte mode = 13;
+byte mode = 14;
 
 uint32_t myTimer;
 
@@ -111,6 +111,7 @@ void operate(){
     else if (mode == 11) mode_11();
     else if (mode == 12) mode_12();
     else if (mode == 13) mode_13();
+    else if (mode == 14) mode_14();
   }
 }
 
@@ -905,36 +906,50 @@ void mode_13(){
 }
 
 
-void mode_100(){
+void mode_14(){
     if (operation_step == 0 && switchDelayTimer.isReady()){
       operation_step ++;
-      delayTimer.setTimeout(1500);
+      delayTimer.setTimeout(1800);
       boxServo.setTargetDeg(MAX_BOX_SERVO);
       boxServo.tick();
     }
 
     if (operation_step == 1 && delayTimer.isReady()){
       operation_step ++;
-      delayTimer.start();
-      handServo.setTargetDeg(MAX_HAND_SERVO);
-      handServo.tick();
+      delayTimer.setTimeout(1000);
+      boxServo.setTargetDeg(180);
+      boxServo.tick();
     }
 
     if (operation_step == 2 && delayTimer.isReady()){
       operation_step ++;
-      delayTimer.start();
+      delayTimer.setTimeout(500);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
+    }
+    
+    if (operation_step == 3 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(1000);
+      handServo.setTargetDeg(MAX_HAND_SERVO);
+      handServo.tick();
+    }
+    
+    if (operation_step == 4 && delayTimer.isReady()){
+      operation_step ++;
+      delayTimer.setTimeout(1000);
       handServo.setTargetDeg(180);
       handServo.tick();
     }
 
-    if (operation_step == 3 && delayTimer.isReady()){
+    if (operation_step == 5 && delayTimer.isReady()){
       operation_step ++;
-      delayTimer.start();
+      delayTimer.setTimeout(500);
       boxServo.setTargetDeg(180);
       boxServo.tick();
     }
     
-    if (operation_step == 4 && delayTimer.isReady()){
+    if (operation_step == 6 && delayTimer.isReady()){
       operation_step = 0;
       operate_flag = false;
     }

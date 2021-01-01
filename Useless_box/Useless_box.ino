@@ -8,7 +8,7 @@
 
 
 // Settings
-#define MAX_HAND_SERVO 20                //Max allowed angle of hand servo
+#define MAX_HAND_SERVO 19                //Max allowed angle of hand servo
 #define MAX_BOX_SERVO 150
 #define DEFAULT_HAND_SERVO_SPEED 180
 #define DEFAULT_BOX_SERVO_SPEED 100
@@ -45,7 +45,7 @@ boolean buzz_simple_flag = false;
 boolean led_1_flag = false, led_2_flag = false;
 boolean buzz_flag = false;
 byte operation_step = 0;
-byte mode = 10;
+byte mode = 11;
 
 uint32_t myTimer;
 
@@ -108,6 +108,7 @@ void operate(){
     else if (mode == 8) mode_8();
     else if (mode == 9) mode_9();
     else if (mode == 10) mode_10();
+    else if (mode == 11) mode_11();
   }
 }
 
@@ -727,28 +728,33 @@ void mode_11(){
     if (operation_step == 0 && switchDelayTimer.isReady()){
       buzz_simple_flag = true;
       operation_step ++;
-      boxServo.setSpeed(8);
-      delayTimer.setTimeout(2000);
-      boxServo.setTargetDeg(MAX_BOX_SERVO);
-      boxServo.tick();
+      delayTimer.setTimeout(3000);
     }
 
     if (operation_step == 1 && delayTimer.isReady()){
       operation_step ++;
-      buzz_simple_flag = false;
-      delayTimer.setTimeout(2500);
-      handServo.setTargetDeg(MAX_HAND_SERVO);
-      handServo.tick();
+      boxServo.setSpeed(8);
+      delayTimer.setTimeout(3000);
+      boxServo.setTargetDeg(MAX_BOX_SERVO);
+      boxServo.tick();
     }
 
     if (operation_step == 2 && delayTimer.isReady()){
       operation_step ++;
       delayTimer.setTimeout(1500);
-      handServo.setTargetDeg(180);
+      handServo.setTargetDeg(MAX_HAND_SERVO);
       handServo.tick();
     }
 
     if (operation_step == 3 && delayTimer.isReady()){
+      operation_step ++;
+      buzz_simple_flag = false;
+      delayTimer.setTimeout(1500);
+      handServo.setTargetDeg(180);
+      handServo.tick();
+    }
+
+    if (operation_step == 4 && delayTimer.isReady()){
       operation_step ++;
       boxServo.setSpeed(10);
       delayTimer.setTimeout(2000);
@@ -756,7 +762,7 @@ void mode_11(){
       boxServo.tick();
     }
     
-    if (operation_step == 4 && delayTimer.isReady()){
+    if (operation_step == 5 && delayTimer.isReady()){
       operation_step = 0;
       operate_flag = false;
       boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);

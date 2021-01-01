@@ -12,6 +12,7 @@
 #define MAX_BOX_SERVO 150
 #define DEFAULT_HAND_SERVO_SPEED 180
 #define DEFAULT_BOX_SERVO_SPEED 100
+#define SWITCH_MODES 1                   //Should the modes be switched automatically
 
 
 // Pins
@@ -45,7 +46,8 @@ boolean buzz_simple_flag = false, buzz_double_flag = false;
 boolean led_1_flag = false, led_2_flag = false;
 boolean buzz_flag = false;
 byte operation_step = 0;
-byte mode = 15;
+byte switch_count = 0;
+byte mode = 0;
 
 
 void setup() {
@@ -93,6 +95,36 @@ void check_switch(){
 }
 
 
+void update_mode(){
+  switch_count ++;
+  handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
+  boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
+  
+  if (SWITCH_MODES){
+    if (switch_count == 0 || switch_count == 1 || switch_count == 13) mode = 0;
+    else if (switch_count == 2 || switch_count == 15) mode = 1;
+    else if (switch_count == 3 || switch_count == 6 || switch_count == 20) mode = 2;
+    else if (switch_count == 4) mode = 3;
+    else if (switch_count == 5 || switch_count == 10) mode = 4;
+    else if (switch_count == 7 || switch_count == 19) mode = 5;
+    else if (switch_count == 8) mode = 6;
+    else if (switch_count == 9) mode = 7;
+    else if (switch_count == 11) mode = 8;
+    else if (switch_count == 12 || switch_count == 17) mode = 9;
+    else if (switch_count == 14 || switch_count == 24) mode = 10;
+    else if (switch_count == 16 || switch_count == 22) mode = 11;
+    else if (switch_count == 18) mode = 12;
+    else if (switch_count == 21) mode = 13;
+    else if (switch_count == 23) mode = 14;
+    else if (switch_count == 25) mode = 15;
+    else if (switch_count > 25){
+      switch_count = 0;
+      mode = 0;
+    }
+  }
+}
+
+
 void operate(){
   if (operate_flag){
     if (mode == 0) mode_0();
@@ -126,7 +158,7 @@ void mode_0(){
     if (operation_step == 1 && delayTimer.isReady()){
       operation_step ++;
       handServo.setSpeed(120);
-      delayTimer.setTimeout(2000);
+      delayTimer.setTimeout(1700);
       handServo.setTargetDeg(MAX_HAND_SERVO);
       handServo.tick();
     }
@@ -149,6 +181,7 @@ void mode_0(){
       handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
       operation_step = 0;
       operate_flag = false;
+      update_mode();
     }
 }
 
@@ -177,7 +210,7 @@ void mode_1(){
 
     if (operation_step == 3 && delayTimer.isReady()){
       operation_step ++;
-      delayTimer.setTimeout(2500);
+      delayTimer.setTimeout(1800);
       boxServo.setTargetDeg(180);
       boxServo.tick();
     }
@@ -199,6 +232,7 @@ void mode_1(){
     if (operation_step == 6 && delayTimer.isReady()){
       operation_step = 0;
       operate_flag = false;
+      update_mode();
     }
 }
 
@@ -239,6 +273,7 @@ void mode_2(){
       operate_flag = false;
       boxServo.setAccel(0);
       handServo.setAccel(0);
+      update_mode();
     }
 }
 
@@ -280,6 +315,7 @@ void mode_3(){
       handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
       operation_step = 0;
       operate_flag = false;
+      update_mode();
     }
 }
 
@@ -328,6 +364,7 @@ void mode_4(){
       boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
       operation_step = 0;
       operate_flag = false;
+      update_mode();
     }
 }
 
@@ -422,6 +459,7 @@ void mode_5(){
       operation_step = 0;
       operate_flag = false;
       boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
+      update_mode();
     }
 }
 
@@ -497,6 +535,7 @@ void mode_6(){
       operation_step = 0;
       operate_flag = false;
       handServo.setAccel(0);
+      update_mode();
     }
 }
 
@@ -551,6 +590,7 @@ void mode_7(){
       operation_step = 0;
       operate_flag = false;
       handServo.setAccel(0);
+      update_mode();
     }
 }
 
@@ -631,6 +671,7 @@ void mode_8(){
     if (operation_step == 10 && delayTimer.isReady()){
       operation_step = 0;
       operate_flag = false;
+      update_mode();
     }
 }
 
@@ -672,6 +713,7 @@ void mode_9(){
       operation_step = 0;
       operate_flag = false;
       boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
+      update_mode();
     }
 }
 
@@ -722,6 +764,7 @@ void mode_10(){
       boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
       operation_step = 0;
       operate_flag = false;
+      update_mode();
     }
 }
 
@@ -768,6 +811,7 @@ void mode_11(){
       operation_step = 0;
       operate_flag = false;
       boxServo.setSpeed(DEFAULT_BOX_SERVO_SPEED);
+      update_mode();
     }
 }
 
@@ -847,6 +891,8 @@ void mode_12(){
     if (operation_step == 10 && delayTimer.isReady()){
       operation_step = 0;
       operate_flag = false;
+      handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
+      update_mode();
     }
 }
 
@@ -901,6 +947,7 @@ void mode_13(){
       handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
       operation_step = 0;
       operate_flag = false;
+      update_mode();
     }
 }
 
@@ -951,6 +998,7 @@ void mode_14(){
     if (operation_step == 6 && delayTimer.isReady()){
       operation_step = 0;
       operate_flag = false;
+      update_mode();
     }
 }
 
@@ -996,6 +1044,7 @@ void mode_15(){
       handServo.setSpeed(DEFAULT_HAND_SERVO_SPEED);
       operation_step = 0;
       operate_flag = false;
+      update_mode();
     }
 }
 

@@ -9,7 +9,7 @@
 
 // Settings
 #define MAX_HAND_SERVO 19                //Max allowed angle of hand servo
-#define MAX_BOX_SERVO 150
+#define MAX_BOX_SERVO 145
 #define DEFAULT_HAND_SERVO_SPEED 180
 #define DEFAULT_BOX_SERVO_SPEED 100
 #define SWITCH_MODES 1                   //Should the modes be switched automatically

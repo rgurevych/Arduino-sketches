@@ -3,7 +3,8 @@
 //---------- Define pins and settings
 
 #define STRIP_PIN 5                 // LED strip control pin
-#define BUTTON_PIN 8                // Debugging button
+#define BUTTON_1_PIN 8              // button 1
+#define BUTTON_2_PIN 9              // button 1
 #define CLK 12                      // display
 #define DIO 11                      // display
 #define LED_PIN 13
@@ -11,6 +12,7 @@
 #define COLOR_DEBTH 3
 #define RESET_CLOCK 0               //Should the RTC be reset?
 #define NUMLEDS 10                  //Number of LEDs in the strip
+#define MODES_NUMBER 3              //Number of modes
 
 
 //---------- Include libraries
@@ -24,9 +26,10 @@
 
 //---------- Initialize devices
 microLED<NUMLEDS, STRIP_PIN, -1, LED_WS2812, ORDER_GRB, CLI_LOW> strip;
-GyverTM1637 disp(CLK, DIO);   // LED display
-RTC_DS3231 rtc;               // RTC module
-GButton button(BUTTON_PIN);   // Button1
+GyverTM1637 disp(CLK, DIO);           // LED display
+RTC_DS3231 rtc;                       // RTC module
+GButton button1(BUTTON_1_PIN);        // Button1
+GButton button2(BUTTON_2_PIN);        // Button1
 
 
 //---------- Timers
@@ -48,7 +51,8 @@ void setup() {
   Serial.begin(9600);
   
   //Pin modes
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_2_PIN, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
   
   // Setting up display
@@ -70,13 +74,13 @@ void setup() {
   strip.clear();
 }
 
-void loop() {
+void loop(){
+  checkButtons();
   updateStrip();
   clockTick();
-  button.tick();
-  modeSwitch();
   settings();
 }
+
 
 void updateStrip(){
   if(oneSecondTimer.isReady()){
@@ -98,13 +102,17 @@ void updateStrip(){
   }
 }
 
-void modeSwitch(){
-  if (mode == 0){
-    if(button.isHolded()){
-      mode = 1;
-    }
+
+void checkButtons(){
+  button1.tick();
+  button2.tick();
+  if(button1.isHolded()){
+    timeoutTimer.reset();
+    mode++;
+    if(mode > MODES_NUMBER) mode = 0;
   }
 }
+
 
 void clockTick() {
   if (halfsTimer.isReady()) {
@@ -112,6 +120,42 @@ void clockTick() {
     if (mode == 0){
       disp.point(dotFlag);                 // switch the dots
       disp.displayClock(hrs, mins);        // needed to avoid display lags
+    }
+
+    else if (mode == 1){
+      disp.point(true);
+
+      if (dotFlag){
+        disp.display(0, hrs/10);
+        disp.display(1, hrs%10);
+        disp.displayByte(2, _empty);
+        disp.displayByte(3, _empty);
+      }
+      else{
+        disp.displayByte(_empty, _empty, _empty, _empty);
+      }
+    }
+
+    else if (mode == 2){
+      disp.point(true);
+
+      if (dotFlag){
+        disp.displayInt(mins);
+      }
+      else{
+        disp.displayByte(_empty, _empty, _empty, _empty);
+      }
+    }
+
+    else if (mode == 3){
+      disp.point(!dotFlag);
+    
+      if (dotFlag){
+        disp.displayInt(secs);
+      }
+      else{
+        disp.displayByte(_empty, _empty, _empty, _empty);
+      }
     }
   
     if (dotFlag) {          // recalculate time every second
@@ -130,75 +174,45 @@ void clockTick() {
 void settings(){
   if (mode == 1) {
     if (timeoutTimer.isReady()){
-      mode = 0;   // return to mode 0 if timeout
+      mode = 0; // return to mode 0 if timeout
       disp.clear();
+      return;
+    }
+    
+    if (button2.isClick()){
+      timeoutTimer.reset();
+      hrs++;
+      if (hrs > 23) hrs = 0;
       rtc.adjust(DateTime(2021, 1, 1, hrs, mins, secs));
     }
+  }
 
-//    if (timeSetMode == 2 && button.isHolded()){
-//      mode = 0;   // return to mode 0 if button is double clicked
-//      timeSetMode = 0;
-//      disp.clear();
-//      rtc.adjust(DateTime(2021, 1, 1, hrs, mins, 0));
-//    }
-    
-    disp.point(false);
-
-    if (timeSetMode == 0){
-      if (dotFlag){
-        disp.displayClock(hrs, 0);
-      }
-      else{
-        disp.clear();
-      }
-      
-      if (button.isClick()){
-        timeoutTimer.reset();
-        hrs++;
-        if (hrs > 23) hrs = 0;
-      }
-
-      else if (button.isHolded()){
-        timeoutTimer.reset();
-        timeSetMode ++;
-        rtc.adjust(DateTime(2021, 1, 1, hrs, mins, secs));
-      }
+  else if (mode == 2){    
+    if (timeoutTimer.isReady()){
+      mode = 0; // return to mode 0 if timeout
+      disp.clear();
+      return;
     }
     
-    else if (timeSetMode == 1){
-      if (dotFlag){
-        disp.displayClock(0, mins);
-      }
-      else{
-        disp.clear();
-      }
-      
-      if (button.isClick()){
-        timeoutTimer.reset();
-        mins++;
-        if (mins > 59) mins = 0;
-      }
-
-      else if (button.isHolded()){
-        timeoutTimer.reset();
-        timeSetMode ++;
-        rtc.adjust(DateTime(2021, 1, 1, hrs, mins, secs));
-      }
+    if (button2.isClick()){
+      timeoutTimer.reset();
+      mins++;
+      if (mins > 59) mins = 0;
+      rtc.adjust(DateTime(2021, 1, 1, hrs, mins, secs));
     }
+  }
 
-    else if (timeSetMode == 2){
-      if (dotFlag){
-        disp.displayInt(secs);
-      }
-      else{
-        disp.clear();
-      }
-      
-      if (button.isClick()){
-        timeSetMode = 0;
-        mode = 0;
-        rtc.adjust(DateTime(2021, 1, 1, hrs, mins, 0));
-      }
+  else if (mode == 3){
+      if (timeoutTimer.isReady()){
+      mode = 0; // return to mode 0 if timeout
+      disp.clear();
+      return;
+    }
+    
+    if (button2.isClick()){
+      timeoutTimer.reset();
+      secs = 0;
+      rtc.adjust(DateTime(2021, 1, 1, hrs, mins, secs));
     }
   }
 }

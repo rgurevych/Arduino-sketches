@@ -7,6 +7,7 @@
 #define BUTTON_2_PIN 9              // button 1
 #define CLK 12                      // display
 #define DIO 11                      // display
+#define IR_PIN 10                   // IR receiver
 #define LED_PIN 13
 
 #define COLOR_DEBTH 3
@@ -22,6 +23,7 @@
 #include <GyverButton.h>
 #include <Wire.h>
 #include <RTClib.h>
+#include <IRremote.h>
 
 
 //---------- Initialize devices
@@ -40,11 +42,12 @@ GTimer_ms timeoutTimer(20000);
 
 //---------- Variables
 DateTime now;
-boolean dotFlag, ledFlag = false;
+boolean dotFlag, lcdFlag = true, stripFlag = true;
 byte mode = 0; 
 byte timeSetMode = 0;
 byte counter = 0;
 int8_t hrs = 21, mins = 55, secs;
+byte DISPLAY_BRIGHTNESS = 5;
 
 
 void setup() {
@@ -57,7 +60,7 @@ void setup() {
   
   // Setting up display
   disp.clear();
-  disp.brightness(5);
+  disp.brightness(DISPLAY_BRIGHTNESS);
 
   // Setting up RTC module and display time
   rtc.begin();
@@ -72,13 +75,50 @@ void setup() {
   // Setting up LED strip
   strip.setBrightness(140);
   strip.clear();
+
+  // Initialize IR reciever
+  IrReceiver.begin(IR_PIN);
 }
 
 void loop(){
+  checkIR(); 
   checkButtons();
   updateStrip();
   clockTick();
   settings();
+}
+
+
+void checkIR(){
+    if (IrReceiver.decode()) {
+    double code = IrReceiver.decodedIRData.decodedRawData;
+
+    if (code == 0xF609FF00){
+      DISPLAY_BRIGHTNESS ++;
+      if (DISPLAY_BRIGHTNESS > 7) DISPLAY_BRIGHTNESS = 7;
+      disp.brightness(DISPLAY_BRIGHTNESS);
+    } 
+
+    else if (code == 0xE21DFF00){
+      DISPLAY_BRIGHTNESS --;
+      if (DISPLAY_BRIGHTNESS < 1) DISPLAY_BRIGHTNESS = 1;
+      disp.brightness(DISPLAY_BRIGHTNESS);
+    }  
+    
+    else if (code == 0xF20DFF00){
+      mode = 0;
+    }
+
+    else if (code == 0xE01FFF00){
+      mode = 10;
+    }
+    
+    else {
+      Serial.println(code, HEX);
+    }
+    
+    IrReceiver.resume();
+  }
 }
 
 
@@ -98,6 +138,10 @@ void updateStrip(){
     counter ++;
     if (counter > 9) counter = 0;
   
+    if (mode == 10){
+      strip.clear();
+    }
+      
     strip.show();
   }
 }
@@ -158,6 +202,12 @@ void clockTick() {
       }
     }
   
+    else if (mode == 10){
+      disp.point(false);
+      disp.clear();
+    }
+    
+    
     if (dotFlag) {          // recalculate time every second
       secs++;
       if (secs > 59) {      // read time every minute

@@ -43,7 +43,8 @@ GTimer_ms timeoutTimer(20000);
 //---------- Variables
 DateTime now;
 boolean dotFlag, lcdFlag = true, stripFlag = true;
-byte mode = 0; 
+byte mode = 0;
+byte effect = 1;
 byte timeSetMode = 0;
 byte counter = 0;
 int8_t hrs = 21, mins = 55, secs;
@@ -83,7 +84,6 @@ void setup() {
 void loop(){
   checkIR(); 
   checkButtons();
-  updateStrip();
   clockTick();
   settings();
 }
@@ -123,27 +123,30 @@ void checkIR(){
 
 
 void updateStrip(){
-  if(oneSecondTimer.isReady()){
-    strip.fill(mRed);
-    for (int i = 0; i < NUMLEDS; i++) {
-      if ((i + 1) % 5 == 0) {
-        strip.set(i, mRGB(150, 0, 0));
-      }
-      else {
-        strip.set(i, mRGB(30, 0, 0));
-      }
-    }
-
-    strip.set(counter, mSilver);
-    counter ++;
-    if (counter > 9) counter = 0;
   
-    if (mode == 10){
-      strip.clear();
-    }
-      
-    strip.show();
+  if(effect == 0 || mode == 10){
+    strip.clear();
   }
+  
+  else{
+    if(effect == 1){
+      strip.fill(mRed);
+      for (int i = 0; i < NUMLEDS; i++) {
+        if ((i + 1) % 5 == 0) {
+          strip.set(i, mRGB(150, 0, 0));
+        }
+        else {
+          strip.set(i, mRGB(30, 0, 0));
+        }
+      }
+  
+      strip.set(secs%10, mSilver);
+      counter ++;
+      if (counter > 9) counter = 0;
+    }
+  }
+
+  strip.show();
 }
 
 
@@ -161,6 +164,19 @@ void checkButtons(){
 void clockTick() {
   if (halfsTimer.isReady()) {
     dotFlag = !dotFlag;
+    
+    if (dotFlag) {          // recalculate time every second
+      secs++;
+      if (secs > 59) {      // read time every minute
+        now = rtc.now();
+        secs = now.second();
+        mins = now.minute();
+        hrs = now.hour();
+      }
+      
+      updateStrip();
+    }
+    
     if (mode == 0){
       disp.point(dotFlag);                 // switch the dots
       disp.displayClock(hrs, mins);        // needed to avoid display lags
@@ -205,17 +221,6 @@ void clockTick() {
     else if (mode == 10){
       disp.point(false);
       disp.clear();
-    }
-    
-    
-    if (dotFlag) {          // recalculate time every second
-      secs++;
-      if (secs > 59) {      // read time every minute
-        now = rtc.now();
-        secs = now.second();
-        mins = now.minute();
-        hrs = now.hour();
-      }
     }
   }
 }

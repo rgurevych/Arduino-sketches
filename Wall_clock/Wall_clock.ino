@@ -235,7 +235,7 @@ void clockTick() {
   
     else if (mode == 10){
       disp.point(false);
-      disp.clear();
+      disp.displayByte(_empty, _empty, _empty, _empty);
     }
   }
 }

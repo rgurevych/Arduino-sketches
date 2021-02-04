@@ -13,7 +13,8 @@
 #define COLOR_DEBTH 3
 #define RESET_CLOCK 0               //Should the RTC be reset?
 #define NUMLEDS 10                  //Number of LEDs in the strip
-#define MODES_NUMBER 3              //Number of modes
+#define MODES_NUMBER 4              //Number of modes
+#define EFFECTS_NUMBER 2            //Number of available effects
 
 
 //---------- Include libraries
@@ -112,9 +113,14 @@ void checkIR(){
     else if (code == 0xE01FFF00){
       mode = 10;
     }
-    
+
+    else if (code == 0xB24DFF00){
+      effect++;
+      if(effect > EFFECTS_NUMBER - 1) effect = 0;
+    }
+
     else {
-      Serial.println(code, HEX);
+      Serial.println(IrReceiver.decodedIRData.decodedRawData, HEX);
     }
     
     IrReceiver.resume();
@@ -153,10 +159,17 @@ void updateStrip(){
 void checkButtons(){
   button1.tick();
   button2.tick();
+
+  if(button1.isClick()){
+    timeoutTimer.reset();
+    effect++;
+    if(effect > EFFECTS_NUMBER - 1) effect = 0;
+  }
+  
   if(button1.isHolded()){
     timeoutTimer.reset();
     mode++;
-    if(mode > MODES_NUMBER) mode = 0;
+    if(mode > MODES_NUMBER - 1) mode = 0;
   }
 }
 

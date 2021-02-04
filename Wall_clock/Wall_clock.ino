@@ -14,7 +14,7 @@
 #define RESET_CLOCK 0               //Should the RTC be reset?
 #define NUMLEDS 10                  //Number of LEDs in the strip
 #define MODES_NUMBER 4              //Number of modes
-#define EFFECTS_NUMBER 2            //Number of available effects
+#define EFFECTS_NUMBER 3            //Number of available effects
 
 
 //---------- Include libraries
@@ -136,7 +136,6 @@ void updateStrip(){
   
   else{
     if(effect == 1){
-      strip.fill(mRed);
       for (int i = 0; i < NUMLEDS; i++) {
         if ((i + 1) % 5 == 0) {
           strip.set(i, mRGB(150, 0, 0));
@@ -147,8 +146,11 @@ void updateStrip(){
       }
   
       strip.set(secs%10, mSilver);
-      counter ++;
-      if (counter > 9) counter = 0;
+    }
+
+     if(effect == 2){
+      strip.clear();
+      strip.set(secs%10, mRed);
     }
   }
 

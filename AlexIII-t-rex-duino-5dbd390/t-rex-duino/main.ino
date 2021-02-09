@@ -4,7 +4,11 @@ void setup() {
   pinMode(DUCK_BUTTON, INPUT_PULLUP);
   Serial.begin(250000);
   lcd.begin();
+  selectScreen();
+
   spalshScreen();
+
+  
   lcd.setAddressingMode(LCD_IF_VIRTUAL_WIDTH(lcd.VerticalAddressingMode, lcd.HorizontalAddressingMode));
   srand((randByte()<<8) | randByte());
 #ifdef RESET_HI_SCORE

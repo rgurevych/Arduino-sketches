@@ -12,9 +12,9 @@
 
 #define COLOR_DEBTH 3
 #define RESET_CLOCK 0               //Should the RTC be reset?
-#define NUMLEDS 10                  //Number of LEDs in the strip
+#define NUMLEDS 20                  //Number of LEDs in the strip
 #define MODES_NUMBER 4              //Number of modes
-#define EFFECTS_NUMBER 3            //Number of available effects
+#define EFFECTS_NUMBER 4            //Number of available effects
 
 
 //---------- Include libraries
@@ -135,6 +135,8 @@ void updateStrip(){
   }
   
   else{
+
+    // Циферблат подсвечен красным, позиции часов выделены более ярко, текущая секунда - серебристая.
     if(effect == 1){
       for (int i = 0; i < NUMLEDS; i++) {
         if ((i + 1) % 5 == 0) {
@@ -144,13 +146,20 @@ void updateStrip(){
           strip.set(i, mRGB(30, 0, 0));
         }
       }
-  
-      strip.set(secs%10, mSilver);
+      strip.set(secs%NUMLEDS, mSilver);
     }
 
-     if(effect == 2){
+     // Циферблат не подсвечивается, текущая секунда - красная.
+    if(effect == 2){
       strip.clear();
-      strip.set(secs%10, mRed);
+      strip.set(secs%NUMLEDS, mRed);
+    }
+
+     // Циферблат не подсвечивается, все от 0 до текущей - красные, текущая - более яркая.
+    if(effect == 3){
+      strip.clear();
+      strip.fill(0, secs%NUMLEDS, mRGB(30, 0, 0));
+      strip.set(secs%NUMLEDS, mRGB(150, 0, 0));
     }
   }
 

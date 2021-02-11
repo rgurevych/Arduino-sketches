@@ -67,6 +67,8 @@
 #include "Cactus.h"
 #include "Pterodactyl.h"
 #include "HeartLive.h"
+#include <GyverButton.h>
+#include <GyverTimer.h>
 
 /* Defines and globals */
 #define EEPROM_HI_SCORE 16 //2 bytes
@@ -99,4 +101,13 @@
   SH1106<I2C> lcd(i2c, LCD_BYTE_SZIE);
 #endif
 
+
+GButton redButton(RED_BUTTON);
+GButton greenButton(GREEN_BUTTON);
+GButton blueButton(BLUE_BUTTON);
+GButton yellowButton(YELLOW_BUTTON);
+
+GTimer_ms blinkTimer(500);
+
 boolean RED_LED_FLAG=false, GREEN_LED_FLAG=false, BLUE_LED_FLAG=false, YELLOW_LED_FLAG=false;
+boolean trexSelected=false, memoSelected=false;

@@ -187,17 +187,3 @@ void spalshScreen() {
   }
   for(uint8_t i = 50; i && !isPressedJump(); --i) delay(100);
 }
-
-void selectScreen(){
-  RED_LED_FLAG=false, GREEN_LED_FLAG=true, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=false;
-  switchLeds();
-  
-  lcd.setAddressingMode(lcd.HorizontalAddressingMode);
-  uint8_t buff[32];
-  for(uint8_t i = 0; i < LCD_BYTE_SZIE/sizeof(buff); ++i) {
-    memcpy_P(buff, select_screen_bitmap + 2 + uint16_t(i) * sizeof(buff), sizeof(buff));
-    lcd.fillScreen(buff, sizeof(buff));
-  }
-
-  delay(3000);
-}

@@ -18,11 +18,11 @@ static bool firstStart = true;
 /* Misc Functions */
 
 bool isPressedJump() {
-  return !digitalRead(JUMP_BUTTON);
+  return !digitalRead(BLUE_BUTTON);
 }
 
 bool isPressedDuck() {
-  return !digitalRead(DUCK_BUTTON);
+  return !digitalRead(GREEN_BUTTON);
 }
 
 uint8_t randByte() {
@@ -176,6 +176,9 @@ void gameLoop(uint16_t &hiScore) {
 }
 
 void spalshScreen() {
+  RED_LED_FLAG=true, GREEN_LED_FLAG=true, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=true;
+  switchLeds();
+  
   lcd.setAddressingMode(lcd.HorizontalAddressingMode);
   uint8_t buff[32];
   for(uint8_t i = 0; i < LCD_BYTE_SZIE/sizeof(buff); ++i) {
@@ -186,6 +189,9 @@ void spalshScreen() {
 }
 
 void selectScreen(){
+  RED_LED_FLAG=false, GREEN_LED_FLAG=true, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=false;
+  switchLeds();
+  
   lcd.setAddressingMode(lcd.HorizontalAddressingMode);
   uint8_t buff[32];
   for(uint8_t i = 0; i < LCD_BYTE_SZIE/sizeof(buff); ++i) {

@@ -1,7 +1,15 @@
 /* Hardware Connections */
+// -- LEDs --
+#define RED_LED 5
+#define GREEN_LED 6
+#define BLUE_LED 7
+#define YELLOW_LED 8 
+
 // -- Buttons --
-#define JUMP_BUTTON 6
-#define DUCK_BUTTON 5
+#define RED_BUTTON 14
+#define GREEN_BUTTON 15
+#define BLUE_BUTTON 16
+#define YELLOW_BUTTON 17  
 
 // -- Display Selection (uncomment ONE of the options) -- 
 #define LCD_SSD1309
@@ -90,3 +98,5 @@
   I2C i2c;
   SH1106<I2C> lcd(i2c, LCD_BYTE_SZIE);
 #endif
+
+boolean RED_LED_FLAG=false, GREEN_LED_FLAG=false, BLUE_LED_FLAG=false, YELLOW_LED_FLAG=false;

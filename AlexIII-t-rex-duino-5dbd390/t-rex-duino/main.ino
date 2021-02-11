@@ -1,7 +1,27 @@
 
 void setup() {
-  pinMode(JUMP_BUTTON, INPUT_PULLUP);
-  pinMode(DUCK_BUTTON, INPUT_PULLUP);
+  pinMode(RED_BUTTON, INPUT_PULLUP);
+  pinMode(BLUE_BUTTON, INPUT_PULLUP);
+  pinMode(GREEN_BUTTON, INPUT_PULLUP);
+  pinMode(YELLOW_BUTTON, INPUT_PULLUP);
+
+  RED_LED_FLAG=true, GREEN_LED_FLAG=false, BLUE_LED_FLAG=false, YELLOW_LED_FLAG=false;
+  switchLeds();
+  delay(1500);
+
+  RED_LED_FLAG=false, GREEN_LED_FLAG=true, BLUE_LED_FLAG=false, YELLOW_LED_FLAG=false;
+  switchLeds();
+  delay(1500);
+
+  RED_LED_FLAG=false, GREEN_LED_FLAG=false, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=false;
+  switchLeds();
+  delay(1500);
+
+  RED_LED_FLAG=false, GREEN_LED_FLAG=false, BLUE_LED_FLAG=false, YELLOW_LED_FLAG=true;
+  switchLeds();
+  delay(1500);
+  
+  
   Serial.begin(250000);
   lcd.begin();
   selectScreen();
@@ -19,7 +39,10 @@ void setup() {
 }
 
 void loop() {
+  switchLeds();
   if(firstStart || isPressedJump()) {
+    RED_LED_FLAG=false, GREEN_LED_FLAG=true, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=false;
+    switchLeds();
     firstStart = false;
     gameLoop(hiScore);
     EEPROM.put(EEPROM_HI_SCORE, hiScore);
@@ -27,4 +50,11 @@ void loop() {
     while(isPressedJump()) delay(100);
     delay(500);
   }
+}
+
+void switchLeds() {
+  digitalWrite(RED_LED, RED_LED_FLAG);
+  digitalWrite(GREEN_LED, GREEN_LED_FLAG);
+  digitalWrite(BLUE_LED, BLUE_LED_FLAG);
+  digitalWrite(YELLOW_LED, YELLOW_LED_FLAG);
 }

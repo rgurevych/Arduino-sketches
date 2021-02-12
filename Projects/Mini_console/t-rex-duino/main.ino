@@ -24,14 +24,14 @@ void loop() {
   }
   
   if(trexSelected){
-    if(isPressedJump()){
+
       RED_LED_FLAG=false, GREEN_LED_FLAG=true, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=false;
       switchLeds();
       firstStart = false;
       gameLoop(hiScore);
       EEPROM.put(EEPROM_HI_SCORE, hiScore);
       gameOver();
-    }
+
   }
 }
 
@@ -73,10 +73,12 @@ void selectScreen(){
       return;
     }
     if(greenButton.isPress()){
-//      trexSelected=false;
-//      memoSelected=true;
-//      return;
+      trexSelected=false;
+      memoSelected=true;
+      splashScreen();
       delay(1000);
+      memoSelected=false;
+      return;     
     }
   }
 }
@@ -105,4 +107,25 @@ void gameOver(){
       return;
     }
   }
+}
+
+void splashScreen() {
+  RED_LED_FLAG=true, GREEN_LED_FLAG=true, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=true;
+  switchLeds();
+  
+  lcd.setAddressingMode(lcd.HorizontalAddressingMode);
+  uint8_t buff[32];
+  for(uint8_t i = 0; i < LCD_BYTE_SZIE/sizeof(buff); ++i) {
+    if(trexSelected){
+      memcpy_P(buff, splash_screen_bitmap + 2 + uint16_t(i) * sizeof(buff), sizeof(buff));
+      lcd.fillScreen(buff, sizeof(buff));
+    }
+    
+    else if(memoSelected){
+      memcpy_P(buff, memo_splash_screen_bitmap + 2 + uint16_t(i) * sizeof(buff), sizeof(buff));
+      lcd.fillScreen(buff, sizeof(buff));
+    }
+    
+  }
+  for(uint8_t i = 20; i; --i) delay(100);
 }

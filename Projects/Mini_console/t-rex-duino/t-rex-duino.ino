@@ -174,16 +174,3 @@ void gameLoop(uint16_t &hiScore) {
     prvT = millis();
   } 
 }
-
-void splashScreen() {
-  RED_LED_FLAG=true, GREEN_LED_FLAG=true, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=true;
-  switchLeds();
-  
-  lcd.setAddressingMode(lcd.HorizontalAddressingMode);
-  uint8_t buff[32];
-  for(uint8_t i = 0; i < LCD_BYTE_SZIE/sizeof(buff); ++i) {
-    memcpy_P(buff, splash_screen_bitmap + 2 + uint16_t(i) * sizeof(buff), sizeof(buff));
-    lcd.fillScreen(buff, sizeof(buff));
-  }
-  for(uint8_t i = 50; i && !isPressedJump(); --i) delay(100);
-}

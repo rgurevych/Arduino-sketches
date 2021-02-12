@@ -61,7 +61,7 @@ isNotTransparent: PixelTestFun = lambda px: len(px) < 4 or px[3] != 0
 
 #---
 
-imgPath = 'C:\Code\Arduino-sketches\AlexIII-t-rex-duino-5dbd390\game-assets-gen\game-bitmaps\select-screen.png'
+imgPath = 'C:\Code\Arduino-sketches\Mini_console\game-assets-gen\game-bitmaps\memo-splash-screen.png'
 # imgPath = sys.argv[1]
 im = Image.open(imgPath)
 width, height = im.size

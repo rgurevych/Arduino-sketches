@@ -68,7 +68,7 @@ void selectScreen(){
     if(blueButton.isPress()){
       trexSelected=true;
       memoSelected=false;
-      spalshScreen();
+      splashScreen();
       lcd.setAddressingMode(LCD_IF_VIRTUAL_WIDTH(lcd.VerticalAddressingMode, lcd.HorizontalAddressingMode));
       return;
     }

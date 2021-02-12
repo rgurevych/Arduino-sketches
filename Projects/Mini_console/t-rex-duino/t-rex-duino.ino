@@ -175,7 +175,7 @@ void gameLoop(uint16_t &hiScore) {
   } 
 }
 
-void spalshScreen() {
+void splashScreen() {
   RED_LED_FLAG=true, GREEN_LED_FLAG=true, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=true;
   switchLeds();
   

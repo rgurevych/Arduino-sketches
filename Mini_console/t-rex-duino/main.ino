@@ -4,30 +4,10 @@ void setup() {
   pinMode(BLUE_BUTTON, INPUT_PULLUP);
   pinMode(GREEN_BUTTON, INPUT_PULLUP);
   pinMode(YELLOW_BUTTON, INPUT_PULLUP);
-
-//  RED_LED_FLAG=true, GREEN_LED_FLAG=false, BLUE_LED_FLAG=false, YELLOW_LED_FLAG=false;
-//  switchLeds();
-//  delay(1500);
-//
-//  RED_LED_FLAG=false, GREEN_LED_FLAG=true, BLUE_LED_FLAG=false, YELLOW_LED_FLAG=false;
-//  switchLeds();
-//  delay(1500);
-//
-//  RED_LED_FLAG=false, GREEN_LED_FLAG=false, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=false;
-//  switchLeds();
-//  delay(1500);
-//
-//  RED_LED_FLAG=false, GREEN_LED_FLAG=false, BLUE_LED_FLAG=false, YELLOW_LED_FLAG=true;
-//  switchLeds();
-//  delay(1500);
-  
-  
+ 
   Serial.begin(250000);
   lcd.begin();
 
-  //selectScreen();
-    
-  //lcd.setAddressingMode(LCD_IF_VIRTUAL_WIDTH(lcd.VerticalAddressingMode, lcd.HorizontalAddressingMode));
   srand((randByte()<<8) | randByte());
 #ifdef RESET_HI_SCORE
   EEPROM.put(EEPROM_HI_SCORE, hiScore);
@@ -50,13 +30,7 @@ void loop() {
       firstStart = false;
       gameLoop(hiScore);
       EEPROM.put(EEPROM_HI_SCORE, hiScore);
-      //wait until the jump button is released
-      while(isPressedJump()) delay(100);
-      delay(500);
-    }
-
-    if(redButton.isPress()){
-      trexSelected=false;
+      gameOver();
     }
   }
 }
@@ -103,6 +77,32 @@ void selectScreen(){
 //      memoSelected=true;
 //      return;
       delay(1000);
+    }
+  }
+}
+
+void gameOver(){
+  RED_LED_FLAG=true, GREEN_LED_FLAG=false, BLUE_LED_FLAG=false, YELLOW_LED_FLAG=false;
+  switchLeds();
+  
+  while(1){
+    blueButton.tick();
+    redButton.tick();
+    
+    if(blinkTimer.isReady()){
+      blinkTimer.start();
+      RED_LED_FLAG = !RED_LED_FLAG;
+      BLUE_LED_FLAG = !BLUE_LED_FLAG;
+      switchLeds();
+    }
+    
+    if(blueButton.isPress()){
+      return;
+    }
+    
+    if(redButton.isPress()){
+      trexSelected=false;
+      return;
     }
   }
 }

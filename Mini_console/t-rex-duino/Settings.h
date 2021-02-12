@@ -13,8 +13,6 @@
 
 // -- Display Selection (uncomment ONE of the options) -- 
 #define LCD_SSD1309
-//#define LCD_SH1106      //If you see abnormal vertical line at the left edge of the display, select LCD_SSD1306
-//#define LCD_SSD1306     //If you see abnormal vertical line at the right edge of the display, select LCD_SH1106
 
 // -- Display Connection for SSD1309 --
 #define LCD_SSD1309_CS 2
@@ -22,10 +20,6 @@
 #define LCD_SSD1309_RESET 4
 //LCD_SSD1309_SDA -> 11 (SPI SCK)
 //LCD_SSD1309_SCL -> 13 (SPI MOSI)
-
-// -- Display Connection for SH1106/SSD1306 --
-//LCD_SH1106_SDA -> A4 (I2C SDA)
-//LCD_SH1106_SCL -> A5 (I2C SCL)
 
 /* Misc. Settings */
 //#define AUTO_PLAY //uncomment to enable auto-play mode

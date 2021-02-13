@@ -24,7 +24,6 @@ void loop() {
   }
   
   if(trexSelected){
-
       RED_LED_FLAG=false, GREEN_LED_FLAG=true, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=false;
       switchLeds();
       firstStart = false;
@@ -47,6 +46,7 @@ void selectScreen(){
   RED_LED_FLAG=false, GREEN_LED_FLAG=false, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=false;
   switchLeds();
   
+  lcd.setInverse(false);
   lcd.setAddressingMode(lcd.HorizontalAddressingMode);
   uint8_t buff[32];
   for(uint8_t i = 0; i < LCD_BYTE_SZIE/sizeof(buff); ++i) {

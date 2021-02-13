@@ -75,6 +75,7 @@ void selectScreen(){
     if(greenButton.isPress()){
       trexSelected=false;
       memoSelected=true;
+      tone(BUZZ_PIN, 1000, 1000);
       splashScreen();
       delay(1000);
       memoSelected=false;

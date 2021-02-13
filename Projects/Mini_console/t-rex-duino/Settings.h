@@ -9,7 +9,10 @@
 #define RED_BUTTON 14
 #define GREEN_BUTTON 15
 #define BLUE_BUTTON 16
-#define YELLOW_BUTTON 17  
+#define YELLOW_BUTTON 17
+
+// -- Buzzer --
+#define BUZZ_PIN 9
 
 // -- Display Selection (uncomment ONE of the options) -- 
 #define LCD_SSD1309

@@ -27,10 +27,17 @@ void loop() {
       RED_LED_FLAG=false, GREEN_LED_FLAG=true, BLUE_LED_FLAG=true, YELLOW_LED_FLAG=false;
       switchLeds();
       firstStart = false;
-      gameLoop(hiScore);
+      trexGameLoop(hiScore);
       EEPROM.put(EEPROM_HI_SCORE, hiScore);
       gameOver();
+  }
 
+  if(memoSelected){
+      RED_LED_FLAG=false, GREEN_LED_FLAG=false, BLUE_LED_FLAG=false, YELLOW_LED_FLAG=false;
+      switchLeds();
+      memoGameLoop();
+      //EEPROM.put(EEPROM_HI_SCORE, hiScore);
+      gameOver();
   }
 }
 
@@ -75,10 +82,7 @@ void selectScreen(){
     if(greenButton.isPress()){
       trexSelected=false;
       memoSelected=true;
-      tone(BUZZ_PIN, 1000, 1000);
       splashScreen();
-      delay(1000);
-      memoSelected=false;
       return;     
     }
   }

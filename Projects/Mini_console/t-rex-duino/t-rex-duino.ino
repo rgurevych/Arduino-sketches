@@ -46,7 +46,7 @@ void renderNumber(BitCanvas& canvas, Point2Di8 point, const uint16_t number) {
   }
 }
 
-void gameLoop(uint16_t &hiScore) {
+void trexGameLoop(uint16_t &hiScore) {
   uint8_t lcdBuff[LCD_PART_BUFF_SZ];
   VirtualBitCanvas bitCanvas(
     LCD_IF_VIRTUAL_WIDTH(VirtualBitCanvas::VIRTUAL_WIDTH, VirtualBitCanvas::VIRTUAL_HEIGHT), 

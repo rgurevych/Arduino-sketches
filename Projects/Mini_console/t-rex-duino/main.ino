@@ -25,7 +25,7 @@ void loop() {
   redButton.tick();
   
   if(!trexSelected && !memoSelected){
-    selectScreen();
+     selectScreen();
   }
   
   if(trexSelected){
@@ -114,6 +114,7 @@ void gameOver(){
     
     if(redButton.isPress()){
       trexSelected=false;
+      memoSelected=false;
       return;
     }
   }

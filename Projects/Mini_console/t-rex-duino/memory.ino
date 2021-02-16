@@ -82,8 +82,7 @@ void memoGameLoop() {
         showRndSequence();
         difficultyLevel = 1;
         nextState = STATE_START_GAME;
-        
-        break;
+        return;
     }
     currentState = nextState;
   }

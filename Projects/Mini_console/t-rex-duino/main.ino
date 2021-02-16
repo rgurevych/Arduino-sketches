@@ -4,6 +4,11 @@ void setup() {
   pinMode(BLUE_BUTTON, INPUT_PULLUP);
   pinMode(GREEN_BUTTON, INPUT_PULLUP);
   pinMode(YELLOW_BUTTON, INPUT_PULLUP);
+
+  pinMode(RED_LED, OUTPUT);
+  pinMode(BLUE_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(YELLOW_LED, OUTPUT);
  
   Serial.begin(250000);
   lcd.begin();

@@ -7,14 +7,14 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <RTClib.h>
-#include <GyverEncoder.h>
+#include <EncButton.h>
 
 
 // Pins
 #define PZEM_RX_PIN 12
 #define PZEM_TX_PIN 13
-#define CLKe A1        // encoder S1
-#define DTe A0         // encoder S2
+#define CLKe A0        // encoder S1
+#define DTe A1         // encoder S2
 #define SWe A2        // encoder Key
 
 
@@ -24,7 +24,7 @@
 
 
 // Settings
-#define DEBUG_MODE 1
+#define DEBUG_MODE 0
 #define RESET_CLOCK 0
 #define ENCODER_TYPE 1
 bool DEMO_MODE = true;
@@ -41,7 +41,7 @@ PZEM004Tv30 pzem;
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 RTC_DS3231 rtc;
 DateTime now;
-Encoder enc(CLKe, DTe, SWe);
+EncButton<EB_TICK, CLKe, DTe, SWe> enc;
 
 
 // Global variables
@@ -75,8 +75,6 @@ void setup() {
   now = rtc.now();
   
   pzem = PZEM004Tv30(pzemSWSerial);
-  
-  enc.setType(ENCODER_TYPE);
   
   // analogWrite(BACKLIGHT, LCD_BRIGHTNESS);
   lcd.init();
@@ -202,13 +200,13 @@ void printPowerData() {
 //    checkBacklight(true);
 //  }
 
-  if(enc.isClick()){
+  if(enc.click()){
 //    checkBacklight(true);
     mode = 1;
     screenReadyFlag = false;
     screen = 0;
     menu = 1;
-    enc.resetStates();
+    enc.resetState();
   }
   
   if (printTimer.isReady()){
@@ -309,7 +307,7 @@ void showMenu(){
     screenReadyFlag = true;
     }
 
-  if(enc.isRight()) {
+  if(enc.right()) {
     setMenuCursor();
     lcd.print(F(" "));
     menu += 1;
@@ -319,7 +317,7 @@ void showMenu(){
     lcd.setCursor(19,3); lcd.print(menu);
   }
 
-  if(enc.isLeft()) {
+  if(enc.left()) {
     setMenuCursor();
     lcd.print(F(" "));
     menu -= 1;
@@ -329,7 +327,7 @@ void showMenu(){
     lcd.setCursor(19,3); lcd.print(menu);
   }
   
-  if(enc.isClick()){
+  if(enc.click()){
     if(menu == 1){
       mode = 0;
       screenReadyFlag = false;

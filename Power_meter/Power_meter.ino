@@ -13,9 +13,9 @@
 // Pins
 #define PZEM_RX_PIN 12
 #define PZEM_TX_PIN 13
-#define CLKe 5        // encoder S1
-#define DTe 4         // encoder S2
-#define SWe 3        // encoder Key
+#define CLKe A1        // encoder S1
+#define DTe A0         // encoder S2
+#define SWe A2        // encoder Key
 
 
 // Timer durations
@@ -55,6 +55,7 @@ uint16_t mom_frequency = 0;
 uint16_t mom_pf = 0;
 byte mode = 0;
 byte screen = 0;
+byte menu = 1;
 
 //Flags
 bool screenReadyFlag = false;
@@ -123,7 +124,7 @@ void loop() {
   enc.tick();
   getPowerData();
   checkMode();
-  checkBacklight();
+
 }
 
 
@@ -188,10 +189,28 @@ void generatePowerData(){
 
 
 void checkMode(){
-  if (mode == 0) {printPowerData();}
+  if (mode == 0) {
+    printPowerData();
+    }
+  if (mode == 1) {
+    showMenu();
+  }
 }
 
 void printPowerData() {
+//  if(enc.isRight() || enc.isLeft()){
+//    checkBacklight(true);
+//  }
+
+  if(enc.isClick()){
+//    checkBacklight(true);
+    mode = 1;
+    screenReadyFlag = false;
+    screen = 0;
+    menu = 1;
+    enc.resetStates();
+  }
+  
   if (printTimer.isReady()){
 
     now = rtc.now();
@@ -264,9 +283,63 @@ void printPowerData() {
   }
 }
 
-void checkBacklight(){
-  if(enc.isClick()) {
-    lcdBacklight = !lcdBacklight;
-    lcd.setBacklight(lcdBacklight);
+
+//void checkBacklight(bool backlightState){
+//  if(lcdBacklight != backlightState){
+//    lcdBacklight = backlightState;
+//  }
+//  lcd.setBacklight(lcdBacklight);
+//}
+
+
+void showMenu(){
+  if (!screenReadyFlag) {
+    lcd.clear();
+    }
+    
+  if (!screenReadyFlag){
+    lcd.setCursor(5, 0);  lcd.print(F("Main menu"));
+    lcd.setCursor(1, 1);  lcd.print(F("Back"));
+    lcd.setCursor(1, 2);  lcd.print(F("Meter"));
+    lcd.setCursor(1, 3);  lcd.print(F("Charts"));
+    lcd.setCursor(11,1);  lcd.print(F("Min/max"));
+    lcd.setCursor(11,2);  lcd.print(F("Settings"));
+    setMenuCursor(); lcd.print(F(">"));
+    lcd.setCursor(19,3); lcd.print(menu);
+    screenReadyFlag = true;
+    }
+
+  if(enc.isRight()) {
+    setMenuCursor();
+    lcd.print(F(" "));
+    menu += 1;
+    if (menu > 5) menu = 1;
+    setMenuCursor();
+    lcd.print(F(">"));
+    lcd.setCursor(19,3); lcd.print(menu);
   }
+
+  if(enc.isLeft()) {
+    setMenuCursor();
+    lcd.print(F(" "));
+    menu -= 1;
+    if (menu < 1) menu = 5;
+    setMenuCursor();
+    lcd.print(F(">"));
+    lcd.setCursor(19,3); lcd.print(menu);
+  }
+  
+  if(enc.isClick()){
+    if(menu == 1){
+      mode = 0;
+      screenReadyFlag = false;
+      screen = 1;
+    }
+  }
+}
+
+
+void setMenuCursor() {
+  if (menu < 4) lcd.setCursor(0, menu);
+  else lcd.setCursor(10, menu-3);
 }

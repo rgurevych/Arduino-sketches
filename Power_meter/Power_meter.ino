@@ -8,6 +8,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <RTClib.h>
 #include <EncButton.h>
+#include <EEPROM.h>
 
 
 // Pins
@@ -24,9 +25,10 @@
 
 
 // Settings
+#define INIT_ADDR 1023  // номер резервной ячейки
+#define INIT_KEY 0     // ключ первого запуска. 0-254, на выбор
 #define DEBUG_MODE 0
 #define RESET_CLOCK 0
-#define ENCODER_TYPE 1
 bool DEMO_MODE = true;
 
 
@@ -50,12 +52,18 @@ uint16_t year;
 uint16_t mom_voltage = 0;
 uint16_t mom_current = 0;
 uint16_t mom_power = 0;
-long mom_energy = 0;
+uint32_t mom_energy = 0;
 uint16_t mom_frequency = 0;
 uint16_t mom_pf = 0;
 byte mode = 0;
 byte screen = 0;
 byte menu = 1;
+uint32_t latest_energy = 0;
+float day_energy = 0.1;
+float night_energy = 0.1;
+float total_energy = 0.1;
+byte lcd_bright = 50;
+
 
 //Flags
 bool screenReadyFlag = false;
@@ -65,6 +73,16 @@ bool lcdBacklight = true;
 void setup() {
   if (DEBUG_MODE) {
     Serial.begin(115200);
+  }
+
+  // Reset to default settings
+  if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
+    EEPROM.write(INIT_ADDR, INIT_KEY);
+    EEPROM.put(0, latest_energy);
+    EEPROM.put(4, day_energy);
+    EEPROM.put(8, night_energy);
+    EEPROM.put(12, total_energy);
+    EEPROM.put(16, lcd_bright);
   }
 
   // RTC module
@@ -189,9 +207,12 @@ void generatePowerData(){
 void checkMode(){
   if (mode == 0) {
     printPowerData();
-    }
+  }
   if (mode == 1) {
     showMenu();
+  }
+  if (mode == 2) {
+    showMeter();
   }
 }
 
@@ -274,11 +295,19 @@ void printPowerData() {
       lcd.setCursor(2,2); if(mom_power < 10000){lcd.print(F(" "));} if(mom_power < 1000){lcd.print(F(" "));} 
       if(mom_power < 100){lcd.print(F(" "));} if(mom_power < 10){lcd.print(F(" "));} lcd.print(mom_power);
       lcd.setCursor(14,2); lcd.print(mom_frequency / 10.0, 1);
-      lcd.setCursor(2,3); if(mom_energy < 10000){lcd.print(F(" "));} if(mom_energy < 1000){lcd.print(F(" "));} 
-      if(mom_energy < 100){lcd.print(F(" "));} lcd.print(mom_energy / 10.0, 1);
+      lcd.setCursor(2,3); printEnergy(mom_energy, false);
       lcd.setCursor(16,3); lcd.print(mom_pf / 100.0);
     }
   }
+}
+
+void printEnergy(float energy, bool meter_energy){
+  if(meter_energy && energy < 100000) lcd.print(F(" "));
+  if(energy < 10000) lcd.print(F(" ")); 
+  if(energy < 1000) lcd.print(F(" ")); 
+  if(energy < 100) lcd.print(F(" "));
+  if(meter_energy) lcd.print(energy, 1);
+  else lcd.print(energy / 10.0, 1);
 }
 
 
@@ -303,7 +332,6 @@ void showMenu(){
     lcd.setCursor(11,1);  lcd.print(F("Min/max"));
     lcd.setCursor(11,2);  lcd.print(F("Settings"));
     setMenuCursor(); lcd.print(F(">"));
-    lcd.setCursor(19,3); lcd.print(menu);
     screenReadyFlag = true;
     }
 
@@ -314,7 +342,6 @@ void showMenu(){
     if (menu > 5) menu = 1;
     setMenuCursor();
     lcd.print(F(">"));
-    lcd.setCursor(19,3); lcd.print(menu);
   }
 
   if(enc.left()) {
@@ -324,7 +351,6 @@ void showMenu(){
     if (menu < 1) menu = 5;
     setMenuCursor();
     lcd.print(F(">"));
-    lcd.setCursor(19,3); lcd.print(menu);
   }
   
   if(enc.click()){
@@ -333,6 +359,13 @@ void showMenu(){
       screenReadyFlag = false;
       screen = 1;
     }
+
+    if(menu == 2){
+      mode = 2;
+      screenReadyFlag = false;
+
+    }
+    enc.resetState();
   }
 }
 
@@ -340,4 +373,30 @@ void showMenu(){
 void setMenuCursor() {
   if (menu < 4) lcd.setCursor(0, menu);
   else lcd.setCursor(10, menu-3);
+}
+
+
+void showMeter(){
+  if (!screenReadyFlag) {
+    lcd.clear();
+    }
+    
+  if (!screenReadyFlag){
+    EEPROM.get(4, day_energy);
+    EEPROM.get(8, night_energy);
+    EEPROM.get(12, total_energy);
+    
+    lcd.setCursor(3, 0);  lcd.print(F("Energy meter"));
+    lcd.setCursor(0, 1);  lcd.print(F("Day:"));  printEnergy(day_energy, true);  lcd.print(F("kWh"));
+    lcd.setCursor(0, 2);  lcd.print(F("Ngt:"));  printEnergy(night_energy, true);  lcd.print(F("kWh"));
+    lcd.setCursor(0, 3);  lcd.print(F("Tot:"));  printEnergy(total_energy, true);  lcd.print(F("kWh"));
+    screenReadyFlag = true;
+    }
+  
+  if(enc.click()){
+    mode = 1;
+    screenReadyFlag = false;
+
+    enc.resetState();
+  }
 }

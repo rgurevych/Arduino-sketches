@@ -21,7 +21,8 @@
 
 // Timer durations
 #define MEASURE_TIMEOUT 1500             //Interval between measure occurs
-#define PRINT_TIMEOUT 500               //Interval between printing to the screen occurs
+#define TIME_TICKER 1000                 //Interval for reading the time from RTC module
+#define PRINT_TIMEOUT 500                //Interval between printing to the screen occurs
 
 
 // Settings
@@ -29,12 +30,15 @@
 #define INIT_KEY 0     // ключ первого запуска. 0-254, на выбор
 #define DEBUG_MODE 0
 #define RESET_CLOCK 0
+#define DAY_TARIFF_START 7
+#define NIGHT_TARIFF_START 23
 bool DEMO_MODE = true;
 
 
 // Timers:
 GTimer measureTimer(MS, MEASURE_TIMEOUT);
 GTimer printTimer(MS, PRINT_TIMEOUT);
+GTimer timeTimer(MS, TIME_TICKER);
 
 
 // Setting up modules
@@ -58,16 +62,17 @@ uint16_t mom_pf = 0;
 byte mode = 0;
 byte screen = 0;
 byte menu = 1;
-uint32_t latest_energy = 0;
-float day_energy = 0.1;
-float night_energy = 0.1;
-float total_energy = 0.1;
+float latest_energy = 0;
+float day_energy = 0;
+float night_energy = 0;
+float total_energy = 0;
 byte lcd_bright = 50;
 
 
 //Flags
 bool screenReadyFlag = false;
 bool lcdBacklight = true;
+bool recordMeterDoneFlag = false;
 
 
 void setup() {
@@ -83,6 +88,11 @@ void setup() {
     EEPROM.put(8, night_energy);
     EEPROM.put(12, total_energy);
     EEPROM.put(16, lcd_bright);
+    EEPROM.put(100, latest_energy);
+    EEPROM.put(104, day_energy);
+    EEPROM.put(108, night_energy);
+    EEPROM.put(112, total_energy);
+    EEPROM.put(116, lcd_bright);
   }
 
   // RTC module
@@ -140,7 +150,7 @@ void loop() {
   enc.tick();
   getPowerData();
   checkMode();
-
+  recordMeter();
 }
 
 
@@ -208,21 +218,22 @@ void checkMode(){
   if (mode == 0) {
     printPowerData();
   }
+  else {
+    backgroundTime();
+  }
+  
   if (mode == 1) {
     showMenu();
   }
+  
   if (mode == 2) {
     showMeter();
   }
 }
 
 void printPowerData() {
-//  if(enc.isRight() || enc.isLeft()){
-//    checkBacklight(true);
-//  }
 
   if(enc.click()){
-//    checkBacklight(true);
     mode = 1;
     screenReadyFlag = false;
     screen = 0;
@@ -232,13 +243,7 @@ void printPowerData() {
   
   if (printTimer.isReady()){
 
-    now = rtc.now();
-    second = now.second();
-    min = now.minute();
-    hour = now.hour();
-    day = now.day();
-    month = now.month();
-    year = now.year();
+    getTime();
     
     if (DEBUG_MODE) {
       Serial.print(hour); Serial.print(F(":")); Serial.print(min); Serial.print(F(":")); Serial.print(second);
@@ -311,12 +316,70 @@ void printEnergy(float energy, bool meter_energy){
 }
 
 
-//void checkBacklight(bool backlightState){
-//  if(lcdBacklight != backlightState){
-//    lcdBacklight = backlightState;
-//  }
-//  lcd.setBacklight(lcdBacklight);
-//}
+void getTime() {
+  now = rtc.now();
+  second = now.second();
+  min = now.minute();
+  hour = now.hour();
+  day = now.day();
+  month = now.month();
+  year = now.year();
+}
+
+
+void backgroundTime(){
+  if (timeTimer.isReady()){
+    getTime();
+  }
+}
+
+
+void recordMeter(){
+  if(min == 0 && !recordMeterDoneFlag){
+    if (pzem.readAddress() != 0 || DEMO_MODE) {
+      updateMeter();
+    }
+    recordMeterDoneFlag = true;
+  }
+  else if(min != 0) {
+    recordMeterDoneFlag = false;
+  }
+}
+
+
+void updateMeter(){
+  byte s;
+  float recordEnergy;
+  if (DEMO_MODE) {
+    s = 100;
+    recordEnergy = mom_energy / 10.0;
+  }
+  else {
+    s = 0;
+    recordEnergy = pzem.energy();
+  }
+  
+  EEPROM.get(0+s, latest_energy);
+  EEPROM.get(4+s, day_energy);
+  EEPROM.get(8+s, night_energy);
+  EEPROM.get(12+s, total_energy);
+  float energyDelta = recordEnergy - latest_energy;           //Считаем разницу между текущими и сохраненными ранее показаниями
+  if (energyDelta < 0){                                       //Если разница меньше 0, значит счетчик сбрасывали
+    energyDelta = recordEnergy;                               //поэтому в таком случае учитываем полное значение счетчика (разница между текущими показаниями и 0)
+  }
+  EEPROM.put(0+s, recordEnergy);
+
+  if(hour > DAY_TARIFF_START && hour <= NIGHT_TARIFF_START) {
+    day_energy += energyDelta;
+    EEPROM.put(4+s, day_energy);
+  }
+  else {
+    night_energy += energyDelta;
+    EEPROM.put(8+s, night_energy);
+  }
+  total_energy = day_energy + night_energy;
+  EEPROM.put(12+s, total_energy);
+}
 
 
 void showMenu(){
@@ -377,14 +440,18 @@ void setMenuCursor() {
 
 
 void showMeter(){
+  byte s;
+  if (DEMO_MODE) s = 100; 
+  else s = 0;
+  
   if (!screenReadyFlag) {
     lcd.clear();
     }
     
   if (!screenReadyFlag){
-    EEPROM.get(4, day_energy);
-    EEPROM.get(8, night_energy);
-    EEPROM.get(12, total_energy);
+    EEPROM.get(4+s, day_energy);
+    EEPROM.get(8+s, night_energy);
+    EEPROM.get(12+s, total_energy);
     
     lcd.setCursor(3, 0);  lcd.print(F("Energy meter"));
     lcd.setCursor(0, 1);  lcd.print(F("Day:"));  printEnergy(day_energy, true);  lcd.print(F("kWh"));

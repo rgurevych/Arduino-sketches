@@ -23,11 +23,12 @@
 #define MEASURE_TIMEOUT 1500             //Interval between measure occurs
 #define TIME_TICKER 1000                 //Interval for reading the time from RTC module
 #define PRINT_TIMEOUT 500                //Interval between printing to the screen occurs
+#define MENU_EXIT_TIMEOUT 120000         //Interval for automatic exit from menu
 
 
 // Settings
-#define INIT_ADDR 1023  // номер резервной ячейки
-#define INIT_KEY 0     // ключ первого запуска. 0-254, на выбор
+#define INIT_ADDR 1023                    // Number of EEPROM initial cell
+#define INIT_KEY 0                        // First launch key
 #define DEBUG_MODE 0
 #define RESET_CLOCK 0
 #define DAY_TARIFF_START 7
@@ -39,6 +40,7 @@ bool DEMO_MODE = true;
 GTimer measureTimer(MS, MEASURE_TIMEOUT);
 GTimer printTimer(MS, PRINT_TIMEOUT);
 GTimer timeTimer(MS, TIME_TICKER);
+GTimer menuExitTimer;
 
 
 // Setting up modules
@@ -51,7 +53,7 @@ EncButton<EB_TICK, CLKe, DTe, SWe> enc;
 
 
 // Global variables
-uint8_t hour, min, second, month, day;
+uint8_t hour, min, second, month, day, new_hour, new_min, new_second, new_month, new_day, new_year;
 uint16_t year;
 uint16_t mom_voltage = 0;
 uint16_t mom_current = 0;
@@ -73,6 +75,7 @@ byte lcd_bright = 50;
 bool screenReadyFlag = false;
 bool lcdBacklight = true;
 bool recordMeterDoneFlag = false;
+bool blinkFlag = true;
 
 
 void setup() {
@@ -141,6 +144,7 @@ void setup() {
     }
   }
   delay(2000);
+  menuExitTimer.setTimeout(MENU_EXIT_TIMEOUT);
 
   //pzem.resetEnergy();
 }
@@ -215,6 +219,12 @@ void generatePowerData(){
 
 
 void checkMode(){
+  if(mode != 0 && menuExitTimer.isReady()) {
+    mode = 0;
+    screen = 1;
+    screenReadyFlag = false;
+  }
+  
   if (mode == 0) {
     printPowerData();
   }
@@ -223,11 +233,19 @@ void checkMode(){
   }
   
   if (mode == 1) {
-    showMenu();
+    mainMenu();
   }
   
   if (mode == 2) {
     showMeter();
+  }
+
+  if (mode == 5) {
+    settingsMenu();
+  }
+
+  if (mode == 6) {
+    setTime();
   }
 }
 
@@ -239,6 +257,7 @@ void printPowerData() {
     screen = 0;
     menu = 1;
     enc.resetState();
+    menuExitTimer.start();
   }
   
   if (printTimer.isReady()){
@@ -382,7 +401,7 @@ void updateMeter(){
 }
 
 
-void showMenu(){
+void mainMenu(){
   if (!screenReadyFlag) {
     lcd.clear();
     }
@@ -405,6 +424,7 @@ void showMenu(){
     if (menu > 5) menu = 1;
     setMenuCursor();
     lcd.print(F(">"));
+    menuExitTimer.start();
   }
 
   if(enc.left()) {
@@ -414,6 +434,7 @@ void showMenu(){
     if (menu < 1) menu = 5;
     setMenuCursor();
     lcd.print(F(">"));
+    menuExitTimer.start();
   }
   
   if(enc.click()){
@@ -428,7 +449,14 @@ void showMenu(){
       screenReadyFlag = false;
 
     }
+
+    if(menu == 5){
+      mode = 5;
+      screenReadyFlag = false;
+      menu = 1;
+    }
     enc.resetState();
+    menuExitTimer.start();
   }
 }
 
@@ -436,6 +464,69 @@ void showMenu(){
 void setMenuCursor() {
   if (menu < 4) lcd.setCursor(0, menu);
   else lcd.setCursor(10, menu-3);
+}
+
+
+void settingsMenu(){
+  if (!screenReadyFlag) {
+    lcd.clear();
+    }
+    
+  if (!screenReadyFlag){
+    lcd.setCursor(6, 0);  lcd.print(F("Settings"));
+    lcd.setCursor(1, 1);  lcd.print(F("Back"));
+    lcd.setCursor(1, 2);  lcd.print(F("Time&Date"));
+    lcd.setCursor(1, 3);  lcd.print(F("Set Meter"));
+    lcd.setCursor(11,1);  lcd.print(F("Bright"));
+    lcd.setCursor(11,2);  lcd.print(F("Mode"));
+    lcd.setCursor(11,3);  lcd.print(F("Reset"));
+    setMenuCursor(); lcd.print(F(">"));
+    screenReadyFlag = true;
+    }
+
+  if(enc.right()) {
+    setMenuCursor();
+    lcd.print(F(" "));
+    menu += 1;
+    if (menu > 6) menu = 1;
+    setMenuCursor();
+    lcd.print(F(">"));
+    menuExitTimer.start();
+  }
+
+  if(enc.left()) {
+    setMenuCursor();
+    lcd.print(F(" "));
+    menu -= 1;
+    if (menu < 1) menu = 6;
+    setMenuCursor();
+    lcd.print(F(">"));
+    menuExitTimer.start();
+  }
+  
+  if(enc.click()){
+    if(menu == 1){
+      mode = 1;
+      menu = 5;
+      screenReadyFlag = false;
+      screen = 1;
+    }
+
+    if(menu == 2){
+      mode = 6;
+      menu = 1;
+      screenReadyFlag = false;
+
+    }
+//
+//    if(menu == 5){
+//      mode = 5;
+//      screenReadyFlag = false;
+//      menu = 1;
+//    }
+    enc.resetState();
+    menuExitTimer.start();
+  }
 }
 
 
@@ -453,7 +544,7 @@ void showMeter(){
     EEPROM.get(8+s, night_energy);
     EEPROM.get(12+s, total_energy);
     
-    lcd.setCursor(3, 0);  lcd.print(F("Energy meter"));
+    lcd.setCursor(4, 0);  lcd.print(F("Energy meter"));
     lcd.setCursor(0, 1);  lcd.print(F("Day:"));  printEnergy(day_energy, true);  lcd.print(F("kWh"));
     lcd.setCursor(0, 2);  lcd.print(F("Ngt:"));  printEnergy(night_energy, true);  lcd.print(F("kWh"));
     lcd.setCursor(0, 3);  lcd.print(F("Tot:"));  printEnergy(total_energy, true);  lcd.print(F("kWh"));
@@ -465,5 +556,173 @@ void showMeter(){
     screenReadyFlag = false;
 
     enc.resetState();
+  }
+}
+
+
+void setTime(){
+  if (!screenReadyFlag) {
+    lcd.clear();
+    }
+    
+  if (!screenReadyFlag){
+    lcd.setCursor(2, 0);  lcd.print(F("Set time&date"));
+    lcd.setCursor(0, 1);  lcd.print(F("Time:")); lcd.setCursor(7, 1); lcd.print(F(":")); lcd.setCursor(10,1); lcd.print(F(":"));
+    lcd.setCursor(0, 2);  lcd.print(F("Date:")); lcd.setCursor(7, 2); lcd.print(F("/")); lcd.setCursor(10,2); lcd.print(F("/"));
+    lcd.setCursor(2, 3);  lcd.print(F("Back"));
+    lcd.setCursor(12, 3);  lcd.print(F("Save"));
+    
+    new_hour = hour;
+    new_min = min;
+    new_second = second;
+    new_day = day;
+    new_month = month;
+    new_year = year - 2000;
+    screenReadyFlag = true;
+    }
+
+  if(printTimer.isReady()) {
+    lcd.setCursor(5,1); if (new_hour < 10){lcd.print(F("0"));} lcd.print(new_hour); 
+    lcd.setCursor(8,1); if (new_min < 10){lcd.print(F("0"));} lcd.print(new_min); 
+    lcd.setCursor(11,1); if (new_second < 10){lcd.print(F("0"));} lcd.print(new_second);
+    lcd.setCursor(5,2); if (new_day < 10){lcd.print(F("0"));} lcd.print(new_day); 
+    lcd.setCursor(8,2); if (new_month < 10){lcd.print(F("0"));} lcd.print(new_month); 
+    lcd.setCursor(11,2); lcd.print(new_year);
+    blinkFlag = !blinkFlag;
+    if(blinkFlag) 
+      timeSetMenu(menu);
+  }
+  
+  if(enc.right()) {
+    menu += 1;
+    if (menu > 8) menu = 1;
+    timeSetMenu(menu);
+    menuExitTimer.start();
+  }
+
+  if(enc.left()) {
+    menu -= 1;
+    if (menu < 1) menu = 8;
+    timeSetMenu(menu);
+    menuExitTimer.start();
+  }
+
+  if(enc.rightH()) {
+    adjustTimeDate(1, menu);
+    timeSetMenu(menu);
+    menuExitTimer.start();
+  }
+
+  if(enc.leftH()) {
+    adjustTimeDate(-1, menu);
+    timeSetMenu(menu);
+    menuExitTimer.start();
+  }
+  
+  if(enc.click()){
+    menuExitTimer.start();
+    if(menu == 7){
+      mode = 5;
+      menu = 2;
+      screenReadyFlag = false;
+      screen = 1;
+      enc.resetState();
+    }
+
+    if(menu == 8){
+      rtc.adjust(DateTime(2000+new_year, new_month, new_day, new_hour, new_min, new_second));
+      mode = 5;
+      menu = 2;
+      screen = 1;
+      screenReadyFlag = false;
+    }
+  }
+}
+
+void timeSetMenu(byte menu){
+  lcd.setCursor(1, 3);  lcd.print(F(" "));
+  lcd.setCursor(11, 3); lcd.print(F(" "));
+  
+  switch(menu){
+    case 1:
+      lcd.setCursor(5,1);
+      lcd.print(F("  "));
+      break;
+
+    case 2:
+      lcd.setCursor(8,1);
+      lcd.print(F("  "));
+      break;
+
+    case 3:
+      lcd.setCursor(11,1);
+      lcd.print(F("  "));
+      break;
+
+    case 4:
+      lcd.setCursor(5,2);
+      lcd.print(F("  "));
+      break;
+
+    case 5:
+      lcd.setCursor(8,2);
+      lcd.print(F("  "));
+      break;
+
+    case 6:
+      lcd.setCursor(11,2);
+      lcd.print(F("  "));
+      break;
+
+    case 7:
+      lcd.setCursor(1, 3);
+      lcd.print(F(">"));
+      break;
+
+    case 8:
+      lcd.setCursor(11, 3);
+      lcd.print(F(">"));
+      break;
+  }
+}
+
+
+void adjustTimeDate(int8_t delta, byte menu){
+  switch(menu){
+    case 1:
+      new_hour += delta;
+      if(new_hour > 23) new_hour = 0;
+      if(new_hour < 0) new_hour = 23;
+      break;
+
+    case 2:
+      new_min += delta;
+      if(new_min > 59) new_min = 0;
+      if(new_min < 0) new_min = 59;
+      break;
+
+    case 3:
+      new_second += delta;
+      if(new_second > 59) new_second = 0;
+      if(new_second < 0) new_second = 59;
+      break;
+
+    case 4:
+      new_day += delta;
+      if(new_day > 31) new_day = 0;
+      if(new_day < 0) new_day = 31;
+      break;
+
+    case 5:
+      new_month += delta;
+      if(new_month > 31) new_month = 0;
+      if(new_month < 0) new_month = 31;
+      break;
+
+    case 6:
+      new_year += delta;
+      if(new_year > 99) new_year = 20;
+      if(new_year < 20) new_year = 99;
+      break;
   }
 }

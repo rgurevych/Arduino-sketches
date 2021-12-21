@@ -247,6 +247,10 @@ void checkMode(){
   if (mode == 6) {
     setTime();
   }
+
+  if (mode == 7) {
+    setMeter();
+  }
 }
 
 void printPowerData() {
@@ -516,8 +520,14 @@ void settingsMenu(){
       mode = 6;
       menu = 1;
       screenReadyFlag = false;
-
     }
+
+    if(menu == 3){
+      mode = 7;
+      menu = 1;
+      screenReadyFlag = false;
+    }
+
 //
 //    if(menu == 5){
 //      mode = 5;
@@ -639,6 +649,7 @@ void setTime(){
   }
 }
 
+
 void timeSetMenu(byte menu){
   lcd.setCursor(1, 3);  lcd.print(F(" "));
   lcd.setCursor(11, 3); lcd.print(F(" "));
@@ -687,7 +698,114 @@ void timeSetMenu(byte menu){
 }
 
 
-void adjustTimeDate(int8_t delta, byte menu){
+void setMeter(){
+  byte s;
+  if (DEMO_MODE) s = 100; 
+  else s = 0;
+  
+  if (!screenReadyFlag) {
+    lcd.clear();
+    }
+    
+  if (!screenReadyFlag){
+    lcd.setCursor(2, 0);  lcd.print(F("Adjust meter"));
+    lcd.setCursor(0, 1);  lcd.print(F("Day:")); lcd.setCursor(12, 1); lcd.print(F("kWh"));
+    lcd.setCursor(0, 2);  lcd.print(F("Ngt:")); lcd.setCursor(12, 2); lcd.print(F("kWh"));
+    lcd.setCursor(2, 3);  lcd.print(F("Back"));
+    lcd.setCursor(12, 3);  lcd.print(F("Save"));
+    EEPROM.get(4+s, day_energy);
+    EEPROM.get(8+s, night_energy);
+    screenReadyFlag = true;
+    }
+
+  if(printTimer.isReady()) {
+    lcd.setCursor(4,1); printEnergy(day_energy, true);
+    lcd.setCursor(4,2); printEnergy(night_energy, true);
+    meterSetMenu(menu);
+    blinkFlag = !blinkFlag;
+  }
+  
+  if(enc.right()) {
+    menu += 1;
+    if (menu > 4) menu = 1;
+    meterSetMenu(menu);
+    menuExitTimer.start();
+  }
+
+  if(enc.left()) {
+    menu -= 1;
+    if (menu < 1) menu = 4;
+    meterSetMenu(menu);
+    menuExitTimer.start();
+  }
+
+  if(enc.rightH()) {
+    if (enc.fast()) adjustTimeDate(5, menu + 10);
+    else adjustTimeDate(0.1, menu + 10);
+    meterSetMenu(menu);
+  }
+
+  if(enc.leftH()) {
+    if (enc.fast()) adjustTimeDate(-5, menu + 10);
+    else adjustTimeDate(-0.1, menu + 10);
+    meterSetMenu(menu);
+  }
+  
+  if(enc.click()){
+    menuExitTimer.start();
+    if(menu == 3){
+      mode = 5;
+      menu = 3;
+      screen = 1;
+      screenReadyFlag = false;
+    }
+
+    if(menu == 4){
+      EEPROM.put(4+s, day_energy);
+      EEPROM.put(8+s, night_energy);
+      total_energy = day_energy + night_energy;
+      EEPROM.put(12+s, total_energy);
+      mode = 5;
+      menu = 3;
+      screen = 1;
+      screenReadyFlag = false;
+    }
+    enc.resetState();
+  }
+}
+
+
+void meterSetMenu(byte menu){
+  lcd.setCursor(1, 3);  lcd.print(F(" "));
+  lcd.setCursor(11, 3); lcd.print(F(" "));
+  lcd.setCursor(15, 1); lcd.print(F(" "));
+  lcd.setCursor(15, 2); lcd.print(F(" "));
+  
+  switch(menu){
+    case 1:
+      lcd.setCursor(15,1);
+      if(blinkFlag) lcd.print(F("<")); 
+      break;
+
+    case 2:
+      lcd.setCursor(15,2);
+      if(blinkFlag) lcd.print(F("<")); 
+      break;
+
+    case 3:
+      lcd.setCursor(1, 3);
+      lcd.print(F(">"));
+      break;
+
+    case 4:
+      lcd.setCursor(11, 3);
+      lcd.print(F(">"));
+      break;
+  }
+}
+
+
+void adjustTimeDate(float delta, byte menu){
   switch(menu){
     case 1:
       new_hour += delta;
@@ -723,6 +841,16 @@ void adjustTimeDate(int8_t delta, byte menu){
       new_year += delta;
       if(new_year > 99) new_year = 20;
       if(new_year < 20) new_year = 99;
+      break;
+
+    case 11:
+      day_energy += delta;
+      if(day_energy < 0) day_energy = 0;
+      break;
+
+    case 12:
+      night_energy += delta;
+      if(night_energy < 0) night_energy = 0;
       break;
   }
 }

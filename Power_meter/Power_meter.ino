@@ -304,11 +304,11 @@ void mainMenu(){
     
   if (!screenReadyFlag){
     lcd.setCursor(5, 0);  lcd.print(F("Main menu"));
-    lcd.setCursor(1, 1);  lcd.print(F("Back"));
-    lcd.setCursor(1, 2);  lcd.print(F("Meter"));
+    lcd.setCursor(1, 1);  lcd.print(F("Back       Min/max"));
+    lcd.setCursor(1, 2);  lcd.print(F("Meter      Settings"));
     lcd.setCursor(1, 3);  lcd.print(F("Charts"));
-    lcd.setCursor(11,1);  lcd.print(F("Min/max"));
-    lcd.setCursor(11,2);  lcd.print(F("Settings"));
+//    lcd.setCursor(11,1);  lcd.print(F("Min/max"));
+//    lcd.setCursor(11,2);  lcd.print(F("Settings"));
     setMenuCursor(); lcd.print(F(">"));
     screenReadyFlag = true;
     }
@@ -359,7 +359,7 @@ void mainMenu(){
 
 void setMenuCursor() {
   if (menu < 4) lcd.setCursor(0, menu);
-  else lcd.setCursor(10, menu-3);
+  else lcd.setCursor(11, menu-3);
 }
 
 
@@ -370,12 +370,12 @@ void settingsMenu(){
     
   if (!screenReadyFlag){
     lcd.setCursor(6, 0);  lcd.print(F("Settings"));
-    lcd.setCursor(1, 1);  lcd.print(F("Back"));
-    lcd.setCursor(1, 2);  lcd.print(F("Time&Date"));
-    lcd.setCursor(1, 3);  lcd.print(F("Set Meter"));
-    lcd.setCursor(11,1);  lcd.print(F("Bright"));
-    lcd.setCursor(11,2);  lcd.print(F("Mode"));
-    lcd.setCursor(11,3);  lcd.print(F("Reset"));
+    lcd.setCursor(1, 1);  lcd.print(F("Back       Bright"));
+    lcd.setCursor(1, 2);  lcd.print(F("Time&Date  Mode"));
+    lcd.setCursor(1, 3);  lcd.print(F("Set meter  Reset"));
+//    lcd.setCursor(11,1);  lcd.print(F("Bright"));
+//    lcd.setCursor(11,2);  lcd.print(F("Mode"));
+//    lcd.setCursor(11,3);  lcd.print(F("Reset"));
     setMenuCursor(); lcd.print(F(">"));
     screenReadyFlag = true;
     }

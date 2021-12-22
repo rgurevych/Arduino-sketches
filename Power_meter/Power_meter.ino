@@ -99,8 +99,8 @@ void setup() {
     EEPROM.put(116, lcd_bright);
   }
 
-  EEPROM.get(16, lcd_bright);
   pinMode(BACKLIGHT, OUTPUT);
+  getBrightness();
   
   // RTC module
   rtc.begin();
@@ -110,8 +110,7 @@ void setup() {
   now = rtc.now();
   
   pzem = PZEM004Tv30(pzemSWSerial);
-  
-  analogWrite(BACKLIGHT, lcd_bright*15);
+
   lcd.init();
   lcd.setBacklight(lcdBacklight);
   lcd.clear();
@@ -201,8 +200,14 @@ void checkMode(){
   }
 }
 
-void printPowerData() {
 
+void getBrightness(){
+  EEPROM.get(16, lcd_bright);
+  analogWrite(BACKLIGHT, lcd_bright*15);
+}
+
+
+void printPowerData() {
   if(enc.click()){
     mode = 1;
     screenReadyFlag = false;
@@ -315,8 +320,6 @@ void mainMenu(){
     lcd.setCursor(1, 1);  lcd.print(F("Back       Min/max"));
     lcd.setCursor(1, 2);  lcd.print(F("Meter      Settings"));
     lcd.setCursor(1, 3);  lcd.print(F("Charts"));
-//    lcd.setCursor(11,1);  lcd.print(F("Min/max"));
-//    lcd.setCursor(11,2);  lcd.print(F("Settings"));
     setMenuCursor(); lcd.print(F(">"));
     screenReadyFlag = true;
     }
@@ -381,9 +384,6 @@ void settingsMenu(){
     lcd.setCursor(1, 1);  lcd.print(F("Back       Bright"));
     lcd.setCursor(1, 2);  lcd.print(F("Time&Date  Mode"));
     lcd.setCursor(1, 3);  lcd.print(F("Set meter  Reset"));
-//    lcd.setCursor(11,1);  lcd.print(F("Bright"));
-//    lcd.setCursor(11,2);  lcd.print(F("Mode"));
-//    lcd.setCursor(11,3);  lcd.print(F("Reset"));
     setMenuCursor(); lcd.print(F(">"));
     screenReadyFlag = true;
     }
@@ -448,7 +448,6 @@ void setTime(){
     lcd.setCursor(0, 1);  lcd.print(F("Time:")); lcd.setCursor(7, 1); lcd.print(F(":")); lcd.setCursor(10,1); lcd.print(F(":"));
     lcd.setCursor(0, 2);  lcd.print(F("Date:")); lcd.setCursor(7, 2); lcd.print(F("/")); lcd.setCursor(10,2); lcd.print(F("/"));
     lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
-//    lcd.setCursor(12, 3);  lcd.print(F("Save"));
     
     new_hour = hour;
     new_min = min;
@@ -580,7 +579,6 @@ void setMeter(){
     lcd.setCursor(0, 1);  lcd.print(F("Day:")); lcd.setCursor(12, 1); lcd.print(F("kWh"));
     lcd.setCursor(0, 2);  lcd.print(F("Ngt:")); lcd.setCursor(12, 2); lcd.print(F("kWh"));
     lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
-//    lcd.setCursor(12, 3);  lcd.print(F("Save"));
     getMeterData(s);
     screenReadyFlag = true;
     }
@@ -681,7 +679,7 @@ void setBright(){
     lcd.setCursor(1, 0);  lcd.print(F("Adjust brightness"));
     lcd.setCursor(0, 1);  lcd.print(F("Brightness:")); 
     lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
-    EEPROM.get(16, lcd_bright);
+    getBrightness();
     screenReadyFlag = true;
     }
 
@@ -718,8 +716,7 @@ void setBright(){
   if(enc.click()){
     menuExitTimer.start();
     if(menu == 2){
-      EEPROM.get(16, lcd_bright);
-      analogWrite(BACKLIGHT, lcd_bright*15);
+      getBrightness();
       mode = 5;
       menu = 4;
       screen = 1;

@@ -441,8 +441,8 @@ void setTime(){
     lcd.setCursor(2, 0);  lcd.print(F("Set time&date"));
     lcd.setCursor(0, 1);  lcd.print(F("Time:")); lcd.setCursor(7, 1); lcd.print(F(":")); lcd.setCursor(10,1); lcd.print(F(":"));
     lcd.setCursor(0, 2);  lcd.print(F("Date:")); lcd.setCursor(7, 2); lcd.print(F("/")); lcd.setCursor(10,2); lcd.print(F("/"));
-    lcd.setCursor(2, 3);  lcd.print(F("Back"));
-    lcd.setCursor(12, 3);  lcd.print(F("Save"));
+    lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
+//    lcd.setCursor(12, 3);  lcd.print(F("Save"));
     
     new_hour = hour;
     new_min = min;
@@ -573,8 +573,8 @@ void setMeter(){
     lcd.setCursor(2, 0);  lcd.print(F("Adjust meter"));
     lcd.setCursor(0, 1);  lcd.print(F("Day:")); lcd.setCursor(12, 1); lcd.print(F("kWh"));
     lcd.setCursor(0, 2);  lcd.print(F("Ngt:")); lcd.setCursor(12, 2); lcd.print(F("kWh"));
-    lcd.setCursor(2, 3);  lcd.print(F("Back"));
-    lcd.setCursor(12, 3);  lcd.print(F("Save"));
+    lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
+//    lcd.setCursor(12, 3);  lcd.print(F("Save"));
     getMeterData(s);
     screenReadyFlag = true;
     }

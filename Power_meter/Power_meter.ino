@@ -34,7 +34,6 @@
 #define RESET_CLOCK 0
 #define DAY_TARIFF_START 7
 #define NIGHT_TARIFF_START 23
-bool DEMO_MODE = true;
 
 
 // Timers:
@@ -70,6 +69,7 @@ float day_energy = 0;
 float night_energy = 0;
 float total_energy = 0;
 byte lcd_bright = 5;
+bool newDemoMode;
 
 
 //Flags
@@ -77,6 +77,7 @@ bool screenReadyFlag = false;
 bool lcdBacklight = true;
 bool recordMeterDoneFlag = false;
 bool blinkFlag = true;
+bool DEMO_MODE = true;
 
 
 void setup() {
@@ -96,7 +97,7 @@ void setup() {
     EEPROM.put(104, day_energy);
     EEPROM.put(108, night_energy);
     EEPROM.put(112, total_energy);
-    EEPROM.put(116, lcd_bright);
+    EEPROM.put(18, 0);
   }
 
   pinMode(BACKLIGHT, OUTPUT);
@@ -111,6 +112,8 @@ void setup() {
   
   pzem = PZEM004Tv30(pzemSWSerial);
 
+  EEPROM.get(18, DEMO_MODE);
+  
   lcd.init();
   lcd.setBacklight(lcdBacklight);
   lcd.clear();
@@ -197,6 +200,10 @@ void checkMode(){
 
   if (mode == 8) {
     setBright();
+  }
+
+  if (mode == 9) {
+    setDemoMode();
   }
 }
 
@@ -417,22 +424,28 @@ void settingsMenu(){
       screen = 1;
     }
 
-    if(menu == 2){
+    else if(menu == 2){
       mode = 6;
       menu = 1;
       screenReadyFlag = false;
     }
 
-    if(menu == 3){
+    else if(menu == 3){
       mode = 7;
       menu = 1;
       screenReadyFlag = false;
     }
 
-    if(menu == 4){
+    else if(menu == 4){
       mode = 8;
-      screenReadyFlag = false;
       menu = 1;
+      screenReadyFlag = false;
+    }
+
+    else if(menu == 5){
+      mode = 9;
+      menu = 1;
+      screenReadyFlag = false;
     }
   }
 }
@@ -684,7 +697,8 @@ void setBright(){
     }
 
   if(printTimer.isReady()) {
-    lcd.setCursor(12,1);  lcd.print(lcd_bright);
+    lcd.setCursor(12,1);  
+    lcd.print(lcd_bright);
     brightSetMenu(menu);
     blinkFlag = !blinkFlag;
   }
@@ -756,6 +770,91 @@ void brightSetMenu(byte menu){
       break;
   }
 }
+
+
+void setDemoMode(){
+  if (!screenReadyFlag) {
+    lcd.clear();
+    }
+    
+  if (!screenReadyFlag){
+    lcd.setCursor(4, 0);  lcd.print(F("Select mode"));
+    lcd.setCursor(0, 1);  lcd.print(F("Demo mode:")); 
+    lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
+    newDemoMode = DEMO_MODE;
+    screenReadyFlag = true;
+    }
+
+  if(printTimer.isReady()) {
+    lcd.setCursor(12,1);  
+    if (newDemoMode) lcd.print(F("On "));
+    else lcd.print(F("Off"));
+    modeSetMenu(menu);
+    blinkFlag = !blinkFlag;
+  }
+  
+  if(enc.right()) {
+    menu += 1;
+    if (menu > 3) menu = 1;
+    menuExitTimer.start();
+    modeSetMenu(menu);
+  }
+
+  if(enc.left()) {
+    menu -= 1;
+    if (menu < 1) menu = 3;
+    menuExitTimer.start();
+    modeSetMenu(menu);
+  }
+
+  if(enc.click()){
+    menuExitTimer.start();
+    if(menu == 1) {
+      newDemoMode = !newDemoMode;
+      modeSetMenu(menu);
+    }
+    
+    if(menu == 2){
+      mode = 5;
+      menu = 5;
+      screen = 1;
+      screenReadyFlag = false;
+    }
+
+    if(menu == 3){
+      DEMO_MODE = newDemoMode;
+      EEPROM.put(18, DEMO_MODE);
+      mode = 5;
+      menu = 5;
+      screen = 1;
+      screenReadyFlag = false;
+    }
+  }
+}
+
+
+void modeSetMenu(byte menu){
+  lcd.setCursor(1, 3);  lcd.print(F(" "));
+  lcd.setCursor(11, 3); lcd.print(F(" "));
+  
+  switch(menu){
+    case 1:
+      lcd.setCursor(12,1); 
+      if(blinkFlag) lcd.print(F("   "));
+      break;
+
+    case 2:
+      lcd.setCursor(1, 3);
+      lcd.print(F(">"));
+      break;
+
+    case 3:
+      lcd.setCursor(11, 3);
+      lcd.print(F(">"));
+      break;
+  }
+}
+
 
 void adjustTimeDate(float delta, byte menu){
   switch(menu){

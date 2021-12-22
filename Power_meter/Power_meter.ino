@@ -14,9 +14,10 @@
 // Pins
 #define PZEM_RX_PIN 12
 #define PZEM_TX_PIN 13
-#define CLKe A0        // encoder S1
-#define DTe A1         // encoder S2
-#define SWe A2        // encoder Key
+#define CLKe A0             // encoder S1
+#define DTe A1              // encoder S2
+#define SWe A2              // encoder Key
+#define BACKLIGHT 3         //LCD backlight pin
 
 
 // Timer durations
@@ -68,7 +69,7 @@ float latest_energy = 0;
 float day_energy = 0;
 float night_energy = 0;
 float total_energy = 0;
-byte lcd_bright = 50;
+byte lcd_bright = 5;
 
 
 //Flags
@@ -98,6 +99,9 @@ void setup() {
     EEPROM.put(116, lcd_bright);
   }
 
+  EEPROM.get(16, lcd_bright);
+  pinMode(BACKLIGHT, OUTPUT);
+  
   // RTC module
   rtc.begin();
   if (RESET_CLOCK || rtc.lostPower()){
@@ -107,7 +111,7 @@ void setup() {
   
   pzem = PZEM004Tv30(pzemSWSerial);
   
-  // analogWrite(BACKLIGHT, LCD_BRIGHTNESS);
+  analogWrite(BACKLIGHT, lcd_bright*15);
   lcd.init();
   lcd.setBacklight(lcdBacklight);
   lcd.clear();
@@ -190,6 +194,10 @@ void checkMode(){
 
   if (mode == 7) {
     setMeter();
+  }
+
+  if (mode == 8) {
+    setBright();
   }
 }
 
@@ -401,6 +409,7 @@ void settingsMenu(){
   }
   
   if(enc.click()){
+    menuExitTimer.start();
     if(menu == 1){
       mode = 1;
       menu = 5;
@@ -420,14 +429,11 @@ void settingsMenu(){
       screenReadyFlag = false;
     }
 
-//
-//    if(menu == 5){
-//      mode = 5;
-//      screenReadyFlag = false;
-//      menu = 1;
-//    }
-    enc.resetState();
-    menuExitTimer.start();
+    if(menu == 4){
+      mode = 8;
+      screenReadyFlag = false;
+      menu = 1;
+    }
   }
 }
 
@@ -666,6 +672,94 @@ void meterSetMenu(byte menu){
 }
 
 
+void setBright(){
+  if (!screenReadyFlag) {
+    lcd.clear();
+    }
+    
+  if (!screenReadyFlag){
+    lcd.setCursor(1, 0);  lcd.print(F("Adjust brightness"));
+    lcd.setCursor(0, 1);  lcd.print(F("Brightness:")); 
+    lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
+    EEPROM.get(16, lcd_bright);
+    screenReadyFlag = true;
+    }
+
+  if(printTimer.isReady()) {
+    lcd.setCursor(12,1);  lcd.print(lcd_bright);
+    brightSetMenu(menu);
+    blinkFlag = !blinkFlag;
+  }
+  
+  if(enc.right()) {
+    menu += 1;
+    if (menu > 3) menu = 1;
+    menuExitTimer.start();
+    brightSetMenu(menu);
+  }
+
+  if(enc.left()) {
+    menu -= 1;
+    if (menu < 1) menu = 3;
+    menuExitTimer.start();
+    brightSetMenu(menu);
+  }
+
+  if(enc.rightH()) {
+    adjustTimeDate(1, 21);
+    brightSetMenu(menu);
+  }
+
+  if(enc.leftH()) {
+    adjustTimeDate(-1, 21);
+    brightSetMenu(menu);
+  }
+  
+  if(enc.click()){
+    menuExitTimer.start();
+    if(menu == 2){
+      EEPROM.get(16, lcd_bright);
+      analogWrite(BACKLIGHT, lcd_bright*15);
+      mode = 5;
+      menu = 4;
+      screen = 1;
+      screenReadyFlag = false;
+    }
+
+    if(menu == 3){
+      EEPROM.put(16, lcd_bright);
+      analogWrite(BACKLIGHT, lcd_bright*15);
+      mode = 5;
+      menu = 4;
+      screen = 1;
+      screenReadyFlag = false;
+    }
+  }
+}
+
+
+void brightSetMenu(byte menu){
+  lcd.setCursor(1, 3);  lcd.print(F(" "));
+  lcd.setCursor(11, 3); lcd.print(F(" "));
+  
+  switch(menu){
+    case 1:
+      lcd.setCursor(12,1); 
+      if(blinkFlag) lcd.print(F(" "));
+      break;
+
+    case 2:
+      lcd.setCursor(1, 3);
+      lcd.print(F(">"));
+      break;
+
+    case 3:
+      lcd.setCursor(11, 3);
+      lcd.print(F(">"));
+      break;
+  }
+}
+
 void adjustTimeDate(float delta, byte menu){
   switch(menu){
     case 1:
@@ -712,6 +806,12 @@ void adjustTimeDate(float delta, byte menu){
     case 12:
       night_energy += delta;
       if(night_energy < 0) night_energy = 0;
+      break;
+
+    case 21:
+      lcd_bright += delta;
+      lcd_bright = constrain(lcd_bright, 1, 9);
+      analogWrite(BACKLIGHT, lcd_bright*15);
       break;
   }
 }

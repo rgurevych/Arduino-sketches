@@ -81,6 +81,9 @@ void updateMeter(){
   else {
     s = 0;
     recordEnergy = pzem.energy();
+    if(recordEnergy > 9900){
+      pzem.resetEnergy();
+    }
   }
   
   EEPROM.get(0+s, latest_energy);

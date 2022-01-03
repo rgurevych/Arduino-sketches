@@ -79,6 +79,7 @@ bool recordMeterDoneFlag = false;
 bool blinkFlag = true;
 bool DEMO_MODE = true;
 
+void(* resetFunc) (void) = 0;
 
 void setup() {
   if (DEBUG_MODE) {
@@ -204,6 +205,14 @@ void checkMode(){
 
   if (mode == 9) {
     setDemoMode();
+  }
+
+  if (mode == 10) {
+    resetMeter();
+  }
+
+  if (mode == 11) {
+    performReset();
   }
 }
 
@@ -444,6 +453,12 @@ void settingsMenu(){
 
     else if(menu == 5){
       mode = 9;
+      menu = 1;
+      screenReadyFlag = false;
+    }
+
+    else if(menu == 6){
+      mode = 10;
       menu = 1;
       screenReadyFlag = false;
     }
@@ -849,6 +864,145 @@ void modeSetMenu(byte menu){
       break;
 
     case 3:
+      lcd.setCursor(11, 3);
+      lcd.print(F(">"));
+      break;
+  }
+}
+
+
+void resetMeter(){
+  if (!screenReadyFlag) {
+    lcd.clear();
+    }
+    
+  if (!screenReadyFlag){
+    lcd.setCursor(4, 0);  lcd.print(F("Reset device"));
+    lcd.setCursor(1, 1);  lcd.print(F("Back"));
+    lcd.setCursor(1, 2);  lcd.print(F("Reset PZEM energy")); 
+    lcd.setCursor(1, 3);  lcd.print(F("Factory reset"));
+    setMenuCursor(); lcd.print(F(">"));
+    screenReadyFlag = true;
+    }
+
+  if(enc.right()) {
+    setMenuCursor();
+    lcd.print(F(" "));
+    menu += 1;
+    if (menu > 3) menu = 1;
+    setMenuCursor();
+    lcd.print(F(">"));
+    menuExitTimer.start();
+  }
+
+  if(enc.left()) {
+    setMenuCursor();
+    lcd.print(F(" "));
+    menu -= 1;
+    if (menu < 1) menu = 3;
+    setMenuCursor();
+    lcd.print(F(">"));
+    menuExitTimer.start();
+  }
+
+  if(enc.click()){
+    menuExitTimer.start();
+    if(menu == 1) {
+      mode = 5;
+      menu = 6;
+      screen = 1;
+      screenReadyFlag = false;
+    }
+    
+    if(menu == 2){
+      mode = 11;
+      menu = 1;
+      screen = 1;
+      screenReadyFlag = false;
+    }
+
+    if(menu == 3){
+      mode = 11;
+      menu = 1;
+      screen = 2;
+      screenReadyFlag = false;
+    }
+  }
+}
+
+
+void performReset(){
+  if (!screenReadyFlag) {
+    lcd.clear();
+    }
+    
+  if (!screenReadyFlag){
+    lcd.setCursor(1, 0);
+    if (screen == 1) lcd.print(F("Reset PZEM energy"));
+    else lcd.print(F("Factory reset"));
+    lcd.setCursor(3, 1);  lcd.print(F("Are you sure?")); 
+    lcd.setCursor(2, 3);  lcd.print(F("Back      Reset"));
+    screenReadyFlag = true;
+    performResetMenu(menu);
+    }
+
+  if(enc.right()) {
+    menu += 1;
+    if (menu > 2) menu = 1;
+    menuExitTimer.start();
+    performResetMenu(menu);
+  }
+
+  if(enc.left()) {
+    menu -= 1;
+    if (menu < 1) menu = 2;
+    menuExitTimer.start();
+    performResetMenu(menu);
+  }
+
+  if(enc.click()){
+    menuExitTimer.start();  
+    if(menu == 1){
+      mode = 10;
+      menu = screen + 1;
+      screen = 1;
+      screenReadyFlag = false;
+    }
+
+    else if(menu == 2){
+      if (screen == 1 && DEMO_MODE){
+        mode = 5;
+        menu = 6;
+        screen = 1;
+        screenReadyFlag = false;
+        }
+      else if (screen == 1 && pzem.readAddress() != 0 && !DEMO_MODE) {
+        pzem.resetEnergy();
+        mode = 10;
+        menu = 2;
+        screen = 1;
+        screenReadyFlag = false;
+        }
+      else if (screen == 2) {
+        EEPROM.write(INIT_ADDR, 1);
+        resetFunc();
+      }
+    }
+  }
+}
+
+
+void performResetMenu(byte menu){
+  lcd.setCursor(1, 3);  lcd.print(F(" "));
+  lcd.setCursor(11, 3); lcd.print(F(" "));
+  
+  switch(menu){
+    case 1:
+      lcd.setCursor(1, 3);
+      lcd.print(F(">"));
+      break;
+
+    case 2:
       lcd.setCursor(11, 3);
       lcd.print(F(">"));
       break;

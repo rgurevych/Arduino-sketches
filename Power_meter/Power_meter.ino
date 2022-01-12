@@ -13,11 +13,11 @@
 
 // Pins
 #define PZEM_RX_PIN 12
-#define PZEM_TX_PIN 13
-#define CLKe A0             // encoder S1
-#define DTe A1              // encoder S2
-#define SWe A2              // encoder Key
-#define BACKLIGHT 3         //LCD backlight pin
+#define PZEM_TX_PIN 14
+#define CLKe 4             // encoder S1
+#define DTe 5              // encoder S2
+#define SWe 13             // encoder Key
+#define BACKLIGHT 15         //LCD backlight pin
 
 
 // Timer durations
@@ -28,9 +28,9 @@
 
 
 // Settings
-#define INIT_ADDR 1023                    // Number of EEPROM initial cell
+#define INIT_ADDR 500                    // Number of EEPROM initial cell
 #define INIT_KEY 0                        // First launch key
-#define DEBUG_MODE 0
+#define DEBUG_MODE 1
 #define RESET_CLOCK 0
 #define DAY_TARIFF_START 7
 #define NIGHT_TARIFF_START 23
@@ -53,7 +53,7 @@ EncButton<EB_TICK, CLKe, DTe, SWe> enc;
 
 
 // Global variables
-uint8_t hour, min, second, month, day, new_hour, new_min, new_second, new_month, new_day, new_year;
+uint8_t hour, minute, second, month, day, new_hour, new_minute, new_second, new_month, new_day, new_year;
 uint16_t year;
 uint16_t mom_voltage = 0;
 uint16_t mom_current = 0;
@@ -86,6 +86,8 @@ void setup() {
     Serial.begin(115200);
   }
 
+  EEPROM.begin(512);
+  
   // Reset to default settings
   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
     EEPROM.write(INIT_ADDR, INIT_KEY);
@@ -99,10 +101,13 @@ void setup() {
     EEPROM.put(108, night_energy);
     EEPROM.put(112, total_energy);
     EEPROM.put(18, 0);
+    EEPROM.commit();
   }
 
-  pinMode(BACKLIGHT, OUTPUT);
+//  pinMode(BACKLIGHT, OUTPUT);
   getBrightness();
+
+  Wire.begin(0, 2);
   
   // RTC module
   rtc.begin();
@@ -111,6 +116,7 @@ void setup() {
   }
   now = rtc.now();
   
+  pzemSWSerial.begin(9600);
   pzem = PZEM004Tv30(pzemSWSerial);
 
   EEPROM.get(18, DEMO_MODE);
@@ -238,7 +244,7 @@ void printPowerData() {
     getTime();
     
     if (DEBUG_MODE) {
-      Serial.print(hour); Serial.print(F(":")); Serial.print(min); Serial.print(F(":")); Serial.print(second);
+      Serial.print(hour); Serial.print(F(":")); Serial.print(minute); Serial.print(F(":")); Serial.print(second);
       Serial.print(F("  ")); Serial.print(day); Serial.print(F("/")); Serial.print(month); Serial.print(F("/")); Serial.println(year);
       Serial.print(F("U: "));      Serial.print(mom_voltage / 10.0);      Serial.println(F("V"));
       Serial.print(F("I: "));      Serial.print(mom_current / 100.0);     Serial.println(F("A"));
@@ -282,7 +288,7 @@ void printPowerData() {
       }
   
       lcd.setCursor(0,0); if (hour < 10){lcd.print(F("0"));} lcd.print(hour); 
-      lcd.setCursor(3,0); if (min < 10){lcd.print(F("0"));} lcd.print(min); 
+      lcd.setCursor(3,0); if (minute < 10){lcd.print(F("0"));} lcd.print(minute); 
       lcd.setCursor(6,0); if (second < 10){lcd.print(F("0"));} lcd.print(second);
       lcd.setCursor(9,0); if (day < 10){lcd.print(F("0"));} lcd.print(day); 
       lcd.setCursor(12,0); if (month < 10){lcd.print(F("0"));} lcd.print(month); 
@@ -311,7 +317,7 @@ void printEnergy(float energy, bool meter_energy){
 void getTime() {
   now = rtc.now();
   second = now.second();
-  min = now.minute();
+  minute = now.minute();
   hour = now.hour();
   day = now.day();
   month = now.month();
@@ -478,7 +484,7 @@ void setTime(){
     lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
     
     new_hour = hour;
-    new_min = min;
+    new_minute = minute;
     new_second = second;
     new_day = day;
     new_month = month;
@@ -488,7 +494,7 @@ void setTime(){
 
   if(printTimer.isReady()) {
     lcd.setCursor(5,1); if (new_hour < 10){lcd.print(F("0"));} lcd.print(new_hour); 
-    lcd.setCursor(8,1); if (new_min < 10){lcd.print(F("0"));} lcd.print(new_min); 
+    lcd.setCursor(8,1); if (new_minute < 10){lcd.print(F("0"));} lcd.print(new_minute); 
     lcd.setCursor(11,1); if (new_second < 10){lcd.print(F("0"));} lcd.print(new_second);
     lcd.setCursor(5,2); if (new_day < 10){lcd.print(F("0"));} lcd.print(new_day); 
     lcd.setCursor(8,2); if (new_month < 10){lcd.print(F("0"));} lcd.print(new_month); 
@@ -535,7 +541,7 @@ void setTime(){
     }
 
     if(menu == 8){
-      rtc.adjust(DateTime(2000+new_year, new_month, new_day, new_hour, new_min, new_second));
+      rtc.adjust(DateTime(2000+new_year, new_month, new_day, new_hour, new_minute, new_second));
       mode = 5;
       menu = 2;
       screen = 1;
@@ -658,6 +664,7 @@ void setMeter(){
       EEPROM.put(8+s, night_energy);
       total_energy = day_energy + night_energy;
       EEPROM.put(12+s, total_energy);
+      EEPROM.commit();
       mode = 5;
       menu = 3;
       screen = 1;
@@ -754,6 +761,7 @@ void setBright(){
 
     if(menu == 3){
       EEPROM.put(16, lcd_bright);
+      EEPROM.commit();
       analogWrite(BACKLIGHT, lcd_bright*15);
       mode = 5;
       menu = 4;
@@ -839,6 +847,7 @@ void setDemoMode(){
     if(menu == 3){
       DEMO_MODE = newDemoMode;
       EEPROM.put(18, DEMO_MODE);
+      EEPROM.commit();
       mode = 5;
       menu = 5;
       screen = 1;
@@ -985,6 +994,7 @@ void performReset(){
         }
       else if (screen == 2) {
         EEPROM.write(INIT_ADDR, 1);
+        EEPROM.commit();
         resetFunc();
       }
     }
@@ -1019,9 +1029,9 @@ void adjustTimeDate(float delta, byte menu){
       break;
 
     case 2:
-      new_min += delta;
-      if(new_min > 59) new_min = 0;
-      if(new_min < 0) new_min = 59;
+      new_minute += delta;
+      if(new_minute > 59) new_minute = 0;
+      if(new_minute < 0) new_minute = 59;
       break;
 
     case 3:

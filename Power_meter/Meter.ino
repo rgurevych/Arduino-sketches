@@ -59,13 +59,13 @@ void generatePowerData(){
 
 
 void recordMeter(){
-  if(min == 0 && !recordMeterDoneFlag){
+  if(minute == 0 && !recordMeterDoneFlag){
     if (pzem.readAddress() != 0 || DEMO_MODE) {
       updateMeter();
     }
     recordMeterDoneFlag = true;
   }
-  else if(min != 0) {
+  else if(minute != 0) {
     recordMeterDoneFlag = false;
   }
 }
@@ -105,6 +105,7 @@ void updateMeter(){
   }
   total_energy = day_energy + night_energy;
   EEPROM.put(12+s, total_energy);
+  EEPROM.commit();
 }
 
 

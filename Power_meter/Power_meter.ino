@@ -1,6 +1,7 @@
 /* Power meter by R. Gurevych */
 
 // Includes
+#include <ArduinoJson.h>
 #include <PZEM004Tv30.h>
 #include <SoftwareSerial.h>
 #include <GyverTimer.h>
@@ -9,6 +10,9 @@
 #include <RTClib.h>
 #include <EncButton.h>
 #include <EEPROM.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
 
 
 // Pins
@@ -25,6 +29,7 @@
 #define TIME_TICKER 1000                 //Interval for reading the time from RTC module
 #define PRINT_TIMEOUT 500                //Interval between printing to the screen occurs
 #define MENU_EXIT_TIMEOUT 120000         //Interval for automatic exit from menu
+#define CHECK_TELEGRAM_TIMEOUT 5000      //Interval for checking Telegram bot
 
 
 // Settings
@@ -34,6 +39,12 @@
 #define RESET_CLOCK 0
 #define DAY_TARIFF_START 7
 #define NIGHT_TARIFF_START 23
+// Newtork credentials
+const char* ssid = "Penthouse_72";
+const char* password = "3Gurevych+1Mirkina";
+#define BOTtoken "5089942864:AAGk7ItUZyzCrfXsIWWRWaWHzY2TZAEZLjs"
+#define CHAT_ID "1289811885"
+X509List cert(TELEGRAM_CERTIFICATE_ROOT);
 
 
 // Timers:
@@ -41,6 +52,7 @@ GTimer measureTimer(MS, MEASURE_TIMEOUT);
 GTimer printTimer(MS, PRINT_TIMEOUT);
 GTimer timeTimer(MS, TIME_TICKER);
 GTimer menuExitTimer;
+GTimer checkTelegramTimer(MS, CHECK_TELEGRAM_TIMEOUT);
 
 
 // Setting up modules
@@ -50,6 +62,8 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 RTC_DS3231 rtc;
 DateTime now;
 EncButton<EB_TICK, CLKe, DTe, SWe> enc;
+WiFiClientSecure client;
+UniversalTelegramBot bot(BOTtoken, client);
 
 
 // Global variables
@@ -78,6 +92,7 @@ bool lcdBacklight = true;
 bool recordMeterDoneFlag = false;
 bool blinkFlag = true;
 bool DEMO_MODE = true;
+bool meterPowered;
 
 void(* resetFunc) (void) = 0;
 
@@ -104,7 +119,6 @@ void setup() {
     EEPROM.commit();
   }
 
-//  pinMode(BACKLIGHT, OUTPUT);
   getBrightness();
 
   Wire.begin(0, 2);
@@ -142,6 +156,7 @@ void setup() {
   }
   else {
     if (pzem.readAddress() == 0) {
+      meterPowered = false;
       lcd.setCursor(5, 0);
       lcd.print(F("The meter"));
       lcd.setCursor(3, 1);
@@ -150,6 +165,7 @@ void setup() {
       lcd.print(F("Check connection"));
     }
     else {
+      meterPowered = true;
       lcd.setCursor(3, 1);
       lcd.print(F("Initialization"));
       lcd.setCursor(6, 2);
@@ -158,8 +174,12 @@ void setup() {
   }
   delay(2000);
   menuExitTimer.setTimeout(MENU_EXIT_TIMEOUT);
-
-  //pzem.resetEnergy();
+  configTime(0, 0, "pool.ntp.org");
+  client.setTrustAnchors(&cert);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(true);
 }
 
 
@@ -168,6 +188,7 @@ void loop() {
   getPowerData();
   checkMode();
   recordMeter();
+  checkTelegram();
 }
 
 
@@ -985,7 +1006,7 @@ void performReset(){
         screen = 1;
         screenReadyFlag = false;
         }
-      else if (screen == 1 && pzem.readAddress() != 0 && !DEMO_MODE) {
+      else if (screen == 1 && meterPowered && !DEMO_MODE) {
         pzem.resetEnergy();
         mode = 10;
         menu = 2;

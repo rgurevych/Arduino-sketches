@@ -31,7 +31,7 @@ void handleNewMessages(int numNewMessages) {
     String from_name = bot.messages[i].from_name;
     
     if (chat_id != CHAT_ID){
-      bot.sendMessage(chat_id, F("Sorry, ") + from_name + F(", you are not authorized to use this bot!"), "");
+      bot.sendMessage(chat_id, "Sorry, " + from_name + ", you are not authorized to use this bot!", "");
       continue;
     }
     
@@ -40,7 +40,7 @@ void handleNewMessages(int numNewMessages) {
 //    Serial.println(text);
 
     if (text == "/start") {
-      String welcome = F("Welcome, ") + from_name + F(".\n");
+      String welcome = "Welcome, " + from_name + ".\n";
       welcome += F("The following commands are available for you: \n\n");
       welcome += F("/status to receive the realtime status of your power line \n");
       welcome += F("/meter to receive the current values of your power meter \n");
@@ -54,12 +54,12 @@ void handleNewMessages(int numNewMessages) {
       String statusMessage = "Current status of your power line:\n";
       if (DEMO_MODE) statusMessage += F("!!! DEMO MODE ENABLED !!!\n");
       if (!meterPowered) statusMessage += F("!!! The meter is not powered !!!\n");
-      statusMessage += F("Voltage: ") + String(mom_voltage / 10.0, 1) + F(" V\n");
-      statusMessage += F("Current: ") + String(mom_current / 100.0, 2) + F(" A\n");
-      statusMessage += F("Power: ") + String(mom_power) + F(" W\n");
-      statusMessage += F("Frequency: ") + String(mom_frequency / 10.0, 1) + F(" Hz\n");
-      statusMessage += F("Power factor: ") + String(mom_pf / 100.0, 2) + F("\n");
-      statusMessage += F("Energy since last reset: ") + String(mom_energy / 10.0, 1) + F(" kWh\n");
+      statusMessage += "Voltage: " + String(mom_voltage / 10.0, 1) + " V\n";
+      statusMessage += "Current: " + String(mom_current / 100.0, 2) + " A\n";
+      statusMessage += "Power: " + String(mom_power) + " W\n";
+      statusMessage += "Frequency: " + String(mom_frequency / 10.0, 1) + " Hz\n";
+      statusMessage += "Power factor: " + String(mom_pf / 100.0, 2) + "\n";
+      statusMessage += "Energy since last reset: " + String(mom_energy / 10.0, 1) + " kWh\n";
       bot.sendMessage(chat_id, statusMessage, "");
     }
     
@@ -71,9 +71,9 @@ void handleNewMessages(int numNewMessages) {
       getMeterData(s);
       String currentMeterMessage = "Current values of your meter:\n";
       if (DEMO_MODE) currentMeterMessage += F("!!! DEMO MODE ENABLED !!!\n");
-      currentMeterMessage += F("Day tariff: ") + String(day_energy, 1) + F("kWh \n");
-      currentMeterMessage += F("Night tariff: ") + String(night_energy, 1) + F("kWh \n");
-      currentMeterMessage += F("Total value: ") + String(total_energy, 1) + F("kWh \n");
+      currentMeterMessage += "Day tariff: " + String(day_energy, 1) + "kWh \n";
+      currentMeterMessage += "Night tariff: " + String(night_energy, 1) + "kWh \n";
+      currentMeterMessage += "Total value: " + String(total_energy, 1) + "kWh \n";
       bot.sendMessage(chat_id, currentMeterMessage, "");
     }
     

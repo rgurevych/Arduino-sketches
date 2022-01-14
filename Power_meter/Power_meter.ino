@@ -92,7 +92,9 @@ bool lcdBacklight = true;
 bool recordMeterDoneFlag = false;
 bool blinkFlag = true;
 bool DEMO_MODE = true;
+bool telegramEnabled = true;
 bool meterPowered;
+bool WiFiReady;
 
 void(* resetFunc) (void) = 0;
 

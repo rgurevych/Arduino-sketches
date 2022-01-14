@@ -1,14 +1,7 @@
 void checkTelegram(){
-  if (checkTelegramTimer.isReady() && mode == 0){
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println(F("Connecting to WiFi.."));
-    }
-    else {
-      if (DEBUG_MODE){
-        Serial.print(F("Connected to WiFi. Local IP address:"));
-        Serial.println(WiFi.localIP());
-      }
-      
+  if (checkTelegramTimer.isReady() && mode == 0 && telegramEnabled){
+    checkWiFi();
+    if (WiFiReady) {
       int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
 
       while(numNewMessages) {
@@ -21,10 +14,24 @@ void checkTelegram(){
 }
 
 
-void handleNewMessages(int numNewMessages) {
-//  Serial.print(F("Number of new messages:"));
-//  Serial.println(String(numNewMessages));
+void checkWiFi(){
+  if (WiFi.status() != WL_CONNECTED) {
+    if (DEBUG_MODE){
+      Serial.println(F("WiFi is not connected"));
+    }
+    WiFiReady = false;
+  }
+  else {
+    if (DEBUG_MODE){
+      Serial.print(F("Connected to WiFi. Local IP address:"));
+      Serial.println(WiFi.localIP());
+    }
+    WiFiReady = true;
+  }
+}
 
+
+void handleNewMessages(int numNewMessages) {
   for (int i=0; i<numNewMessages; i++) {
     // Chat id of the requester
     String chat_id = String(bot.messages[i].chat_id);

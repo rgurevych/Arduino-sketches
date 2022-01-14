@@ -1,3 +1,9 @@
+void checkInternetServices(){
+  checkTelegram();
+  autoUpdateTime();
+}
+
+
 void checkTelegram(){
   if (checkTelegramTimer.isReady() && mode == 0 && telegramEnabled){
     checkWiFi();
@@ -49,11 +55,12 @@ void handleNewMessages(int numNewMessages) {
     if (text == "/start") {
       String welcome = "Welcome, " + from_name + ".\n";
       welcome += F("The following commands are available for you: \n\n");
-      welcome += F("/status to receive the realtime status of your power line \n");
-      welcome += F("/meter to receive the current values of your power meter \n");
-      welcome += F("/day to receive the power consumption for the last day \n");
-      welcome += F("/month to request the meter value for the beginning of the month \n");
-      welcome += F("/options to return the reply keyboard \n");
+      welcome += F("/status: to receive the realtime status of your power line \n");
+      welcome += F("/meter: to receive the current values of your power meter \n");
+      welcome += F("/day: to receive the power consumption for the last day \n");
+      welcome += F("/month: to request the meter value for the beginning of the month \n");
+      welcome += F("/options: to return the reply keyboard \n");
+      welcome += F("/updateTime: to update system time from Internet");
       bot.sendMessage(chat_id, welcome, "");
     }
 
@@ -84,14 +91,14 @@ void handleNewMessages(int numNewMessages) {
       bot.sendMessage(chat_id, currentMeterMessage, "");
     }
     
-//    if (text == "/state") {
-//      if (digitalRead(ledPin)){
-//        bot.sendMessage(chat_id, "LED is ON", "");
-//      }
-//      else{
-//        bot.sendMessage(chat_id, "LED is OFF", "");
-//      }
-//    }
+    if (text == "/updateTime") {
+      getNtpTime();
+      saveNewTime();
+      String updateTimeMessage = F("RTC time updated. New time and date: \n");
+      updateTimeMessage += String(new_hour) + ":" + String(new_minute) + ":" + String(new_second) + "  ";
+      updateTimeMessage += String(new_day) + "/" + String(new_month) + "/" + String(2000+new_year);
+      bot.sendMessage(chat_id, updateTimeMessage, "");
+    }
 
     if (text == "/options")
     {

@@ -13,6 +13,8 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 #include <UniversalTelegramBot.h>
+#include <WiFiUdp.h>
+#include <NTPClient.h>
 
 
 // Pins
@@ -64,6 +66,8 @@ DateTime now;
 EncButton<EB_TICK, CLKe, DTe, SWe> enc;
 WiFiClientSecure client;
 UniversalTelegramBot bot(BOTtoken, client);
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 
 // Global variables
@@ -83,6 +87,8 @@ float day_energy = 0;
 float night_energy = 0;
 float total_energy = 0;
 byte lcd_bright = 5;
+byte timezone = 2;
+long utcOffsetInSeconds = 3600*timezone;
 bool newDemoMode;
 
 
@@ -93,6 +99,7 @@ bool recordMeterDoneFlag = false;
 bool blinkFlag = true;
 bool DEMO_MODE = true;
 bool telegramEnabled = true;
+bool autoUpdateTimeDoneFlag = false;
 bool meterPowered;
 bool WiFiReady;
 
@@ -182,6 +189,9 @@ void setup() {
   WiFi.begin(ssid, password);
   WiFi.setAutoReconnect(true);
   WiFi.persistent(true);
+  
+  timeClient.begin();
+  timeClient.setTimeOffset(utcOffsetInSeconds);
 }
 
 
@@ -190,7 +200,7 @@ void loop() {
   getPowerData();
   checkMode();
   recordMeter();
-  checkTelegram();
+  checkInternetServices();
 }
 
 
@@ -334,17 +344,6 @@ void printEnergy(float energy, bool meter_energy){
   if(energy < 100) lcd.print(F(" "));
   if(meter_energy) lcd.print(energy, 1);
   else lcd.print(energy / 10.0, 1);
-}
-
-
-void getTime() {
-  now = rtc.now();
-  second = now.second();
-  minute = now.minute();
-  hour = now.hour();
-  day = now.day();
-  month = now.month();
-  year = now.year();
 }
 
 
@@ -564,7 +563,7 @@ void setTime(){
     }
 
     if(menu == 8){
-      rtc.adjust(DateTime(2000+new_year, new_month, new_day, new_hour, new_minute, new_second));
+      saveNewTime();
       mode = 5;
       menu = 2;
       screen = 1;

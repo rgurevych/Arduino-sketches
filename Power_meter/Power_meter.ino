@@ -31,7 +31,7 @@
 #define TIME_TICKER 1000                 //Interval for reading the time from RTC module
 #define PRINT_TIMEOUT 500                //Interval between printing to the screen occurs
 #define MENU_EXIT_TIMEOUT 120000         //Interval for automatic exit from menu
-#define CHECK_TELEGRAM_TIMEOUT 5000      //Interval for checking Telegram bot
+#define CHECK_TELEGRAM_TIMEOUT 10000     //Interval for checking Telegram bot
 
 
 // Settings
@@ -46,7 +46,6 @@ const char* ssid = "Penthouse_72";
 const char* password = "3Gurevych+1Mirkina";
 #define BOTtoken "5089942864:AAGk7ItUZyzCrfXsIWWRWaWHzY2TZAEZLjs"
 #define CHAT_ID "1289811885"
-X509List cert(TELEGRAM_CERTIFICATE_ROOT);
 
 
 // Timers:
@@ -64,6 +63,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 RTC_DS3231 rtc;
 DateTime now;
 EncButton<EB_TICK, CLKe, DTe, SWe> enc;
+X509List cert(TELEGRAM_CERTIFICATE_ROOT);
 WiFiClientSecure client;
 UniversalTelegramBot bot(BOTtoken, client);
 WiFiUDP ntpUDP;
@@ -183,6 +183,7 @@ void setup() {
   }
   delay(2000);
   menuExitTimer.setTimeout(MENU_EXIT_TIMEOUT);
+  menuExitTimer.start();
   configTime(0, 0, "pool.ntp.org");
   client.setTrustAnchors(&cert);
   WiFi.mode(WIFI_STA);
@@ -205,10 +206,15 @@ void loop() {
 
 
 void checkMode(){
-  if(mode != 0 && menuExitTimer.isReady()) {
-    mode = 0;
-    screen = 1;
-    screenReadyFlag = false;
+  if(menuExitTimer.isReady()) {
+    lcdBacklight = false;
+    lcd.setBacklight(lcdBacklight);
+    enc.resetState();
+    if (mode != 0) {
+      mode = 0;
+      screen = 1;
+      screenReadyFlag = false;
+    }
   }
   
   if (mode == 0) {
@@ -263,7 +269,15 @@ void getBrightness(){
 
 
 void printPowerData() {
-  if(enc.click()){
+  if (enc.turn()) {
+    lcdBacklight = true;
+    lcd.setBacklight(lcdBacklight);
+    menuExitTimer.start();
+  }
+  
+  if (enc.click()) {
+    lcdBacklight = true;
+    lcd.setBacklight(lcdBacklight);
     mode = 1;
     screenReadyFlag = false;
     screen = 0;

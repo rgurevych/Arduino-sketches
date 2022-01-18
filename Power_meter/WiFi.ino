@@ -107,3 +107,16 @@ void handleNewMessages(int numNewMessages) {
     }
   }
 }
+
+
+void sendDailyMeterValues(float dailyDayEnergy, float dailyNightEnergy) {
+  checkWiFi();
+  if (WiFiReady) {
+    String dailyMeterValueMessage = "Power consumption for yesterday was:\n";
+    if (DEMO_MODE) dailyMeterValueMessage += F("!!! DEMO MODE ENABLED !!!\n");
+    dailyMeterValueMessage += "Day tariff: " + String(dailyDayEnergy, 1) + "kWh \n";
+    dailyMeterValueMessage += "Night tariff: " + String(dailyNightEnergy, 1) + "kWh \n";
+    dailyMeterValueMessage += "Total value: " + String(dailyDayEnergy + dailyNightEnergy, 1) + "kWh \n";
+    bot.sendMessage(CHAT_ID, dailyMeterValueMessage, "");
+  }
+}

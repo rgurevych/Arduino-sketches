@@ -99,6 +99,7 @@ bool recordMeterDoneFlag = false;
 bool blinkFlag = true;
 bool DEMO_MODE = true;
 bool telegramEnabled = true;
+bool sendDailyMeterValuesViaTelegram = true;
 bool autoUpdateTimeDoneFlag = false;
 bool meterPowered;
 bool WiFiReady;
@@ -120,14 +121,18 @@ void setup() {
     EEPROM.put(8, night_energy);
     EEPROM.put(12, total_energy);
     EEPROM.put(16, lcd_bright);
+    EEPROM.put(18, 0);
+    EEPROM.put(20, 0);
+    EEPROM.put(24, 0);
     EEPROM.put(100, latest_energy);
     EEPROM.put(104, day_energy);
     EEPROM.put(108, night_energy);
     EEPROM.put(112, total_energy);
-    EEPROM.put(18, 0);
+    EEPROM.put(120, 0);
+    EEPROM.put(124, 0);
     EEPROM.commit();
   }
-
+ 
   getBrightness();
 
   Wire.begin(0, 2);

@@ -108,6 +108,24 @@ void updateMeter() {
   total_energy = day_energy + night_energy;
   EEPROM.put(12 + s, total_energy);
   EEPROM.commit();
+  if (hour == 0) {
+    updateDailyMeter(s, day_energy, night_energy);
+  }
+}
+
+
+void updateDailyMeter(byte s, float currentDayEnergy, float currentNightEnergy) {
+  float lastDayEnergy, lastNightEnergy;
+  EEPROM.get(20+s, lastDayEnergy);
+  EEPROM.get(24+s, lastNightEnergy);
+  
+  if(sendDailyMeterValuesViaTelegram) {
+    sendDailyMeterValues(currentDayEnergy - lastDayEnergy, currentNightEnergy - lastNightEnergy);
+  }
+  
+  EEPROM.put(20+s, currentDayEnergy);
+  EEPROM.put(24+s, currentNightEnergy);
+  EEPROM.commit();
 }
 
 

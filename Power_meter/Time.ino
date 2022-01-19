@@ -40,17 +40,19 @@ void saveNewTime() {
 
 
 void autoUpdateTime() {
-  if (minute == 30 && !autoUpdateTimeDoneFlag) {
-    checkWiFi();
-    if (WiFiReady) {
-      getNtpTime();
-      if (new_year + 2000 == year) {
-        saveNewTime();
+  if (automaticallyUpdateTime) {
+    if (minute == 30 && !autoUpdateTimeDoneFlag) {
+      checkWiFi();
+      if (WiFiReady) {
+        getNtpTime();
+        if (new_year + 2000 == year) {
+          saveNewTime();
+        }
       }
+      autoUpdateTimeDoneFlag = true;
     }
-    autoUpdateTimeDoneFlag = true;
-  }
-  else if (minute != 30) {
-    autoUpdateTimeDoneFlag = false;
+    else if (minute != 30) {
+      autoUpdateTimeDoneFlag = false;
+    }
   }
 }

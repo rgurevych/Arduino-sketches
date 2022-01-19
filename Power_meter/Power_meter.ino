@@ -47,6 +47,12 @@ const char* password = "3Gurevych+1Mirkina";
 #define BOTtoken "5089942864:AAGk7ItUZyzCrfXsIWWRWaWHzY2TZAEZLjs"
 #define CHAT_ID "1289811885"
 
+bool DEMO_MODE = true;
+bool telegramEnabled = true;
+bool automaticallyUpdateTime = true;
+bool sendDailyMeterValuesViaTelegram = true;
+bool sendMonthlyMeterValuesViaTelegram = true;
+
 
 // Timers:
 GTimer measureTimer(MS, MEASURE_TIMEOUT);
@@ -98,10 +104,6 @@ bool screenReadyFlag = false;
 bool lcdBacklight = true;
 bool recordMeterDoneFlag = false;
 bool blinkFlag = true;
-bool DEMO_MODE = true;
-bool telegramEnabled = true;
-bool sendDailyMeterValuesViaTelegram = true;
-bool sendMonthlyMeterValuesViaTelegram = true;
 bool autoUpdateTimeDoneFlag = false;
 bool meterPowered;
 bool WiFiReady;
@@ -118,26 +120,36 @@ void setup() {
   // Reset to default settings
   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
     EEPROM.write(INIT_ADDR, INIT_KEY);
-    EEPROM.put(0, latest_energy);     //latest recorded energy value for normal mode
-    EEPROM.put(4, day_energy);        //latest recorded day tariff energy for normal mode
-    EEPROM.put(8, night_energy);      //latest recorded night tariff energy for normal mode
-    EEPROM.put(12, total_energy);     //latest recorded total energy for normal mode
-    EEPROM.put(16, lcd_bright);       //LCD backlight brightness value
-    EEPROM.put(18, 0);                //Demo mode (true/false)
-    EEPROM.put(20, 0);                //latest recorded daily value for day tariff for normal mode
-    EEPROM.put(24, 0);                //latest recorded daily value for night tariff for normal mode
-    EEPROM.put(30, 0);                //latest recorded monthly value for day tariff for normal mode
-    EEPROM.put(34, 0);                //latest recorded monthly value for night tariff for normal mode
-    EEPROM.put(100, latest_energy);   //latest recorded energy value for demo mode
-    EEPROM.put(104, day_energy);      //latest recorded day tariff energy for demo mode
-    EEPROM.put(108, night_energy);    //latest recorded night tariff energy for demo mode
-    EEPROM.put(112, total_energy);    //latest recorded total energy for demo mode
-    EEPROM.put(120, 0);               //latest recorded daily value for day tariff for demo mode
-    EEPROM.put(124, 0);               //latest recorded daily value for night tariff for demo mode
-    EEPROM.put(130, 0);               //latest recorded monthly value for day tariff for normal mode
-    EEPROM.put(134, 0);               //latest recorded monthly value for night tariff for normal mode
+    EEPROM.put(0, latest_energy);                       //latest recorded energy value for normal mode
+    EEPROM.put(4, day_energy);                          //latest recorded day tariff energy for normal mode
+    EEPROM.put(8, night_energy);                        //latest recorded night tariff energy for normal mode
+    EEPROM.put(12, total_energy);                       //latest recorded total energy for normal mode
+    EEPROM.put(16, lcd_bright);                         //LCD backlight brightness value
+    EEPROM.put(17, telegramEnabled);                    //is telegram bot enabled?
+    EEPROM.put(18, 0);                                  //Demo mode (true/false)
+    EEPROM.put(19, automaticallyUpdateTime);            //should time be updated automatically
+    EEPROM.put(20, 0);                                  //latest recorded daily value for day tariff for normal mode
+    EEPROM.put(24, 0);                                  //latest recorded daily value for night tariff for normal mode
+    EEPROM.put(30, 0);                                  //latest recorded monthly value for day tariff for normal mode
+    EEPROM.put(34, 0);                                  //latest recorded monthly value for night tariff for normal mode
+    EEPROM.put(40, sendDailyMeterValuesViaTelegram);    //Should daily reports be sent via telegram
+    EEPROM.put(41, sendMonthlyMeterValuesViaTelegram);  //Should monthly reports be sent via telegram
+    EEPROM.put(100, latest_energy);                     //latest recorded energy value for demo mode
+    EEPROM.put(104, day_energy);                        //latest recorded day tariff energy for demo mode
+    EEPROM.put(108, night_energy);                      //latest recorded night tariff energy for demo mode
+    EEPROM.put(112, total_energy);                      //latest recorded total energy for demo mode
+    EEPROM.put(120, 0);                                 //latest recorded daily value for day tariff for demo mode
+    EEPROM.put(124, 0);                                 //latest recorded daily value for night tariff for demo mode
+    EEPROM.put(130, 0);                                 //latest recorded monthly value for day tariff for normal mode
+    EEPROM.put(134, 0);                                 //latest recorded monthly value for night tariff for normal mode
     EEPROM.commit();
   }
+
+  EEPROM.put(17, telegramEnabled);
+  EEPROM.put(19, automaticallyUpdateTime);
+  EEPROM.put(40, sendDailyMeterValuesViaTelegram);
+  EEPROM.put(41, sendMonthlyMeterValuesViaTelegram);
+  EEPROM.commit();
   
   getBrightness();
 
@@ -154,6 +166,10 @@ void setup() {
   pzem = PZEM004Tv30(pzemSWSerial);
 
   EEPROM.get(18, DEMO_MODE);
+  EEPROM.get(17, telegramEnabled);
+  EEPROM.get(19, automaticallyUpdateTime);
+  EEPROM.get(40, sendDailyMeterValuesViaTelegram);
+  EEPROM.get(41, sendMonthlyMeterValuesViaTelegram);
   
   lcd.init();
   lcd.setBacklight(lcdBacklight);

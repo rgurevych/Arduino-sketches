@@ -85,9 +85,9 @@ void handleNewMessages(int numNewMessages) {
       getMeterData(s);
       String currentMeterMessage = "Current values of your meter:\n";
       if (DEMO_MODE) currentMeterMessage += F("!!! DEMO MODE ENABLED !!!\n");
-      currentMeterMessage += "Day tariff: " + String(day_energy, 1) + "kWh \n";
-      currentMeterMessage += "Night tariff: " + String(night_energy, 1) + "kWh \n";
-      currentMeterMessage += "Total value: " + String(total_energy, 1) + "kWh \n";
+      currentMeterMessage += "Day tariff: " + String(day_energy, 1) + " kWh \n";
+      currentMeterMessage += "Night tariff: " + String(night_energy, 1) + " kWh \n";
+      currentMeterMessage += "Total value: " + String(total_energy, 1) + " kWh \n";
       bot.sendMessage(chat_id, currentMeterMessage, "");
     }
     
@@ -109,14 +109,33 @@ void handleNewMessages(int numNewMessages) {
 }
 
 
-void sendDailyMeterValues(float dailyDayEnergy, float dailyNightEnergy) {
+void sendDailyMeterValues(float dailyDayEnergyDelta, float dailyNightEnergyDelta) {
   checkWiFi();
   if (WiFiReady) {
     String dailyMeterValueMessage = "Power consumption for yesterday was:\n";
     if (DEMO_MODE) dailyMeterValueMessage += F("!!! DEMO MODE ENABLED !!!\n");
-    dailyMeterValueMessage += "Day tariff: " + String(dailyDayEnergy, 1) + "kWh \n";
-    dailyMeterValueMessage += "Night tariff: " + String(dailyNightEnergy, 1) + "kWh \n";
-    dailyMeterValueMessage += "Total value: " + String(dailyDayEnergy + dailyNightEnergy, 1) + "kWh \n";
+    dailyMeterValueMessage += "Day: " + String(dailyDayEnergyDelta, 1) + " kWh \n";
+    dailyMeterValueMessage += "Night: " + String(dailyNightEnergyDelta, 1) + " kWh \n";
+    dailyMeterValueMessage += "Total: " + String(dailyDayEnergyDelta + dailyNightEnergyDelta, 1) + " kWh \n";
     bot.sendMessage(CHAT_ID, dailyMeterValueMessage, "");
+  }
+}
+
+
+void sendMonthlyMeterValues(float currentDayEnergy, float monthlyDayEnergyDelta, float currentNightEnergy, float monthlyNightEnergyDelta) {
+  checkWiFi();
+  if (WiFiReady) {
+    String MontlyMeterValueMessage = "Power consumption for last month was:\n";
+    if (DEMO_MODE) MontlyMeterValueMessage += F("!!! DEMO MODE ENABLED !!!\n");
+    MontlyMeterValueMessage += "Day: " + String(monthlyDayEnergyDelta, 1) + " kWh \n";
+    MontlyMeterValueMessage += "Night: " + String(monthlyNightEnergyDelta, 1) + " kWh \n";
+    MontlyMeterValueMessage += "Total: " + String(monthlyDayEnergyDelta + monthlyNightEnergyDelta, 1) + " kWh \n\n";
+    MontlyMeterValueMessage += "Meter values to be recorded for 01.";
+    if (month < 10) MontlyMeterValueMessage += "0";
+    MontlyMeterValueMessage += String(month) + ":\n";
+    MontlyMeterValueMessage += "Day: " + String(currentDayEnergy, 1) + " kWh \n";
+    MontlyMeterValueMessage += "Night: " + String(currentNightEnergy, 1) + " kWh \n";
+    MontlyMeterValueMessage += "Total: " + String(currentDayEnergy + currentNightEnergy, 1) + " kWh \n\n";
+    bot.sendMessage(CHAT_ID, MontlyMeterValueMessage, "");
   }
 }

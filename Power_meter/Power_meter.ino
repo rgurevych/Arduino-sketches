@@ -71,7 +71,8 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 
 // Global variables
-uint8_t hour, minute, second, month, day, new_hour, new_minute, new_second, new_month, new_day, new_year;
+uint8_t hour, minute, second, month, day;
+int new_hour, new_minute, new_second, new_month, new_day, new_year;
 uint16_t year;
 uint16_t mom_voltage = 0;
 uint16_t mom_current = 0;
@@ -100,6 +101,7 @@ bool blinkFlag = true;
 bool DEMO_MODE = true;
 bool telegramEnabled = true;
 bool sendDailyMeterValuesViaTelegram = true;
+bool sendMonthlyMeterValuesViaTelegram = true;
 bool autoUpdateTimeDoneFlag = false;
 bool meterPowered;
 bool WiFiReady;
@@ -116,23 +118,27 @@ void setup() {
   // Reset to default settings
   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
     EEPROM.write(INIT_ADDR, INIT_KEY);
-    EEPROM.put(0, latest_energy);
-    EEPROM.put(4, day_energy);
-    EEPROM.put(8, night_energy);
-    EEPROM.put(12, total_energy);
-    EEPROM.put(16, lcd_bright);
-    EEPROM.put(18, 0);
-    EEPROM.put(20, 0);
-    EEPROM.put(24, 0);
-    EEPROM.put(100, latest_energy);
-    EEPROM.put(104, day_energy);
-    EEPROM.put(108, night_energy);
-    EEPROM.put(112, total_energy);
-    EEPROM.put(120, 0);
-    EEPROM.put(124, 0);
+    EEPROM.put(0, latest_energy);     //latest recorded energy value for normal mode
+    EEPROM.put(4, day_energy);        //latest recorded day tariff energy for normal mode
+    EEPROM.put(8, night_energy);      //latest recorded night tariff energy for normal mode
+    EEPROM.put(12, total_energy);     //latest recorded total energy for normal mode
+    EEPROM.put(16, lcd_bright);       //LCD backlight brightness value
+    EEPROM.put(18, 0);                //Demo mode (true/false)
+    EEPROM.put(20, 0);                //latest recorded daily value for day tariff for normal mode
+    EEPROM.put(24, 0);                //latest recorded daily value for night tariff for normal mode
+    EEPROM.put(30, 0);                //latest recorded monthly value for day tariff for normal mode
+    EEPROM.put(34, 0);                //latest recorded monthly value for night tariff for normal mode
+    EEPROM.put(100, latest_energy);   //latest recorded energy value for demo mode
+    EEPROM.put(104, day_energy);      //latest recorded day tariff energy for demo mode
+    EEPROM.put(108, night_energy);    //latest recorded night tariff energy for demo mode
+    EEPROM.put(112, total_energy);    //latest recorded total energy for demo mode
+    EEPROM.put(120, 0);               //latest recorded daily value for day tariff for demo mode
+    EEPROM.put(124, 0);               //latest recorded daily value for night tariff for demo mode
+    EEPROM.put(130, 0);               //latest recorded monthly value for day tariff for normal mode
+    EEPROM.put(134, 0);               //latest recorded monthly value for night tariff for normal mode
     EEPROM.commit();
   }
- 
+  
   getBrightness();
 
   Wire.begin(0, 2);

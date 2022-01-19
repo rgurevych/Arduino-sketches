@@ -421,9 +421,10 @@ void mainMenu(){
     }
 
     if(menu == 2){
+      enc.turn();
       mode = 2;
       screenReadyFlag = false;
-
+      screen = 0;
     }
 
     if(menu == 5){

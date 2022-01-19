@@ -164,19 +164,39 @@ void showMeter() {
   }
 
   if (!screenReadyFlag) {
-    getMeterData(s);
-
-    lcd.setCursor(4, 0);  lcd.print(F("Energy meter"));
-    lcd.setCursor(0, 1);  lcd.print(F("Day:"));  printEnergy(day_energy, true);  lcd.print(F("kWh"));
-    lcd.setCursor(0, 2);  lcd.print(F("Ngt:"));  printEnergy(night_energy, true);  lcd.print(F("kWh"));
-    lcd.setCursor(0, 3);  lcd.print(F("Tot:"));  printEnergy(total_energy, true);  lcd.print(F("kWh"));
-    screenReadyFlag = true;
+    if (screen == 0){
+      getMeterData(s);
+      lcd.setCursor(1, 0);  lcd.print(F("Current meter    ->"));
+      lcd.setCursor(0, 1);  lcd.print(F("Day:"));  printEnergy(day_energy, true);  lcd.print(F(" kWh"));
+      lcd.setCursor(0, 2);  lcd.print(F("Ngt:"));  printEnergy(night_energy, true);  lcd.print(F(" kWh"));
+      lcd.setCursor(0, 3);  lcd.print(F("Tot:"));  printEnergy(total_energy, true);  lcd.print(F(" kWh"));
+      screenReadyFlag = true;
+    }
+    else if (screen == 1){
+      float lastMonthlyDayEnergy, lastMonthlyNightEnergy;
+      EEPROM.get(30+s, lastMonthlyDayEnergy);
+      EEPROM.get(34+s, lastMonthlyNightEnergy);
+      lcd.setCursor(0, 0);  lcd.print(F("<- Saved for 01.")); if (month < 10){lcd.print(F("0"));} lcd.print(month);
+      lcd.setCursor(0, 1);  lcd.print(F("Day:"));  printEnergy(lastMonthlyDayEnergy, true);  lcd.print(F(" kWh"));
+      lcd.setCursor(0, 2);  lcd.print(F("Ngt:"));  printEnergy(lastMonthlyNightEnergy, true);  lcd.print(F(" kWh"));
+      lcd.setCursor(0, 3);  lcd.print(F("Tot:"));  printEnergy(lastMonthlyDayEnergy + lastMonthlyNightEnergy, true);  lcd.print(F(" kWh"));
+      screenReadyFlag = true;
+    }
   }
 
+  if (enc.turn()) {
+    if (screen == 0) screen = 1;
+    else if (screen == 1) screen = 0;
+    screenReadyFlag = false;
+    menuExitTimer.start();
+    enc.resetState();
+  }
+  
   if (enc.click()) {
     mode = 1;
     screenReadyFlag = false;
-
+    screen = 1;
     enc.resetState();
+    menuExitTimer.start();
   }
 }

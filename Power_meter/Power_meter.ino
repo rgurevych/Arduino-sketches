@@ -78,7 +78,7 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 // Global variables
 uint8_t hour, minute, second, month, day;
-int new_hour, new_minute, new_second, new_month, new_day, new_year;
+int8_t new_hour, new_minute, new_second, new_month, new_day, new_year;
 uint16_t year;
 uint16_t mom_voltage = 0;
 uint16_t mom_current = 0;
@@ -88,7 +88,7 @@ uint16_t mom_frequency = 0;
 uint16_t mom_pf = 0;
 byte mode = 0;
 byte screen = 0;
-byte menu = 1;
+int8_t menu = 1;
 float latest_energy = 0;
 float day_energy = 0;
 float night_energy = 0;
@@ -499,7 +499,7 @@ void settingsMenu(){
 
     else if(menu == 2){
       mode = 6;
-      menu = 1;
+      menu = 0;
       screenReadyFlag = false;
     }
 
@@ -536,7 +536,7 @@ void setTime(){
     }
     
   if (!screenReadyFlag){
-    lcd.setCursor(2, 0);  lcd.print(F("Set time&date"));
+    lcd.setCursor(0, 0);  lcd.print(F("Autocorrect time"));
     lcd.setCursor(0, 1);  lcd.print(F("Time:")); lcd.setCursor(7, 1); lcd.print(F(":")); lcd.setCursor(10,1); lcd.print(F(":"));
     lcd.setCursor(0, 2);  lcd.print(F("Date:")); lcd.setCursor(7, 2); lcd.print(F("/")); lcd.setCursor(10,2); lcd.print(F("/"));
     lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
@@ -551,6 +551,7 @@ void setTime(){
     }
 
   if(printTimer.isReady()) {
+    lcd.setCursor(17,0); if (automaticallyUpdateTime) {lcd.print(F("On "));} else {lcd.print(F("Off"));}
     lcd.setCursor(5,1); if (new_hour < 10){lcd.print(F("0"));} lcd.print(new_hour); 
     lcd.setCursor(8,1); if (new_minute < 10){lcd.print(F("0"));} lcd.print(new_minute); 
     lcd.setCursor(11,1); if (new_second < 10){lcd.print(F("0"));} lcd.print(new_second);
@@ -564,14 +565,14 @@ void setTime(){
   
   if(enc.right()) {
     menu += 1;
-    if (menu > 8) menu = 1;
+    if (menu > 8) menu = 0;
     timeSetMenu(menu);
     menuExitTimer.start();
   }
 
   if(enc.left()) {
     menu -= 1;
-    if (menu < 1) menu = 8;
+    if (menu < 0) menu = 8;
     timeSetMenu(menu);
     menuExitTimer.start();
   }
@@ -591,6 +592,7 @@ void setTime(){
   if(enc.click()){
     menuExitTimer.start();
     if(menu == 7){
+      EEPROM.get(19, automaticallyUpdateTime);
       mode = 5;
       menu = 2;
       screenReadyFlag = false;
@@ -599,7 +601,19 @@ void setTime(){
     }
 
     if(menu == 8){
-      saveNewTime(true);
+      if (EEPROM.read(19) != automaticallyUpdateTime) {
+        EEPROM.put(19, automaticallyUpdateTime);
+        EEPROM.commit();
+        if (DEBUG_MODE) {
+          Serial.print(F("Saving new value for automaticallyUpdateTime flag=")); Serial.println(automaticallyUpdateTime);
+        }
+      }
+      else {
+        saveNewTime(true);
+        if (DEBUG_MODE) {
+          Serial.print(F("Saving new time values"));
+        }
+      }
       mode = 5;
       menu = 2;
       screen = 1;
@@ -614,6 +628,11 @@ void timeSetMenu(byte menu){
   lcd.setCursor(11, 3); lcd.print(F(" "));
   
   switch(menu){
+    case 0:
+      lcd.setCursor(17,0);
+      lcd.print(F("   "));
+      break;
+    
     case 1:
       lcd.setCursor(5,1);
       lcd.print(F("  "));
@@ -1080,6 +1099,10 @@ void performResetMenu(byte menu){
 
 void adjustTimeDate(float delta, byte menu){
   switch(menu){
+    case 0:
+      automaticallyUpdateTime = !automaticallyUpdateTime;
+      break;
+    
     case 1:
       new_hour += delta;
       if(new_hour > 23) new_hour = 0;

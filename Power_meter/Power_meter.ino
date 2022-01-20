@@ -52,6 +52,7 @@ bool telegramEnabled = true;
 bool automaticallyUpdateTime = true;
 bool sendDailyMeterValuesViaTelegram = true;
 bool sendMonthlyMeterValuesViaTelegram = true;
+bool enableWiFi = true;
 
 
 // Timers:
@@ -134,6 +135,7 @@ void setup() {
     EEPROM.put(34, 0);                                  //latest recorded monthly value for night tariff for normal mode
     EEPROM.put(40, sendDailyMeterValuesViaTelegram);    //Should daily reports be sent via telegram
     EEPROM.put(41, sendMonthlyMeterValuesViaTelegram);  //Should monthly reports be sent via telegram
+    EEPROM.put(42, enableWiFi);                         //is WiFi connection enabled?
     EEPROM.put(100, latest_energy);                     //latest recorded energy value for demo mode
     EEPROM.put(104, day_energy);                        //latest recorded day tariff energy for demo mode
     EEPROM.put(108, night_energy);                      //latest recorded night tariff energy for demo mode
@@ -164,6 +166,7 @@ void setup() {
   EEPROM.get(19, automaticallyUpdateTime);
   EEPROM.get(40, sendDailyMeterValuesViaTelegram);
   EEPROM.get(41, sendMonthlyMeterValuesViaTelegram);
+  EEPROM.get(42, enableWiFi);
   
   lcd.init();
   lcd.setBacklight(lcdBacklight);
@@ -208,9 +211,12 @@ void setup() {
   configTime(0, 0, "pool.ntp.org");
   client.setTrustAnchors(&cert);
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
   WiFi.setAutoReconnect(true);
   WiFi.persistent(true);
+
+  if (enableWiFi) {
+    WiFi.begin(ssid, password);
+  }
   
   timeClient.begin();
   timeClient.setTimeOffset(utcOffsetInSeconds);
@@ -251,6 +257,10 @@ void checkMode(){
   
   if (mode == 2) {
     showMeter();
+  }
+
+  if (mode == 4) {
+    showNetwork();
   }
 
   if (mode == 5) {
@@ -396,7 +406,7 @@ void mainMenu(){
     
   if (!screenReadyFlag){
     lcd.setCursor(5, 0);  lcd.print(F("Main menu"));
-    lcd.setCursor(1, 1);  lcd.print(F("Back       Min/max"));
+    lcd.setCursor(1, 1);  lcd.print(F("Back       Network"));
     lcd.setCursor(1, 2);  lcd.print(F("Meter      Settings"));
     lcd.setCursor(1, 3);  lcd.print(F("Charts"));
     setMenuCursor(); lcd.print(F(">"));
@@ -435,6 +445,12 @@ void mainMenu(){
       mode = 2;
       screenReadyFlag = false;
       screen = 0;
+    }
+
+    if(menu == 4){
+      mode = 4;
+      screenReadyFlag = false;
+      screen = 1;
     }
 
     if(menu == 5){
@@ -878,16 +894,25 @@ void setDemoMode(){
     }
     
   if (!screenReadyFlag){
-    lcd.setCursor(4, 0);  lcd.print(F("Select mode"));
-    lcd.setCursor(0, 1);  lcd.print(F("Demo mode:")); 
+    lcd.setCursor(0, 0);  lcd.print(F("Demo mode:"));
+    lcd.setCursor(0, 1);  lcd.print(F("WiFi enabled:"));
+    lcd.setCursor(0, 2);  lcd.print(F("Telegram bot:"));
     lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
     newDemoMode = DEMO_MODE;
     screenReadyFlag = true;
     }
 
   if(printTimer.isReady()) {
-    lcd.setCursor(12,1);  
+    lcd.setCursor(14,0);  
     if (newDemoMode) lcd.print(F("On "));
+    else lcd.print(F("Off"));
+
+    lcd.setCursor(14,1);
+    if (enableWiFi) lcd.print(F("On "));
+    else lcd.print(F("Off"));
+
+    lcd.setCursor(14,2);
+    if (telegramEnabled) lcd.print(F("On "));
     else lcd.print(F("Off"));
     modeSetMenu(menu);
     blinkFlag = !blinkFlag;
@@ -895,36 +920,72 @@ void setDemoMode(){
   
   if(enc.right()) {
     menu += 1;
-    if (menu > 3) menu = 1;
+    if (menu > 5) menu = 1;
     menuExitTimer.start();
     modeSetMenu(menu);
   }
 
   if(enc.left()) {
     menu -= 1;
-    if (menu < 1) menu = 3;
+    if (menu < 1) menu = 5;
     menuExitTimer.start();
     modeSetMenu(menu);
   }
 
-  if(enc.click()){
+  if(enc.rightH() || enc.leftH()){
     menuExitTimer.start();
     if(menu == 1) {
       newDemoMode = !newDemoMode;
-      modeSetMenu(menu);
     }
+
+    if(menu == 2) {
+      enableWiFi = !enableWiFi;
+    }
+
+    if(menu == 3) {
+      telegramEnabled = !telegramEnabled;
+    }
+    modeSetMenu(menu);
+  }
     
-    if(menu == 2){
+  if(enc.click()){  
+    if(menu == 4){
+      EEPROM.get(42, enableWiFi);
+      EEPROM.get(17, telegramEnabled);
       mode = 5;
       menu = 5;
       screen = 1;
       screenReadyFlag = false;
     }
 
-    if(menu == 3){
-      DEMO_MODE = newDemoMode;
-      EEPROM.put(18, DEMO_MODE);
-      EEPROM.commit();
+    if(menu == 5){
+      bool commitNeeded = false;
+      
+      if (DEMO_MODE != newDemoMode) {
+        DEMO_MODE = newDemoMode;
+        EEPROM.put(18, DEMO_MODE);
+        commitNeeded = true;
+      }
+
+      if (EEPROM.read(42) != enableWiFi) {
+        EEPROM.put(42, enableWiFi);
+        commitNeeded = true;
+        if (enableWiFi) {
+          WiFi.begin(ssid, password);
+        }
+        else {
+          WiFi.disconnect();
+        }
+      }
+
+      if (EEPROM.read(17) != telegramEnabled) {
+        EEPROM.put(17, telegramEnabled);
+        commitNeeded = true;
+      }
+      
+      if (commitNeeded) {
+        EEPROM.commit();
+      }
       mode = 5;
       menu = 5;
       screen = 1;
@@ -940,16 +1001,26 @@ void modeSetMenu(byte menu){
   
   switch(menu){
     case 1:
-      lcd.setCursor(12,1); 
+      lcd.setCursor(14,0); 
       if(blinkFlag) lcd.print(F("   "));
       break;
 
     case 2:
+      lcd.setCursor(14,1); 
+      if(blinkFlag) lcd.print(F("   "));
+      break;
+
+    case 3:
+      lcd.setCursor(14,2); 
+      if(blinkFlag) lcd.print(F("   "));
+      break;
+
+    case 4:
       lcd.setCursor(1, 3);
       lcd.print(F(">"));
       break;
 
-    case 3:
+    case 5:
       lcd.setCursor(11, 3);
       lcd.print(F(">"));
       break;

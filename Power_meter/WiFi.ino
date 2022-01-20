@@ -225,3 +225,38 @@ void sendMonthlyMeterValues(float currentDayEnergy, float monthlyDayEnergyDelta,
     bot.sendMessage(CHAT_ID, MonthlyMeterValueMessage, "");
   }
 }
+
+
+void showNetwork() {
+  if (!screenReadyFlag) {
+    lcd.clear();
+  }
+
+  if (!screenReadyFlag) {
+    lcd.setCursor(0, 0);  lcd.print(F("WiFi connected: "));
+    checkWiFi();
+    if (WiFiReady) {
+      lcd.print(F("Yes"));
+    }
+    else {
+      lcd.print(F("No"));
+    }
+    lcd.setCursor(0, 1);  lcd.print(F("SSID: ")); lcd.print(WiFi.SSID());
+    lcd.setCursor(0, 2);  lcd.print(F("IPv4: ")); lcd.print(WiFi.localIP());
+    lcd.setCursor(0, 3);  lcd.print(F("Telegram bot: "));
+    if (telegramEnabled) {
+      lcd.print(F("On"));
+    }
+    else {
+      lcd.print(F("Off"));
+    }
+    screenReadyFlag = true;
+  }
+  
+  if (enc.click()) {
+    mode = 1;
+    screenReadyFlag = false;
+    enc.resetState();
+    menuExitTimer.start();
+  }
+}

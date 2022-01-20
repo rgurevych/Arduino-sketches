@@ -97,10 +97,11 @@ void handleNewMessages(int numNewMessages) {
     
     if (text == "/updateTime") {
       getNtpTime();
-      saveNewTime();
+      saveNewTime(false);
+      getTime();
       String updateTimeMessage = F("RTC time updated. New time and date: \n");
-      updateTimeMessage += String(new_hour) + ":" + String(new_minute) + ":" + String(new_second) + "  ";
-      updateTimeMessage += String(new_day) + "/" + String(new_month) + "/" + String(2000+new_year);
+      updateTimeMessage += String(hour) + ":" + String(minute) + ":" + String(second) + "  ";
+      updateTimeMessage += String(day) + "/" + String(month) + "/" + String(2000+year);
       bot.sendMessage(chat_id, updateTimeMessage, "");
     }
 

@@ -15,7 +15,7 @@
 #include <UniversalTelegramBot.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
-
+#include <DST_RTC.h>
 
 // Pins
 #define PZEM_RX_PIN 12
@@ -46,7 +46,7 @@ const char* ssid = "Penthouse_72";
 const char* password = "3Gurevych+1Mirkina";
 #define BOTtoken "5089942864:AAGk7ItUZyzCrfXsIWWRWaWHzY2TZAEZLjs"
 #define CHAT_ID "1289811885"
-
+const char rulesDST[] = "EU";
 bool DEMO_MODE = true;
 bool telegramEnabled = true;
 bool automaticallyUpdateTime = true;
@@ -67,14 +67,14 @@ SoftwareSerial pzemSWSerial(PZEM_TX_PIN, PZEM_RX_PIN);
 PZEM004Tv30 pzem;
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 RTC_DS3231 rtc;
-DateTime now;
+DST_RTC dst_rtc;
+DateTime now, raw_now;
 EncButton<EB_TICK, CLKe, DTe, SWe> enc;
 X509List cert(TELEGRAM_CERTIFICATE_ROOT);
 WiFiClientSecure client;
 UniversalTelegramBot bot(BOTtoken, client);
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
-
 
 // Global variables
 uint8_t hour, minute, second, month, day;
@@ -145,12 +145,6 @@ void setup() {
     EEPROM.commit();
   }
 
-  EEPROM.put(17, telegramEnabled);
-  EEPROM.put(19, automaticallyUpdateTime);
-  EEPROM.put(40, sendDailyMeterValuesViaTelegram);
-  EEPROM.put(41, sendMonthlyMeterValuesViaTelegram);
-  EEPROM.commit();
-  
   getBrightness();
 
   Wire.begin(0, 2);
@@ -160,7 +154,7 @@ void setup() {
   if (RESET_CLOCK || rtc.lostPower()){
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
-  now = rtc.now();
+  raw_now = rtc.now();
   
   pzemSWSerial.begin(9600);
   pzem = PZEM004Tv30(pzemSWSerial);
@@ -605,7 +599,7 @@ void setTime(){
     }
 
     if(menu == 8){
-      saveNewTime();
+      saveNewTime(true);
       mode = 5;
       menu = 2;
       screen = 1;

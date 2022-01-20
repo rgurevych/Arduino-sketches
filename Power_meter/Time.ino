@@ -1,5 +1,6 @@
 void getTime() {
-  now = rtc.now();
+  raw_now = rtc.now();
+  now = dst_rtc.calculateTime(raw_now);
   second = now.second();
   minute = now.minute();
   hour = now.hour();
@@ -26,7 +27,7 @@ void getNtpTime(){
 }
 
 
-void saveNewTime() {
+void saveNewTime(bool autoCorrection) {
   if (DEBUG_MODE){
     Serial.print(F("Saving new time to RTC module: "));
     Serial.print(new_hour); Serial.print(F(":")); Serial.print(new_minute); 
@@ -35,7 +36,16 @@ void saveNewTime() {
     Serial.print(F("/")); Serial.print(new_month); 
     Serial.print(F("/")); Serial.println(2000+new_year);
   }
+
   rtc.adjust(DateTime(2000+new_year, new_month, new_day, new_hour, new_minute, new_second));
+
+  if (autoCorrection) {
+    DateTime standardTime = rtc.now();
+    if (dst_rtc.checkDST(standardTime) == true) {           // check whether we're in DST right now. If we are, subtract an hour.
+      standardTime = standardTime.unixtime() - 3600;
+    }
+    rtc.adjust(standardTime);
+  }  
 }
 
 
@@ -46,7 +56,7 @@ void autoUpdateTime() {
       if (WiFiReady) {
         getNtpTime();
         if (new_year + 2000 == year) {
-          saveNewTime();
+          saveNewTime(false);
         }
       }
       autoUpdateTimeDoneFlag = true;

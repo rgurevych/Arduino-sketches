@@ -260,3 +260,27 @@ void showNetwork() {
     menuExitTimer.start();
   }
 }
+
+
+void publishData() {
+  if (publishDataTimer.isReady()) {
+    float ts_voltage = mom_voltage / 10.0;
+    float ts_current = mom_current / 100.0;
+    float ts_energy = mom_energy / 10.0;
+    ThingSpeak.setField(1, ts_voltage);
+    ThingSpeak.setField(2, ts_current);
+    ThingSpeak.setField(3, mom_power);
+    ThingSpeak.setField(4, ts_energy);
+
+    int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+
+    if (DEBUG_MODE) {
+      if(x == 200){
+        Serial.println("Channel update successful.");
+      }
+      else{
+        Serial.println("Problem updating channel. HTTP error code " + String(x));
+      }
+    }
+  }
+}

@@ -16,6 +16,7 @@
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include <DST_RTC.h>
+#include <ThingSpeak.h>
 
 // Pins
 #define PZEM_RX_PIN 12
@@ -32,6 +33,7 @@
 #define PRINT_TIMEOUT 500                //Interval between printing to the screen occurs
 #define MENU_EXIT_TIMEOUT 120000         //Interval for automatic exit from menu
 #define CHECK_TELEGRAM_TIMEOUT 10000     //Interval for checking Telegram bot
+#define PUBLISH_DATA_TIMEOUT 60000       //Interval for publishing data to ThingSpeak
 
 
 // Settings
@@ -46,6 +48,8 @@ const char* ssid = "Penthouse_72";
 const char* password = "3Gurevych+1Mirkina";
 #define BOTtoken "5089942864:AAGk7ItUZyzCrfXsIWWRWaWHzY2TZAEZLjs"
 #define CHAT_ID "1289811885"
+unsigned long myChannelNumber = 1637460;
+const char * myWriteAPIKey = "5QL2A6124OLI8Y1X";
 const char rulesDST[] = "EU";
 bool DEMO_MODE = true;
 bool telegramEnabled = true;
@@ -61,6 +65,7 @@ GTimer printTimer(MS, PRINT_TIMEOUT);
 GTimer timeTimer(MS, TIME_TICKER);
 GTimer menuExitTimer;
 GTimer checkTelegramTimer(MS, CHECK_TELEGRAM_TIMEOUT);
+GTimer publishDataTimer(MS, PUBLISH_DATA_TIMEOUT);
 
 
 // Setting up modules
@@ -76,6 +81,7 @@ WiFiClientSecure client;
 UniversalTelegramBot bot(BOTtoken, client);
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
+WiFiClient tsClient;
 
 // Global variables
 uint8_t hour, minute, second, month, day;
@@ -220,6 +226,8 @@ void setup() {
   
   timeClient.begin();
   timeClient.setTimeOffset(utcOffsetInSeconds);
+
+  ThingSpeak.begin(tsClient);
 }
 
 
@@ -229,6 +237,7 @@ void loop() {
   checkMode();
   recordMeter();
   checkInternetServices();
+  publishData();
 }
 
 

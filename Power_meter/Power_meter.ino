@@ -9,7 +9,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <RTClib.h>
 #include <EncButton.h>
-#include <EEPROM.h>
+//#include <EEPROM.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 #include <UniversalTelegramBot.h>
@@ -17,6 +17,7 @@
 #include <NTPClient.h>
 #include <DST_RTC.h>
 #include <ThingSpeak.h>
+#include <EEPROM_Rotate.h>
 
 // Pins
 #define PZEM_RX_PIN 12
@@ -69,6 +70,7 @@ GTimer publishDataTimer(MS, PUBLISH_DATA_TIMEOUT);
 
 
 // Setting up modules
+EEPROM_Rotate EEPROMr;
 SoftwareSerial pzemSWSerial(PZEM_TX_PIN, PZEM_RX_PIN);
 PZEM004Tv30 pzem;
 LiquidCrystal_I2C lcd(0x27, 20, 4);
@@ -121,36 +123,38 @@ void setup() {
   if (DEBUG_MODE) {
     Serial.begin(115200);
   }
-
-  EEPROM.begin(512);
+  
+  EEPROMr.size(4);
+  EEPROMr.offset(200);
+  EEPROMr.begin(512);
   
   // Reset to default settings
-  if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
-    EEPROM.write(INIT_ADDR, INIT_KEY);
-    EEPROM.put(0, latest_energy);                       //latest recorded energy value for normal mode
-    EEPROM.put(4, day_energy);                          //latest recorded day tariff energy for normal mode
-    EEPROM.put(8, night_energy);                        //latest recorded night tariff energy for normal mode
-    EEPROM.put(12, total_energy);                       //latest recorded total energy for normal mode
-    EEPROM.put(16, lcd_bright);                         //LCD backlight brightness value
-    EEPROM.put(17, telegramEnabled);                    //is telegram bot enabled?
-    EEPROM.put(18, 0);                                  //Demo mode (true/false)
-    EEPROM.put(19, automaticallyUpdateTime);            //should time be updated automatically
-    EEPROM.put(20, 0);                                  //latest recorded daily value for day tariff for normal mode
-    EEPROM.put(24, 0);                                  //latest recorded daily value for night tariff for normal mode
-    EEPROM.put(30, 0);                                  //latest recorded monthly value for day tariff for normal mode
-    EEPROM.put(34, 0);                                  //latest recorded monthly value for night tariff for normal mode
-    EEPROM.put(40, sendDailyMeterValuesViaTelegram);    //Should daily reports be sent via telegram
-    EEPROM.put(41, sendMonthlyMeterValuesViaTelegram);  //Should monthly reports be sent via telegram
-    EEPROM.put(42, enableWiFi);                         //is WiFi connection enabled?
-    EEPROM.put(100, latest_energy);                     //latest recorded energy value for demo mode
-    EEPROM.put(104, day_energy);                        //latest recorded day tariff energy for demo mode
-    EEPROM.put(108, night_energy);                      //latest recorded night tariff energy for demo mode
-    EEPROM.put(112, total_energy);                      //latest recorded total energy for demo mode
-    EEPROM.put(120, 0);                                 //latest recorded daily value for day tariff for demo mode
-    EEPROM.put(124, 0);                                 //latest recorded daily value for night tariff for demo mode
-    EEPROM.put(130, 0);                                 //latest recorded monthly value for day tariff for normal mode
-    EEPROM.put(134, 0);                                 //latest recorded monthly value for night tariff for normal mode
-    EEPROM.commit();
+  if (EEPROMr.read(INIT_ADDR) != INIT_KEY) {
+    EEPROMr.write(INIT_ADDR, INIT_KEY);
+    EEPROMr.put(0, latest_energy);                       //latest recorded energy value for normal mode
+    EEPROMr.put(4, day_energy);                          //latest recorded day tariff energy for normal mode
+    EEPROMr.put(8, night_energy);                        //latest recorded night tariff energy for normal mode
+    EEPROMr.put(12, total_energy);                       //latest recorded total energy for normal mode
+    EEPROMr.put(16, lcd_bright);                         //LCD backlight brightness value
+    EEPROMr.put(17, telegramEnabled);                    //is telegram bot enabled?
+    EEPROMr.put(18, 0);                                  //Demo mode (true/false)
+    EEPROMr.put(19, automaticallyUpdateTime);            //should time be updated automatically
+    EEPROMr.put(20, 0);                                  //latest recorded daily value for day tariff for normal mode
+    EEPROMr.put(24, 0);                                  //latest recorded daily value for night tariff for normal mode
+    EEPROMr.put(30, 0);                                  //latest recorded monthly value for day tariff for normal mode
+    EEPROMr.put(34, 0);                                  //latest recorded monthly value for night tariff for normal mode
+    EEPROMr.put(40, sendDailyMeterValuesViaTelegram);    //Should daily reports be sent via telegram
+    EEPROMr.put(41, sendMonthlyMeterValuesViaTelegram);  //Should monthly reports be sent via telegram
+    EEPROMr.put(42, enableWiFi);                         //is WiFi connection enabled?
+    EEPROMr.put(100, latest_energy);                     //latest recorded energy value for demo mode
+    EEPROMr.put(104, day_energy);                        //latest recorded day tariff energy for demo mode
+    EEPROMr.put(108, night_energy);                      //latest recorded night tariff energy for demo mode
+    EEPROMr.put(112, total_energy);                      //latest recorded total energy for demo mode
+    EEPROMr.put(120, 0);                                 //latest recorded daily value for day tariff for demo mode
+    EEPROMr.put(124, 0);                                 //latest recorded daily value for night tariff for demo mode
+    EEPROMr.put(130, 0);                                 //latest recorded monthly value for day tariff for normal mode
+    EEPROMr.put(134, 0);                                 //latest recorded monthly value for night tariff for normal mode
+    EEPROMr.commit();
   }
 
   getBrightness();
@@ -167,12 +171,12 @@ void setup() {
   pzemSWSerial.begin(9600);
   pzem = PZEM004Tv30(pzemSWSerial);
 
-  EEPROM.get(18, DEMO_MODE);
-  EEPROM.get(17, telegramEnabled);
-  EEPROM.get(19, automaticallyUpdateTime);
-  EEPROM.get(40, sendDailyMeterValuesViaTelegram);
-  EEPROM.get(41, sendMonthlyMeterValuesViaTelegram);
-  EEPROM.get(42, enableWiFi);
+  EEPROMr.get(18, DEMO_MODE);
+  EEPROMr.get(17, telegramEnabled);
+  EEPROMr.get(19, automaticallyUpdateTime);
+  EEPROMr.get(40, sendDailyMeterValuesViaTelegram);
+  EEPROMr.get(41, sendMonthlyMeterValuesViaTelegram);
+  EEPROMr.get(42, enableWiFi);
   
   lcd.init();
   lcd.setBacklight(lcdBacklight);
@@ -303,7 +307,7 @@ void checkMode(){
 
 
 void getBrightness(){
-  EEPROM.get(16, lcd_bright);
+  EEPROMr.get(16, lcd_bright);
   analogWrite(BACKLIGHT, lcd_bright*15);
 }
 
@@ -617,7 +621,7 @@ void setTime(){
   if(enc.click()){
     menuExitTimer.start();
     if(menu == 7){
-      EEPROM.get(19, automaticallyUpdateTime);
+      EEPROMr.get(19, automaticallyUpdateTime);
       mode = 5;
       menu = 2;
       screenReadyFlag = false;
@@ -626,9 +630,9 @@ void setTime(){
     }
 
     if(menu == 8){
-      if (EEPROM.read(19) != automaticallyUpdateTime) {
-        EEPROM.put(19, automaticallyUpdateTime);
-        EEPROM.commit();
+      if (EEPROMr.read(19) != automaticallyUpdateTime) {
+        EEPROMr.put(19, automaticallyUpdateTime);
+        EEPROMr.commit();
         if (DEBUG_MODE) {
           Serial.print(F("Saving new value for automaticallyUpdateTime flag=")); Serial.println(automaticallyUpdateTime);
         }
@@ -762,11 +766,11 @@ void setMeter(){
     }
 
     if(menu == 4){
-      EEPROM.put(4+s, day_energy);
-      EEPROM.put(8+s, night_energy);
+      EEPROMr.put(4+s, day_energy);
+      EEPROMr.put(8+s, night_energy);
       total_energy = day_energy + night_energy;
-      EEPROM.put(12+s, total_energy);
-      EEPROM.commit();
+      EEPROMr.put(12+s, total_energy);
+      EEPROMr.commit();
       mode = 5;
       menu = 3;
       screen = 1;
@@ -862,8 +866,8 @@ void setBright(){
     }
 
     if(menu == 3){
-      EEPROM.put(16, lcd_bright);
-      EEPROM.commit();
+      EEPROMr.put(16, lcd_bright);
+      EEPROMr.commit();
       analogWrite(BACKLIGHT, lcd_bright*15);
       mode = 5;
       menu = 4;
@@ -959,8 +963,8 @@ void setDemoMode(){
     
   if(enc.click()){  
     if(menu == 4){
-      EEPROM.get(42, enableWiFi);
-      EEPROM.get(17, telegramEnabled);
+      EEPROMr.get(42, enableWiFi);
+      EEPROMr.get(17, telegramEnabled);
       mode = 5;
       menu = 5;
       screen = 1;
@@ -972,12 +976,12 @@ void setDemoMode(){
       
       if (DEMO_MODE != newDemoMode) {
         DEMO_MODE = newDemoMode;
-        EEPROM.put(18, DEMO_MODE);
+        EEPROMr.put(18, DEMO_MODE);
         commitNeeded = true;
       }
 
-      if (EEPROM.read(42) != enableWiFi) {
-        EEPROM.put(42, enableWiFi);
+      if (EEPROMr.read(42) != enableWiFi) {
+        EEPROMr.put(42, enableWiFi);
         commitNeeded = true;
         if (enableWiFi) {
           WiFi.begin(ssid, password);
@@ -987,13 +991,13 @@ void setDemoMode(){
         }
       }
 
-      if (EEPROM.read(17) != telegramEnabled) {
-        EEPROM.put(17, telegramEnabled);
+      if (EEPROMr.read(17) != telegramEnabled) {
+        EEPROMr.put(17, telegramEnabled);
         commitNeeded = true;
       }
       
       if (commitNeeded) {
-        EEPROM.commit();
+        EEPROMr.commit();
       }
       mode = 5;
       menu = 5;
@@ -1150,8 +1154,8 @@ void performReset(){
         screenReadyFlag = false;
         }
       else if (screen == 2) {
-        EEPROM.write(INIT_ADDR, 1);
-        EEPROM.commit();
+        EEPROMr.write(INIT_ADDR, 1);
+        EEPROMr.commit();
         resetFunc();
       }
     }

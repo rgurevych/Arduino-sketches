@@ -110,8 +110,8 @@ void handleNewMessages(int numNewMessages) {
       byte s;
       if (DEMO_MODE) s = 100; 
       else s = 0;
-      EEPROM.get(30+s, lastDayEnergy);
-      EEPROM.get(34+s, lastNightEnergy);
+      EEPROMr.get(30+s, lastDayEnergy);
+      EEPROMr.get(34+s, lastNightEnergy);
       String monthlyMeterMessage = "Meter values recorded for 01.";
       if (month < 10) monthlyMeterMessage += "0";
       monthlyMeterMessage += String(month) + ":\n";
@@ -130,8 +130,8 @@ void handleNewMessages(int numNewMessages) {
       }
       else {
         sendDailyMeterValuesViaTelegram = true;
-        EEPROM.put(40, sendDailyMeterValuesViaTelegram);
-        EEPROM.commit();
+        EEPROMr.put(40, sendDailyMeterValuesViaTelegram);
+        EEPROMr.commit();
         enableDailyReportMessage += F("Daily reports via Telegram enabled! \n");
         enableDailyReportMessage += F("Settings were updated. \n");
       }
@@ -146,8 +146,8 @@ void handleNewMessages(int numNewMessages) {
       }
       else {
         sendDailyMeterValuesViaTelegram = false;
-        EEPROM.put(40, sendDailyMeterValuesViaTelegram);
-        EEPROM.commit();
+        EEPROMr.put(40, sendDailyMeterValuesViaTelegram);
+        EEPROMr.commit();
         disableDailyReportMessage += F("Daily reports via Telegram disabled! \n");
         disableDailyReportMessage += F("Settings were updated. \n");
       }
@@ -162,8 +162,8 @@ void handleNewMessages(int numNewMessages) {
       }
       else {
         sendMonthlyMeterValuesViaTelegram = true;
-        EEPROM.put(41, sendMonthlyMeterValuesViaTelegram);
-        EEPROM.commit();
+        EEPROMr.put(41, sendMonthlyMeterValuesViaTelegram);
+        EEPROMr.commit();
         enableMonthlyReportMessage += F("Monthly reports via Telegram enabled! \n");
         enableMonthlyReportMessage += F("Settings were updated. \n");
       }
@@ -178,8 +178,8 @@ void handleNewMessages(int numNewMessages) {
       }
       else {
         sendMonthlyMeterValuesViaTelegram = false;
-        EEPROM.put(41, sendMonthlyMeterValuesViaTelegram);
-        EEPROM.commit();
+        EEPROMr.put(41, sendMonthlyMeterValuesViaTelegram);
+        EEPROMr.commit();
         disableMonthlyReportMessage += F("Monthly reports via Telegram disabled! \n");
         disableMonthlyReportMessage += F("Settings were updated. \n");
       }

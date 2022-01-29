@@ -284,3 +284,18 @@ void publishData() {
     }
   }
 }
+
+
+void publishHourlyEnergy(float eneryDelta) {
+    ThingSpeak.setField(5, eneryDelta);
+    int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+
+    if (DEBUG_MODE) {
+      if(x == 200){
+        Serial.println("Channel update successful.");
+      }
+      else{
+        Serial.println("Problem updating channel. HTTP error code " + String(x));
+      }
+    }
+}

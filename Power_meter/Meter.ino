@@ -39,6 +39,7 @@ void measurePower() {
 
 void readPowerData() {
   mom_voltage = pzem.voltage() * 10;
+  mom_voltage = constrain(mom_voltage, 0, 3800);
   mom_current = round(pzem.current() * 100);
   mom_power = round(pzem.power());
   mom_energy = round(pzem.energy() * 10);
@@ -116,6 +117,7 @@ void updateMeter() {
   }
   
   EEPROMr.commit();
+  publishHourlyEnergy(energyDelta);
 }
 
 

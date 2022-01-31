@@ -115,6 +115,10 @@ void updateMeter() {
       updateMonthlyMeter(s, day_energy, night_energy);
     }
   }
+
+  updatePlotArray(energyDelta);
+
+  EEPROMr.put(300+s, plot_array);
   
   EEPROMr.commit();
   publishHourlyEnergy(energyDelta);

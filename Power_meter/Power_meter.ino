@@ -106,6 +106,7 @@ byte lcd_bright = 5;
 byte timezone = 2;
 long utcOffsetInSeconds = 3600*timezone;
 bool newDemoMode;
+float plot_array[20];
 
 
 //Flags
@@ -152,11 +153,13 @@ void setup() {
     EEPROMr.put(112, total_energy);                      //latest recorded total energy for demo mode
     EEPROMr.put(120, 0);                                 //latest recorded daily value for day tariff for demo mode
     EEPROMr.put(124, 0);                                 //latest recorded daily value for night tariff for demo mode
-    EEPROMr.put(130, 0);                                 //latest recorded monthly value for day tariff for normal mode
-    EEPROMr.put(134, 0);                                 //latest recorded monthly value for night tariff for normal mode
+    EEPROMr.put(130, 0);                                 //latest recorded monthly value for day tariff for demo mode
+    EEPROMr.put(134, 0);                                 //latest recorded monthly value for night tariff for demo mode
+    EEPROMr.put(300, plot_array);                        //array of latest 20 hourly energy values for normal mode
+    EEPROMr.put(400, plot_array);                        //array of latest 20 hourly energy values for demo mode
     EEPROMr.commit();
   }
-
+  
   getBrightness();
 
   Wire.begin(0, 2);
@@ -232,6 +235,8 @@ void setup() {
   timeClient.setTimeOffset(utcOffsetInSeconds);
 
   ThingSpeak.begin(tsClient);
+
+  initPlot();
 }
 
 
@@ -270,6 +275,10 @@ void checkMode(){
   
   if (mode == 2) {
     showMeter();
+  }
+
+  if (mode == 3) {
+    drawEnergyPlot();
   }
 
   if (mode == 4) {
@@ -421,7 +430,7 @@ void mainMenu(){
     lcd.setCursor(5, 0);  lcd.print(F("Main menu"));
     lcd.setCursor(1, 1);  lcd.print(F("Back       Network"));
     lcd.setCursor(1, 2);  lcd.print(F("Meter      Settings"));
-    lcd.setCursor(1, 3);  lcd.print(F("Charts"));
+    lcd.setCursor(1, 3);  lcd.print(F("Chart"));
     setMenuCursor(); lcd.print(F(">"));
     screenReadyFlag = true;
     }
@@ -458,6 +467,12 @@ void mainMenu(){
       mode = 2;
       screenReadyFlag = false;
       screen = 0;
+    }
+
+    if(menu == 3){
+      enc.turn();
+      mode = 3;
+      screenReadyFlag = false;
     }
 
     if(menu == 4){

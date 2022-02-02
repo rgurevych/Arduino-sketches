@@ -6,6 +6,8 @@ void getPowerData() {
     else {
       measurePower();
     }
+
+    updateAverageData();
   }
 }
 
@@ -38,16 +40,16 @@ void measurePower() {
 
 
 void readPowerData() {
-  mom_voltage = pzem.voltage() * 10;
+  float cur_voltage = pzem.voltage();
+  if (!isnan(cur_voltage)) {
+    mom_voltage = cur_voltage * 10;
+  }
   mom_voltage = constrain(mom_voltage, 0, 3800);
   mom_current = round(pzem.current() * 100);
   mom_power = round(pzem.power());
   mom_energy = round(pzem.energy() * 10);
   mom_frequency = pzem.frequency() * 10;
   mom_pf = pzem.pf() * 100;
-  if (isnan(mom_voltage)) {
-    mom_voltage = 0;
-  }
 }
 
 
@@ -60,13 +62,37 @@ void generatePowerData() {
   mom_pf = random(90, 101);
 }
 
+void updateAverageData(){
+  if (resetAverageDataFlag) {
+    av_voltage = mom_voltage;
+    av_current = mom_current;
+    av_power = mom_power;
+    av_counter = 1;
+    resetAverageDataFlag = false;
+  }
+  else {
+    if (av_voltage != 0) {
+      av_voltage = (av_voltage * av_counter + mom_voltage) / (av_counter + 1);
+    }
+  
+    if (av_current != 0) {
+      av_current = (av_current * av_counter + mom_current) / (av_counter + 1);
+    }
+  
+    if (av_power != 0) {
+      av_power = (av_power * av_counter + mom_power) / (av_counter + 1);
+    }
+  av_counter += 1;
+  }
+}
+
 
 void recordMeter() {
   if (minute == 0 && !recordMeterDoneFlag) {
     if (meterPowered || DEMO_MODE) {
       updateMeter();
+      recordMeterDoneFlag = true;
     }
-    recordMeterDoneFlag = true;
   }
   else if (minute != 0) {
     recordMeterDoneFlag = false;
@@ -118,9 +144,10 @@ void updateMeter() {
 
   updatePlotArray(energyDelta);
 
-  EEPROMr.put(300+s, plot_array);
+  EEPROMr.put(300 + s, plot_array);
   
   EEPROMr.commit();
+  
   publishHourlyEnergy(energyDelta);
 }
 

@@ -8,18 +8,24 @@ void updatePlotArray(float hourlyEnergy) {
   for (byte i = 0; i < 19; i++) {
     plot_array[i] = plot_array[i+1];
   }
-  plot_array[19] = hourlyEnergy;
+  plot_array[19] = int(hourlyEnergy * 10);
 }
 
 
 void drawEnergyPlot() {
   if (!screenReadyFlag) {
     lcd.clear();
-    float max_value = 0;
+    byte s;
+    if (DEMO_MODE) s = 100; 
+    else s = 0;
+
+    EEPROMr.get(300+s, plot_array); 
+    
+    int max_value = 0;
     for (byte i = 0; i < 20; i++) {
       if (plot_array[i] > max_value) max_value = plot_array[i];
       }
-    drawPlot(0, 3, 20, 4, 0, int(max_value), (float*)plot_array);
+    drawPlot(0, 3, 20, 4, 0, int(max_value + 1), (int*)plot_array);
     screenReadyFlag = true;
   }
   
@@ -53,9 +59,9 @@ void initPlot() {
 }
 
 
-void drawPlot(byte pos, byte row, byte width, byte height, int min_val, int max_val, float *plot_array) {
+void drawPlot(byte pos, byte row, byte width, byte height, int min_val, int max_val, int *plot_array) {
   for (byte i = 0; i < width; i++) {                  // каждый столбец параметров
-    float fill_val = plot_array[i];
+    int fill_val = plot_array[i];
     fill_val = constrain(fill_val, min_val, max_val);
     byte infill, fract;
     // найти количество целых блоков с учётом минимума и максимума для отображения на графике

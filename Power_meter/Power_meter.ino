@@ -29,7 +29,7 @@
 
 
 // Timer durations
-#define MEASURE_TIMEOUT 1500             //Interval between measure occurs
+#define MEASURE_TIMEOUT 3000             //Interval between measure occurs
 #define TIME_TICKER 1000                 //Interval for reading the time from RTC module
 #define PRINT_TIMEOUT 500                //Interval between printing to the screen occurs
 #define MENU_EXIT_TIMEOUT 120000         //Interval for automatic exit from menu
@@ -40,7 +40,7 @@
 // Settings
 #define INIT_ADDR 500                    // Number of EEPROM initial cell
 #define INIT_KEY 0                        // First launch key
-#define DEBUG_MODE 1
+#define DEBUG_MODE 0
 #define RESET_CLOCK 0
 #define DAY_TARIFF_START 7
 #define NIGHT_TARIFF_START 23
@@ -102,11 +102,13 @@ float latest_energy = 0;
 float day_energy = 0;
 float night_energy = 0;
 float total_energy = 0;
+float av_voltage = 0, av_current = 0, av_power = 0;
+byte av_counter = 1;
 byte lcd_bright = 5;
 byte timezone = 2;
 long utcOffsetInSeconds = 3600*timezone;
 bool newDemoMode;
-float plot_array[20];
+int plot_array[20];
 
 
 //Flags
@@ -115,6 +117,7 @@ bool lcdBacklight = true;
 bool recordMeterDoneFlag = false;
 bool blinkFlag = true;
 bool autoUpdateTimeDoneFlag = false;
+bool resetAverageDataFlag = true;
 bool meterPowered;
 bool WiFiReady;
 

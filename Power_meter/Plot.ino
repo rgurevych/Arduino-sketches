@@ -8,7 +8,10 @@ void updatePlotArray(float hourlyEnergy) {
   for (byte i = 0; i < 19; i++) {
     plot_array[i] = plot_array[i+1];
   }
-  plot_array[19] = int(hourlyEnergy * 10);
+
+  if (!isnan(hourlyEnergy)) {
+    plot_array[19] = int(hourlyEnergy * 10);
+  }
 }
 
 

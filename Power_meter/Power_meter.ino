@@ -103,7 +103,8 @@ float day_energy = 0;
 float night_energy = 0;
 float total_energy = 0;
 float av_voltage = 0, av_current = 0, av_power = 0;
-byte av_counter = 1;
+float energyDelta, dailyDayEnergyDelta, dailyNightEnergyDelta, monthlyDayEnergyDelta, monthlyNightEnergyDelta;
+uint8_t av_counter = 1;
 byte lcd_bright = 5;
 byte timezone = 2;
 long utcOffsetInSeconds = 3600*timezone;
@@ -118,6 +119,10 @@ bool recordMeterDoneFlag = false;
 bool blinkFlag = true;
 bool autoUpdateTimeDoneFlag = false;
 bool resetAverageDataFlag = true;
+bool publishHourlyEnergyFlag = false;
+bool publishDailyEnergyFlag = false;
+bool publishDailyTelegramReport = false;
+bool publishMonthlyTelegramReport = false;
 bool meterPowered;
 bool WiFiReady;
 
@@ -162,7 +167,7 @@ void setup() {
     EEPROMr.put(400, plot_array);                        //array of latest 20 hourly energy values for demo mode
     EEPROMr.commit();
   }
-  
+
   getBrightness();
 
   Wire.begin(0, 2);

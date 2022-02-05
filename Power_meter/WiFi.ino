@@ -8,10 +8,17 @@ void checkTelegram(){
   if (checkTelegramTimer.isReady() && mode == 0 && telegramEnabled){
     checkWiFi();
     if (WiFiReady) {
+      if (sendDailyMeterValuesViaTelegram && publishDailyTelegramReport) {
+        sendDailyMeterValues();
+      }
+
+      if (sendMonthlyMeterValuesViaTelegram && publishMonthlyTelegramReport) {
+        sendMonthlyMeterValues();
+      }
+      
       int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
 
       while(numNewMessages) {
-//        Serial.println(F("New message received"));
         handleNewMessages(numNewMessages);
         numNewMessages = bot.getUpdates(bot.last_message_received + 1);
       }
@@ -195,22 +202,31 @@ void handleNewMessages(int numNewMessages) {
 }
 
 
-void sendDailyMeterValues(float dailyDayEnergyDelta, float dailyNightEnergyDelta) {
-  checkWiFi();
+void sendDailyMeterValues() {
+  // checkWiFi();
   if (WiFiReady) {
     String dailyMeterValueMessage = "Power consumption for yesterday was:\n";
     if (DEMO_MODE) dailyMeterValueMessage += F("!!! DEMO MODE ENABLED !!!\n");
     dailyMeterValueMessage += "Day: " + String(dailyDayEnergyDelta, 1) + " kWh \n";
     dailyMeterValueMessage += "Night: " + String(dailyNightEnergyDelta, 1) + " kWh \n";
     dailyMeterValueMessage += "Total: " + String(dailyDayEnergyDelta + dailyNightEnergyDelta, 1) + " kWh \n";
-    bot.sendMessage(CHAT_ID, dailyMeterValueMessage, "");
+    if (bot.sendMessage(CHAT_ID, dailyMeterValueMessage, "")) {
+      publishDailyTelegramReport = false;
+    }
   }
 }
 
 
-void sendMonthlyMeterValues(float currentDayEnergy, float monthlyDayEnergyDelta, float currentNightEnergy, float monthlyNightEnergyDelta) {
-  checkWiFi();
+void sendMonthlyMeterValues() {
+  //checkWiFi();
   if (WiFiReady) {
+    byte s;
+    float currentDayEnergy, currentNightEnergy;
+    if (DEMO_MODE) s = 100; 
+    else s = 0;
+    EEPROMr.get(30+s, currentDayEnergy);
+    EEPROMr.get(34+s, currentNightEnergy);
+    
     String MonthlyMeterValueMessage = "Power consumption for last month was:\n";
     if (DEMO_MODE) MonthlyMeterValueMessage += F("!!! DEMO MODE ENABLED !!!\n");
     MonthlyMeterValueMessage += "Day: " + String(monthlyDayEnergyDelta, 1) + " kWh \n";
@@ -222,7 +238,9 @@ void sendMonthlyMeterValues(float currentDayEnergy, float monthlyDayEnergyDelta,
     MonthlyMeterValueMessage += "Day: " + String(currentDayEnergy, 1) + " kWh \n";
     MonthlyMeterValueMessage += "Night: " + String(currentNightEnergy, 1) + " kWh \n";
     MonthlyMeterValueMessage += "Total: " + String(currentDayEnergy + currentNightEnergy, 1) + " kWh \n\n";
-    bot.sendMessage(CHAT_ID, MonthlyMeterValueMessage, "");
+    if (bot.sendMessage(CHAT_ID, MonthlyMeterValueMessage, "")) {
+      publishMonthlyTelegramReport = false;
+    }
   }
 }
 
@@ -263,18 +281,25 @@ void showNetwork() {
 
 
 void publishData() {
-  if (publishDataTimer.isReady()) {
+  if (publishDataTimer.isReady() && enableWiFi) {
     checkWiFi();
     if (WiFiReady) {
       float ts_voltage = av_voltage / 10.0;
       float ts_current = av_current / 100.0;
       float ts_energy = mom_energy / 10.0;
-      ThingSpeak.setField(1, ts_voltage);
-      ThingSpeak.setField(2, ts_current);
-      ThingSpeak.setField(3, av_power);
+      if (ts_voltage > 0) ThingSpeak.setField(1, ts_voltage);
+      if (ts_current > 0) ThingSpeak.setField(2, ts_current);
+      if (av_power > 0) ThingSpeak.setField(3, int(av_power));
       ThingSpeak.setField(4, ts_energy);
+      if (publishHourlyEnergyFlag) ThingSpeak.setField(5, energyDelta);
+      if (publishDailyEnergyFlag) ThingSpeak.setField(6, dailyDayEnergyDelta + dailyNightEnergyDelta);
   
       int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+
+      if (x == 200) {
+        publishHourlyEnergyFlag = false;
+        publishDailyEnergyFlag = false;
+      }
       if (DEBUG_MODE) {
         if(x == 200){
           Serial.println("Channel update successful.");
@@ -286,19 +311,4 @@ void publishData() {
     }
     resetAverageDataFlag = true;
   }
-}
-
-
-void publishHourlyEnergy(float eneryDelta) {
-    ThingSpeak.setField(5, eneryDelta);
-    int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
-
-    if (DEBUG_MODE) {
-      if(x == 200){
-        Serial.println("Channel update successful.");
-      }
-      else{
-        Serial.println("Problem updating channel. HTTP error code " + String(x));
-      }
-    }
 }

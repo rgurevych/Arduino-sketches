@@ -41,15 +41,36 @@ void measurePower() {
 
 void readPowerData() {
   float cur_voltage = pzem.voltage();
+  float cur_current = pzem.current();
+  float cur_power = pzem.power();
+  float cur_energy = pzem.energy();
+  float cur_frequency = pzem.frequency();
+  float cur_pf = pzem.pf();
+  
   if (!isnan(cur_voltage)) {
     mom_voltage = cur_voltage * 10;
   }
   mom_voltage = constrain(mom_voltage, 0, 3800);
-  mom_current = round(pzem.current() * 100);
-  mom_power = round(pzem.power());
-  mom_energy = round(pzem.energy() * 10);
-  mom_frequency = pzem.frequency() * 10;
-  mom_pf = pzem.pf() * 100;
+  
+  if (!isnan(cur_current)) {
+    mom_current = round(cur_current * 100);
+  }
+
+  if (!isnan(cur_power)) {
+    mom_power = round(cur_power);
+  }
+  
+  if (!isnan(cur_energy)) {
+    mom_energy = round(cur_energy * 10);
+  }
+  
+  if (!isnan(cur_frequency)) {
+    mom_frequency = cur_frequency * 10;
+  }
+
+  if (!isnan(cur_pf)) {
+    mom_pf = cur_pf * 100;
+  }
 }
 
 
@@ -71,18 +92,18 @@ void updateAverageData(){
     resetAverageDataFlag = false;
   }
   else {
-    if (av_voltage != 0) {
+    if (mom_voltage > 0) {
       av_voltage = (av_voltage * av_counter + mom_voltage) / (av_counter + 1);
     }
   
-    if (av_current != 0) {
+    if (mom_current > 0) {
       av_current = (av_current * av_counter + mom_current) / (av_counter + 1);
     }
   
-    if (av_power != 0) {
+    if (mom_power > 0) {
       av_power = (av_power * av_counter + mom_power) / (av_counter + 1);
     }
-  av_counter += 1;
+  av_counter ++;
   }
 }
 
@@ -102,15 +123,13 @@ void recordMeter() {
 
 void updateMeter() {
   byte s;
-  float recordEnergy;
+  float recordEnergy = mom_energy / 10.0;
   if (DEMO_MODE) {
     s = 100;
-    recordEnergy = mom_energy / 10.0;
   }
   else {
     s = 0;
-    recordEnergy = pzem.energy();
-    if (recordEnergy > 9900) {
+    if (recordEnergy > 99000) {
       pzem.resetEnergy();
     }
   }
@@ -118,22 +137,25 @@ void updateMeter() {
   EEPROMr.get(0 + s, latest_energy);
   getMeterData(s);
 
-  float energyDelta = recordEnergy - latest_energy;           //Считаем разницу между текущими и сохраненными ранее показаниями
+  energyDelta = recordEnergy - latest_energy;                 //Считаем разницу между текущими и сохраненными ранее показаниями
   if (energyDelta < 0) {                                      //Если разница меньше 0, значит счетчик сбрасывали
     energyDelta = recordEnergy;                               //поэтому в таком случае учитываем полное значение счетчика (разница между текущими показаниями и 0)
   }
-  EEPROMr.put(0 + s, recordEnergy);
+  
+  if (!isnan(recordEnergy)) {
+    EEPROMr.put(0 + s, recordEnergy);
 
-  if (hour > DAY_TARIFF_START && hour <= NIGHT_TARIFF_START) {
-    day_energy += energyDelta;
-    EEPROMr.put(4 + s, day_energy);
+    if (hour > DAY_TARIFF_START && hour <= NIGHT_TARIFF_START) {
+      day_energy += energyDelta;
+      EEPROMr.put(4 + s, day_energy);
+    }
+    else {
+      night_energy += energyDelta;
+      EEPROMr.put(8 + s, night_energy);
+    }
+    total_energy = day_energy + night_energy;
+    EEPROMr.put(12 + s, total_energy);
   }
-  else {
-    night_energy += energyDelta;
-    EEPROMr.put(8 + s, night_energy);
-  }
-  total_energy = day_energy + night_energy;
-  EEPROMr.put(12 + s, total_energy);
 
   if (hour == 0) {
     updateDailyMeter(s, day_energy, night_energy);
@@ -144,11 +166,10 @@ void updateMeter() {
 
   updatePlotArray(energyDelta);
 
+  publishHourlyEnergyFlag = true;
+
   EEPROMr.put(300 + s, plot_array);
-  
   EEPROMr.commit();
-  
-  publishHourlyEnergy(energyDelta);
 }
 
 
@@ -156,13 +177,15 @@ void updateDailyMeter(byte s, float currentDayEnergy, float currentNightEnergy) 
   float lastDayEnergy, lastNightEnergy;
   EEPROMr.get(20+s, lastDayEnergy);
   EEPROMr.get(24+s, lastNightEnergy);
-  
-  if(sendDailyMeterValuesViaTelegram) {
-    sendDailyMeterValues(currentDayEnergy - lastDayEnergy, currentNightEnergy - lastNightEnergy);
-  }
-  
+
+  dailyDayEnergyDelta = currentDayEnergy - lastDayEnergy;
+  dailyNightEnergyDelta = currentNightEnergy - lastNightEnergy;
+
   EEPROMr.put(20+s, currentDayEnergy);
   EEPROMr.put(24+s, currentNightEnergy);
+
+  publishDailyEnergyFlag = true;
+  publishDailyTelegramReport = true;
 }
 
 
@@ -170,13 +193,14 @@ void updateMonthlyMeter(byte s, float currentDayEnergy, float currentNightEnergy
   float lastDayEnergy, lastNightEnergy;
   EEPROMr.get(30+s, lastDayEnergy);
   EEPROMr.get(34+s, lastNightEnergy);
-  
-  if(sendMonthlyMeterValuesViaTelegram) {
-    sendMonthlyMeterValues(currentDayEnergy, currentDayEnergy - lastDayEnergy, currentNightEnergy, currentNightEnergy - lastNightEnergy);
-  }
-  
+
+  monthlyDayEnergyDelta = currentDayEnergy - lastDayEnergy;
+  monthlyNightEnergyDelta = currentNightEnergy - lastNightEnergy;
+   
   EEPROMr.put(30+s, currentDayEnergy);
   EEPROMr.put(34+s, currentNightEnergy);
+
+  publishMonthlyTelegramReport = true;
 }
 
 

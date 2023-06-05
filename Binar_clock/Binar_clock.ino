@@ -19,7 +19,7 @@
 //---------- Include libraries
 #include <microLED.h>
 #include <GyverTimer.h>
-//#include <GyverButton.h>
+#include <VirtualButton.h>
 #include <Wire.h>
 #include <RTClib.h>
 
@@ -27,6 +27,8 @@
 //---------- Initialize devices
 microLED<NUMLEDS, STRIP_PIN, MLED_NO_CLOCK, LED_WS2811, ORDER_RGB, CLI_LOW> strip;
 RTC_DS3231 rtc;                       // RTC module
+VButton btn1;
+VButton btn2;
 //GButton button1(BUTTON_1_PIN);        // Button1
 //GButton button2(BUTTON_2_PIN);        // Button1
 
@@ -73,8 +75,8 @@ void setup() {
   Serial.begin(9600);
   
   //Pin modes
-//  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
-//  pinMode(BUTTON_2_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_2_PIN, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
   
   // Setting up RTC module and display time
@@ -94,6 +96,9 @@ void setup() {
 
 
 void loop(){
+  btn1.poll(!digitalRead(BUTTON_1_PIN));
+  btn2.poll(!digitalRead(BUTTON_2_PIN));
+  
   if (oneSecondTimer.isReady()){
   updateStrip();
   }
@@ -108,7 +113,16 @@ void updateStrip(){
     secColor = ledColors[9];
     minColor = ledColors[13];
     hrsColor = ledColors[4];
-    
+
+    if (btn1.press()){
+      secs = 0;
+      Serial.println("Button 1 pressed");
+    }
+
+    if (btn2.press()){
+      mins = 0;
+      Serial.println("Button 2 pressed");
+    }
   
     if (secs > 59){
       DateTime now = rtc.now();

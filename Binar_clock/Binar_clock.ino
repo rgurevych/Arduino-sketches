@@ -32,17 +32,17 @@ VButton btn2;
 
 //---------- Timers
 GTimer oneSecondTimer(MS, 1000);
-GTimer displayTimer(MS, 250);
-//GTimer_ms timeoutTimer(20000);
+GTimer blinkTimer(MS, 250);
+GTimer timeoutTimer(MS);
 
 
 //---------- Variables
-//DateTime now;
-//boolean dotFlag, lcdFlag = true, stripFlag = true;
+DateTime now;
+boolean blinkFlag = true;
 byte mode = 0;
 //byte effect = 1;
 byte setupMode = 0;
-byte secs, mins, hrs, month, day, new_hour, new_min, new_second, new_month, new_day, new_year;
+byte secs, mins, hrs, month, day, newHrs, newMins, newSecs, newMonth, newDay, newYear;
 byte current_bright = 200;
 byte secColorIndex = 9, minColorIndex = 13, hourColorIndex = 4, dateColorIndex = 1;
 boolean NIGHT_MODE_ENABLED = 0;
@@ -85,7 +85,7 @@ void setup() {
   if (RESET_CLOCK || rtc.lostPower()) {
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
-  DateTime now = rtc.now();
+  now = rtc.now();
   secs = now.second();
   mins = now.minute();
   hrs = now.hour();
@@ -119,6 +119,9 @@ void setup() {
   // Setting up LED strip
   strip.setBrightness(current_bright);
   strip.clear();
+
+  // Timeout timer setup
+  timeoutTimer.setTimeout(30000);
 }
 
 
@@ -135,7 +138,7 @@ void timeTick(){
     secs++;
   
     if (secs > 59){
-      DateTime now = rtc.now();
+      now = rtc.now();
       secs = now.second();
       mins = now.minute();
       hrs = now.hour();
@@ -169,6 +172,16 @@ void buttonTick(){
       strip.setBrightness(current_bright);
     }
 
+    if (btn1.held()){                                                       // Switch to time setting mode
+      mode = 2;
+      setupMode = 0;
+      now = rtc.now();
+      newSecs = now.second();
+      newMins = now.minute();
+      newHrs = now.hour();
+      timeoutTimer.start();
+    }
+
     if (btn2.timeout(5000)) {                                               // Save the new brightness value after 5s if it was modified
       if (EEPROM.read(5) != current_bright) EEPROM.put(5, current_bright);
     }
@@ -180,10 +193,56 @@ void buttonTick(){
   }
 
   
+  if (mode == 2){
+    if (btn1.click()) {
+      timeoutTimer.start();
+      setupMode++;
+      if (setupMode > 1) setupMode = 0;
+    }
+
+    if (btn2.click()) {
+      timeoutTimer.start();
+      if (setupMode == 0){
+        newHrs ++;
+        if (newHrs > 23) newHrs = 0;
+      }
+
+      if (setupMode == 1){
+        newMins ++;
+        if (newMins > 59) newMins = 0;
+      }
+    }
+
+    if (btn1.held()){
+      now = rtc.now();
+      uint16_t currentYear = now.year();
+      uint8_t currentMonth = now.month();
+      uint8_t currentDay = now.day();
+      rtc.adjust(DateTime(currentYear, currentMonth, currentDay, newHrs, newMins, 0));
+      mode = 0;
+      setupMode = 0;
+      timeoutTimer.stop();
+    }
+  }
+
+  
+
+    
+  if (timeoutTimer.isReady()) {
+      mode = 0;
+      setupMode = 0;    
+    }
+  
+
+  
 }
 
 
 void updateStrip(){
+  
+  if(blinkTimer.isReady()){
+    blinkFlag = !blinkFlag;
+  }
      
     if (mode == 0) {  
       strip.clear();
@@ -193,7 +252,7 @@ void updateStrip(){
     }
 
     else if (mode == 1) {
-      DateTime now = rtc.now();
+      now = rtc.now();
       day = now.day();
       month = now.month();
       year = now.year();
@@ -201,6 +260,23 @@ void updateStrip(){
       fillStrip((year-2000), 0, dateColor);
       fillStrip(month, 7, dateColor);
       fillStrip(day, 14, dateColor);
+    }
+
+    else if (mode == 2) {
+      strip.clear();
+      
+      if (setupMode == 0){
+        if (blinkFlag) fillStrip(newHrs, 14, hrsColor);
+      }
+      else fillStrip(newHrs, 14, hrsColor);
+      
+      if (setupMode == 1){
+        if (blinkFlag) fillStrip(newMins, 7, minColor);
+      }
+      else fillStrip(newMins, 7, minColor);
+
+      fillStrip(secs, 0, secColor);
+
     }
 
     strip.show();

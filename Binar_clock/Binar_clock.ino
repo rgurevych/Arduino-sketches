@@ -32,7 +32,7 @@ VButton btn2;
 
 //---------- Timers
 GTimer oneSecondTimer(MS, 1000);
-GTimer_ms quaterTimer(500);
+GTimer displayTimer(MS, 250);
 //GTimer_ms timeoutTimer(20000);
 
 
@@ -46,7 +46,7 @@ byte secs, mins, hrs, month, day, new_hour, new_min, new_second, new_month, new_
 byte current_bright = 200;
 byte secColorIndex = 9, minColorIndex = 13, hourColorIndex = 4, dateColorIndex = 1;
 boolean NIGHT_MODE_ENABLED = 0;
-uint16_t year;
+word year;
 uint32_t hrsColor, minColor, secColor, dateColor;
 
 uint32_t ledColors[] = {0xFFFFFF, 0xC0C0C0, 0x808080, 0xFF0000, 
@@ -123,14 +123,34 @@ void setup() {
 
 
 void loop(){
-   
-  if (oneSecondTimer.isReady()) updateStrip();
-
   buttonTick();
+  timeTick();
+  updateStrip();
 
   
 }
 
+void timeTick(){
+  if (oneSecondTimer.isReady()){
+    secs++;
+  
+    if (secs > 59){
+      DateTime now = rtc.now();
+      secs = now.second();
+      mins = now.minute();
+      hrs = now.hour();
+    }
+
+    Serial.print("Hour: ");
+    Serial.print(hrs);
+    Serial.print("     Minute: ");
+    Serial.print(mins);
+    Serial.print("     Second: ");
+    Serial.print(secs);
+    Serial.println();
+  }
+  
+}
 
 void buttonTick(){
   btn1.poll(!digitalRead(BUTTON_1_PIN));
@@ -164,30 +184,12 @@ void buttonTick(){
 
 
 void updateStrip(){
-  
-    secs++;
-  
-    if (secs > 59){
-      DateTime now = rtc.now();
-      secs = now.second();
-      mins = now.minute();
-      hrs = now.hour();
-    }
-
-    Serial.print("Hour: ");
-    Serial.print(hrs);
-    Serial.print("     Minute: ");
-    Serial.print(mins);
-    Serial.print("     Second: ");
-    Serial.print(secs);
-    Serial.println();
-    
+     
     if (mode == 0) {  
       strip.clear();
       fillStrip(secs, 0, secColor);
       fillStrip(mins, 7, minColor);
       fillStrip(hrs, 14, hrsColor);
-      strip.show();
     }
 
     else if (mode == 1) {
@@ -199,8 +201,9 @@ void updateStrip(){
       fillStrip((year-2000), 0, dateColor);
       fillStrip(month, 7, dateColor);
       fillStrip(day, 14, dateColor);
-      strip.show();
     }
+
+    strip.show();
 
 }
 

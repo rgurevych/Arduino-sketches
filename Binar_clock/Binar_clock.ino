@@ -5,15 +5,13 @@
 #define STRIP_PIN 5                 // LED strip control pin
 #define BUTTON_1_PIN 8              // button 1
 #define BUTTON_2_PIN 9              // button 1
-#define CLK 12                      // display
-#define DIO 11                      // display
-#define LED_PIN 13
+
 
 #define COLOR_DEBTH 3
-#define RESET_CLOCK 0               //Should the RTC be reset?
-#define NUMLEDS 20                  //Number of LEDs in the strip
-#define MODES_NUMBER 4              //Number of modes
-#define EFFECTS_NUMBER 4            //Number of available effects
+#define RESET_CLOCK 0               // Should the RTC be reset?
+#define NUMLEDS 20                  // Number of LEDs in the strip
+#define INIT_ADDR 1023              // Number of EEPROM initial cell
+#define INIT_KEY 50                 // First launch key
 
 
 //---------- Include libraries
@@ -22,6 +20,7 @@
 #include <VirtualButton.h>
 #include <Wire.h>
 #include <RTClib.h>
+#include <EEPROM.h>
 
 
 //---------- Initialize devices
@@ -29,24 +28,26 @@ microLED<NUMLEDS, STRIP_PIN, MLED_NO_CLOCK, LED_WS2811, ORDER_RGB, CLI_LOW> stri
 RTC_DS3231 rtc;                       // RTC module
 VButton btn1;
 VButton btn2;
-//GButton button1(BUTTON_1_PIN);        // Button1
-//GButton button2(BUTTON_2_PIN);        // Button1
 
 
 //---------- Timers
 GTimer oneSecondTimer(MS, 1000);
-//GTimer_ms halfsTimer(500);
+GTimer_ms quaterTimer(500);
 //GTimer_ms timeoutTimer(20000);
 
 
 //---------- Variables
 //DateTime now;
 //boolean dotFlag, lcdFlag = true, stripFlag = true;
-//byte mode = 0;
+byte mode = 0;
 //byte effect = 1;
-//byte timeSetMode = 0;
-byte secs, mins, hrs;
-uint32_t hrsColor, minColor, secColor;
+byte setupMode = 0;
+byte secs, mins, hrs, month, day, new_hour, new_min, new_second, new_month, new_day, new_year;
+byte current_bright = 200;
+byte secColorIndex = 9, minColorIndex = 13, hourColorIndex = 4, dateColorIndex = 1;
+boolean NIGHT_MODE_ENABLED = 0;
+uint16_t year;
+uint32_t hrsColor, minColor, secColor, dateColor;
 
 uint32_t ledColors[] = {0xFFFFFF, 0xC0C0C0, 0x808080, 0xFF0000, 
                         0x800000, 0xFF3000, 0xFF8000, 0x808000, 
@@ -77,7 +78,7 @@ void setup() {
   //Pin modes
   pinMode(BUTTON_1_PIN, INPUT_PULLUP);
   pinMode(BUTTON_2_PIN, INPUT_PULLUP);
-  pinMode(LED_PIN, OUTPUT);
+
   
   // Setting up RTC module and display time
   rtc.begin();
@@ -89,40 +90,82 @@ void setup() {
   mins = now.minute();
   hrs = now.hour();
 
+
+  // EEPROM
+  if (EEPROM.read(INIT_ADDR) != INIT_KEY) {   // первый запуск
+    EEPROM.write(INIT_ADDR, INIT_KEY);
+    EEPROM.put(0, secColorIndex);
+    EEPROM.put(1, minColorIndex);
+    EEPROM.put(2, hourColorIndex);
+    EEPROM.put(3, dateColorIndex);
+    EEPROM.put(5, current_bright);
+    EEPROM.put(6, NIGHT_MODE_ENABLED);
+  }
+  EEPROM.get(0, secColorIndex);
+  EEPROM.get(1, minColorIndex);
+  EEPROM.get(2, hourColorIndex);
+  EEPROM.get(3, dateColorIndex);
+  EEPROM.get(5, current_bright);
+  EEPROM.get(6, NIGHT_MODE_ENABLED);
+
+
+  // Initial colors setup
+  secColor = ledColors[secColorIndex];
+  minColor = ledColors[minColorIndex];
+  hrsColor = ledColors[hourColorIndex];
+  dateColor = ledColors[dateColorIndex];
+
+
   // Setting up LED strip
-  strip.setBrightness(200);
+  strip.setBrightness(current_bright);
   strip.clear();
 }
 
 
 void loop(){
+   
+  if (oneSecondTimer.isReady()) updateStrip();
+
+  buttonTick();
+
+  
+}
+
+
+void buttonTick(){
   btn1.poll(!digitalRead(BUTTON_1_PIN));
   btn2.poll(!digitalRead(BUTTON_2_PIN));
-  
-  if (oneSecondTimer.isReady()){
-  updateStrip();
+
+  if (mode == 0){
+    if (btn1.click()) mode = 1;                                             // Switch to date showing mode if Button1 is clicked once
+
+    if (btn2.click()) {                                                     // Switch the brightness if Button2 is clicked once
+      if (current_bright >= 250) {
+        current_bright = 50;
+      }
+      else {
+        current_bright += 25;
+      }
+      strip.setBrightness(current_bright);
+    }
+
+    if (btn2.timeout(5000)) {                                               // Save the new brightness value after 5s if it was modified
+      if (EEPROM.read(5) != current_bright) EEPROM.put(5, current_bright);
+    }
+      
   }
+
+  if (mode == 1){                                                           // Return the mode to time display after 8s of showing date
+    if (btn1.timeout(8000)) mode = 0;
+  }
+
+  
 }
 
 
 void updateStrip(){
   
-    strip.clear();
     secs++;
-
-    secColor = ledColors[9];
-    minColor = ledColors[13];
-    hrsColor = ledColors[4];
-
-    if (btn1.press()){
-      secs = 0;
-      Serial.println("Button 1 pressed");
-    }
-
-    if (btn2.press()){
-      mins = 0;
-      Serial.println("Button 2 pressed");
-    }
   
     if (secs > 59){
       DateTime now = rtc.now();
@@ -139,10 +182,25 @@ void updateStrip(){
     Serial.print(secs);
     Serial.println();
     
-    fillStrip(secs, 0, secColor);
-    fillStrip(mins, 7, minColor);
-    fillStrip(hrs, 14, hrsColor);
-    strip.show();
+    if (mode == 0) {  
+      strip.clear();
+      fillStrip(secs, 0, secColor);
+      fillStrip(mins, 7, minColor);
+      fillStrip(hrs, 14, hrsColor);
+      strip.show();
+    }
+
+    else if (mode == 1) {
+      DateTime now = rtc.now();
+      day = now.day();
+      month = now.month();
+      year = now.year();
+      strip.clear();
+      fillStrip((year-2000), 0, dateColor);
+      fillStrip(month, 7, dateColor);
+      fillStrip(day, 14, dateColor);
+      strip.show();
+    }
 
 }
 
@@ -198,69 +256,7 @@ void convertDecToBin(int Dec, boolean Bin[]) {
 //}
 
 
-//void clockTick() {
-//  if (halfsTimer.isReady()) {
-//    dotFlag = !dotFlag;
-//    
-//    if (dotFlag) {          // recalculate time every second
-//      secs++;
-//      if (secs > 59) {      // read time every minute
-//        now = rtc.now();
-//        secs = now.second();
-//        mins = now.minute();
-//        hrs = now.hour();
-//      }
-//      
-//      updateStrip();
-//    }
-//    
-//    if (mode == 0){
-//      disp.point(dotFlag);                 // switch the dots
-//      disp.displayClock(hrs, mins);        // needed to avoid display lags
-//    }
-//
-//    else if (mode == 1){
-//      disp.point(true);
-//
-//      if (dotFlag){
-//        disp.display(0, hrs/10);
-//        disp.display(1, hrs%10);
-//        disp.displayByte(2, _empty);
-//        disp.displayByte(3, _empty);
-//      }
-//      else{
-//        disp.displayByte(_empty, _empty, _empty, _empty);
-//      }
-//    }
-//
-//    else if (mode == 2){
-//      disp.point(true);
-//
-//      if (dotFlag){
-//        disp.displayInt(mins);
-//      }
-//      else{
-//        disp.displayByte(_empty, _empty, _empty, _empty);
-//      }
-//    }
-//
-//    else if (mode == 3){
-//      disp.point(!dotFlag);
-//    
-//      if (dotFlag){
-//        disp.displayInt(secs);
-//      }
-//      else{
-//        disp.displayByte(_empty, _empty, _empty, _empty);
-//      }
-//    }
-//  
-//    else if (mode == 10){
-//      disp.point(false);
-//      disp.displayByte(_empty, _empty, _empty, _empty);
-//    }
-//  }
-//}
+
 
 //
 //void settings(){

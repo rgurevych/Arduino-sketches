@@ -42,11 +42,11 @@ boolean blinkFlag = true;
 byte mode = 0;
 //byte effect = 1;
 byte setupMode = 0;
-byte secs, mins, hrs, month, day, newHrs, newMins, newSecs, newMonth, newDay, newYear;
+byte secs, mins, hrs, month, day, newHrs, newMins, newSecs, newMonth, newDay;
 byte current_bright = 200;
 byte secColorIndex = 9, minColorIndex = 13, hourColorIndex = 4, dateColorIndex = 1;
 boolean NIGHT_MODE_ENABLED = 0;
-word year;
+word year, newYear;
 uint32_t hrsColor, minColor, secColor, dateColor;
 
 uint32_t ledColors[] = {0xFFFFFF, 0xC0C0C0, 0x808080, 0xFF0000, 
@@ -190,6 +190,16 @@ void buttonTick(){
 
   if (mode == 1){                                                           // Return the mode to time display after 8s of showing date
     if (btn1.timeout(8000)) mode = 0;
+
+    if (btn1.held()){                                                       // Switch to time setting mode
+      mode = 3;
+      setupMode = 2;
+      now = rtc.now();
+      newMonth = now.month();
+      newDay = now.day();
+      newYear = now.year();
+      timeoutTimer.start();
+    }
   }
 
   
@@ -219,13 +229,50 @@ void buttonTick(){
       uint8_t currentMonth = now.month();
       uint8_t currentDay = now.day();
       rtc.adjust(DateTime(currentYear, currentMonth, currentDay, newHrs, newMins, 0));
+      secs = 0;
       mode = 0;
       setupMode = 0;
       timeoutTimer.stop();
     }
   }
 
-  
+
+  if (mode == 3){
+    if (btn1.click()) {
+      timeoutTimer.start();
+      setupMode++;
+      if (setupMode > 4) setupMode = 2;
+    }
+
+    if (btn2.click()) {
+      timeoutTimer.start();
+      if (setupMode == 2){
+        newDay ++;
+        if (newDay > 31) newDay = 1;
+      }
+
+      if (setupMode == 3){
+        newMonth ++;
+        if (newMonth > 12) newMonth = 1;
+      }
+
+      if (setupMode == 4){
+        newYear ++;
+        if (newYear > 2050) newYear = 2020;
+      }
+    }
+
+    if (btn1.held()){
+      now = rtc.now();
+      uint8_t currentHrs = now.hour();
+      uint8_t currentMins = now.minute();
+      uint8_t currentSecs = now.second();
+      rtc.adjust(DateTime(newYear, newMonth, newDay, currentHrs, currentMins, currentSecs));
+      mode = 0;
+      setupMode = 0;
+      timeoutTimer.stop();
+    }
+  }
 
     
   if (timeoutTimer.isReady()) {
@@ -262,6 +309,7 @@ void updateStrip(){
       fillStrip(day, 14, dateColor);
     }
 
+
     else if (mode == 2) {
       strip.clear();
       
@@ -276,7 +324,26 @@ void updateStrip(){
       else fillStrip(newMins, 7, minColor);
 
       fillStrip(secs, 0, secColor);
+    }
 
+
+    else if (mode == 3) {
+      strip.clear();
+      
+      if (setupMode == 2){
+        if (blinkFlag) fillStrip(newDay, 14, dateColor);
+      }
+      else fillStrip(newDay, 14, dateColor);
+      
+      if (setupMode == 3){
+        if (blinkFlag) fillStrip(newMonth, 7, dateColor);
+      }
+      else fillStrip(newMonth, 7, dateColor);
+
+      if (setupMode == 4){
+        if (blinkFlag) fillStrip((newYear-2000), 0, dateColor);
+      }
+      else fillStrip((newYear-2000), 0, dateColor);
     }
 
     strip.show();

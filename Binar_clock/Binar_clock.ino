@@ -25,7 +25,7 @@
 
 //---------- Initialize devices
 microLED<NUMLEDS, STRIP_PIN, MLED_NO_CLOCK, LED_WS2811, ORDER_RGB, CLI_LOW> strip;
-RTC_DS3231 rtc;                       // RTC module
+RTC_DS3231 rtc;
 VButton btn1;
 VButton btn2;
 
@@ -92,7 +92,7 @@ void setup() {
 
 
   // EEPROM
-  if (EEPROM.read(INIT_ADDR) != INIT_KEY) {   // первый запуск
+  if (EEPROM.read(INIT_ADDR) != INIT_KEY) {   // First launch
     EEPROM.write(INIT_ADDR, INIT_KEY);
     EEPROM.put(0, secColorIndex);
     EEPROM.put(1, minColorIndex);
@@ -133,6 +133,7 @@ void loop(){
   
 }
 
+
 void timeTick(){
   if (oneSecondTimer.isReady()){
     secs++;
@@ -154,6 +155,7 @@ void timeTick(){
   }
   
 }
+
 
 void buttonTick(){
   btn1.poll(!digitalRead(BUTTON_1_PIN));
@@ -185,13 +187,17 @@ void buttonTick(){
     if (btn2.timeout(5000)) {                                               // Save the new brightness value after 5s if it was modified
       if (EEPROM.read(5) != current_bright) EEPROM.put(5, current_bright);
     }
-      
+
+    if (btn2.held()) {                                                      // Switch to color selection mode
+      mode = 4;
+      setupMode = 5;
+    }
   }
 
   if (mode == 1){                                                           // Return the mode to time display after 8s of showing date
     if (btn1.timeout(8000)) mode = 0;
 
-    if (btn1.held()){                                                       // Switch to time setting mode
+    if (btn1.held()){                                                       // Switch to date setting mode
       mode = 3;
       setupMode = 2;
       now = rtc.now();
@@ -203,7 +209,7 @@ void buttonTick(){
   }
 
   
-  if (mode == 2){
+  if (mode == 2){                                                           // Time setting mode
     if (btn1.click()) {
       timeoutTimer.start();
       setupMode++;
@@ -229,7 +235,10 @@ void buttonTick(){
       uint8_t currentMonth = now.month();
       uint8_t currentDay = now.day();
       rtc.adjust(DateTime(currentYear, currentMonth, currentDay, newHrs, newMins, 0));
-      secs = 0;
+      now = rtc.now();
+      secs = now.second();
+      mins = now.minute();
+      hrs = now.hour();
       mode = 0;
       setupMode = 0;
       timeoutTimer.stop();
@@ -237,7 +246,7 @@ void buttonTick(){
   }
 
 
-  if (mode == 3){
+  if (mode == 3){                                                           // Date setting mode
     if (btn1.click()) {
       timeoutTimer.start();
       setupMode++;
@@ -274,14 +283,57 @@ void buttonTick(){
     }
   }
 
+
+  if (mode == 4){                                                           // Date setting mode
+    if (btn1.click()) {
+      timeoutTimer.start();
+      setupMode++;
+      if (setupMode > 8) setupMode = 5;
+    }
+
+    if (btn2.click()) {
+      timeoutTimer.start();
+      if (setupMode == 5){
+        hourColorIndex ++;
+        if (hourColorIndex > 15) hourColorIndex = 0;
+        hrsColor = ledColors[hourColorIndex];
+      }
+
+      if (setupMode == 6){
+        minColorIndex ++;
+        if (minColorIndex > 15) minColorIndex = 0;
+        minColor = ledColors[minColorIndex];
+      }
+
+      if (setupMode == 7){
+        secColorIndex ++;
+        if (secColorIndex > 15) secColorIndex = 0;
+        secColor = ledColors[secColorIndex];
+      }
+
+      if (setupMode == 8){
+        dateColorIndex ++;
+        if (dateColorIndex > 15) dateColorIndex = 0;
+        dateColor = ledColors[dateColorIndex];
+      }
+    }
+
+    if (btn1.held()){
+      if (EEPROM.read(0) != secColorIndex) EEPROM.put(0, secColorIndex);
+      if (EEPROM.read(1) != minColorIndex) EEPROM.put(1, minColorIndex);
+      if (EEPROM.read(2) != hourColorIndex) EEPROM.put(2, hourColorIndex);
+      if (EEPROM.read(3) != dateColorIndex) EEPROM.put(3, dateColorIndex);
+      mode = 0;
+      setupMode = 0;
+      timeoutTimer.stop();
+    }
+  }
+
     
   if (timeoutTimer.isReady()) {
       mode = 0;
       setupMode = 0;    
     }
-  
-
-  
 }
 
 
@@ -346,8 +398,39 @@ void updateStrip(){
       else fillStrip((newYear-2000), 0, dateColor);
     }
 
-    strip.show();
 
+    else if (mode == 4) {
+      strip.clear();
+
+      if (setupMode < 8) {
+      
+        if (setupMode == 5){
+          if (blinkFlag) fillStrip(37, 14, hrsColor);
+        }
+        else fillStrip(37, 14, hrsColor);
+        
+        if (setupMode == 6){
+          if (blinkFlag) fillStrip(77, 7, minColor);
+        }
+        else fillStrip(77, 7, minColor);
+  
+        if (setupMode == 7){
+          if (blinkFlag) fillStrip(77, 0, secColor);
+        }
+        else fillStrip(77, 0, secColor);
+      }
+
+      else {
+        if (blinkFlag) {
+          fillStrip(37, 14, dateColor);
+          fillStrip(77, 7, dateColor);
+          fillStrip(77, 0, dateColor);
+        }
+        
+      }
+    }
+    
+    strip.show();
 }
 
 
@@ -383,70 +466,3 @@ void convertDecToBin(int Dec, boolean Bin[]) {
     }
   }
 }
-
-//void checkButtons(){
-//  button1.tick();
-//  button2.tick();
-//
-//  if(button1.isClick()){
-//    timeoutTimer.reset();
-//    effect++;
-//    if(effect > EFFECTS_NUMBER - 1) effect = 0;
-//  }
-//  
-//  if(button1.isHolded()){
-//    timeoutTimer.reset();
-//    mode++;
-//    if(mode > MODES_NUMBER - 1) mode = 0;
-//  }
-//}
-
-
-
-
-//
-//void settings(){
-//  if (mode == 1) {
-//    if (timeoutTimer.isReady()){
-//      mode = 0; // return to mode 0 if timeout
-//      disp.clear();
-//      return;
-//    }
-//    
-//    if (button2.isClick()){
-//      timeoutTimer.reset();
-//      hrs++;
-//      if (hrs > 23) hrs = 0;
-//      rtc.adjust(DateTime(2021, 1, 1, hrs, mins, secs));
-//    }
-//  }
-//
-//  else if (mode == 2){    
-//    if (timeoutTimer.isReady()){
-//      mode = 0; // return to mode 0 if timeout
-//      disp.clear();
-//      return;
-//    }
-//    
-//    if (button2.isClick()){
-//      timeoutTimer.reset();
-//      mins++;
-//      if (mins > 59) mins = 0;
-//      rtc.adjust(DateTime(2021, 1, 1, hrs, mins, secs));
-//    }
-//  }
-//
-//  else if (mode == 3){
-//      if (timeoutTimer.isReady()){
-//      mode = 0; // return to mode 0 if timeout
-//      disp.clear();
-//      return;
-//    }
-//    
-//    if (button2.isClick()){
-//      timeoutTimer.reset();
-//      secs = 0;
-//      rtc.adjust(DateTime(2021, 1, 1, hrs, mins, secs));
-//    }
-//  }
-//}

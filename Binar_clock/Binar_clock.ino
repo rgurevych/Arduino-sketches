@@ -12,6 +12,10 @@
 #define NUMLEDS 20                  // Number of LEDs in the strip
 #define INIT_ADDR 1023              // Number of EEPROM initial cell
 #define INIT_KEY 50                 // First launch key
+#define DATE_DISPLAY_TIMEOUT 10000  // How long the date is displayed after pressing Button1
+#define NIGHT_MODE_ENABLED 1        // Night mode enabled
+#define NIGHT_START 23              // Begin of night mode
+#define NIGHT_END 7                 // End of night mode
 
 
 //---------- Include libraries
@@ -40,19 +44,18 @@ GTimer timeoutTimer(MS);
 DateTime now;
 boolean blinkFlag = true;
 byte mode = 0;
-//byte effect = 1;
 byte setupMode = 0;
 byte secs, mins, hrs, month, day, newHrs, newMins, newSecs, newMonth, newDay;
 byte current_bright = 200;
 byte secColorIndex = 9, minColorIndex = 13, hourColorIndex = 4, dateColorIndex = 1;
-boolean NIGHT_MODE_ENABLED = 0;
+boolean nightModeFlag;
 word year, newYear;
 uint32_t hrsColor, minColor, secColor, dateColor;
 
-uint32_t ledColors[] = {0xFFFFFF, 0xC0C0C0, 0x808080, 0xFF0000, 
-                        0x800000, 0xFF3000, 0xFF8000, 0x808000, 
+uint32_t ledColors[] = {0xFFFFFF, 0xC0C0C0, 0xFF0000, 0x800000,
+                        0xFFFF00, 0x808000, 0x0033FF, 0xFF3000,
                         0x00FF00, 0x008000, 0x00FFFF, 0x008080, 
-                        0x0000FF, 0x000080, 0xFF00FF, 0x800080};
+                        0xFF8000, 0x000080, 0xFF00FF, 0x800080};
 
 //    mWhite =    0xFFFFFF,    // белый
 //    mSilver =    0xC0C0C0,    // серебро
@@ -89,6 +92,9 @@ void setup() {
   secs = now.second();
   mins = now.minute();
   hrs = now.hour();
+  day = now.day();
+  month = now.month();
+  year = now.year();
 
 
   // EEPROM
@@ -106,7 +112,7 @@ void setup() {
   EEPROM.get(2, hourColorIndex);
   EEPROM.get(3, dateColorIndex);
   EEPROM.get(5, current_bright);
-  EEPROM.get(6, NIGHT_MODE_ENABLED);
+//  EEPROM.get(6, NIGHT_MODE_ENABLED);
 
 
   // Initial colors setup
@@ -128,9 +134,7 @@ void setup() {
 void loop(){
   buttonTick();
   timeTick();
-  updateStrip();
-
-  
+  updateStrip();  
 }
 
 
@@ -143,17 +147,23 @@ void timeTick(){
       secs = now.second();
       mins = now.minute();
       hrs = now.hour();
-    }
+      day = now.day();
+      month = now.month();
+      year = now.year();
 
-    Serial.print("Hour: ");
-    Serial.print(hrs);
-    Serial.print("     Minute: ");
-    Serial.print(mins);
-    Serial.print("     Second: ");
-    Serial.print(secs);
-    Serial.println();
+      checkNightMode();
+    }
   }
   
+}
+
+void checkNightMode(){
+  if ((hrs >= NIGHT_START && hrs <= 23) || (hrs >= 0 && hrs < NIGHT_END)) {
+    nightModeFlag = true;
+  }
+  else {
+    nightModeFlag = false;
+  }
 }
 
 
@@ -162,6 +172,10 @@ void buttonTick(){
   btn2.poll(!digitalRead(BUTTON_2_PIN));
 
   if (mode == 0){
+    if (nightModeFlag){
+      if (btn1.click() || btn2.click()) nightModeFlag = false;
+    }
+    
     if (btn1.click()) mode = 1;                                             // Switch to date showing mode if Button1 is clicked once
 
     if (btn2.click()) {                                                     // Switch the brightness if Button2 is clicked once
@@ -195,7 +209,7 @@ void buttonTick(){
   }
 
   if (mode == 1){                                                           // Return the mode to time display after 8s of showing date
-    if (btn1.timeout(8000)) mode = 0;
+    if (btn1.timeout(DATE_DISPLAY_TIMEOUT)) mode = 0;
 
     if (btn1.held()){                                                       // Switch to date setting mode
       mode = 3;
@@ -339,96 +353,94 @@ void buttonTick(){
 
 void updateStrip(){
   
+  strip.clear();
+  
+  if (nightModeFlag){
+    strip.show();
+    return;
+  }
+  
   if(blinkTimer.isReady()){
     blinkFlag = !blinkFlag;
   }
      
-    if (mode == 0) {  
-      strip.clear();
-      fillStrip(secs, 0, secColor);
-      fillStrip(mins, 7, minColor);
-      fillStrip(hrs, 14, hrsColor);
+  if (mode == 0) {  
+    fillStrip(secs, 0, secColor);
+    fillStrip(mins, 7, minColor);
+    fillStrip(hrs, 14, hrsColor);
+  }
+
+  else if (mode == 1) {
+    fillStrip((year-2000), 0, dateColor);
+    fillStrip(month, 7, dateColor);
+    fillStrip(day, 14, dateColor);
+  }
+
+
+  else if (mode == 2) {
+    
+    if (setupMode == 0){
+      if (blinkFlag) fillStrip(newHrs, 14, hrsColor);
+    }
+    else fillStrip(newHrs, 14, hrsColor);
+    
+    if (setupMode == 1){
+      if (blinkFlag) fillStrip(newMins, 7, minColor);
+    }
+    else fillStrip(newMins, 7, minColor);
+
+    fillStrip(secs, 0, secColor);
+  }
+
+
+  else if (mode == 3) {
+    
+    if (setupMode == 2){
+      if (blinkFlag) fillStrip(newDay, 14, dateColor);
+    }
+    else fillStrip(newDay, 14, dateColor);
+    
+    if (setupMode == 3){
+      if (blinkFlag) fillStrip(newMonth, 7, dateColor);
+    }
+    else fillStrip(newMonth, 7, dateColor);
+
+    if (setupMode == 4){
+      if (blinkFlag) fillStrip((newYear-2000), 0, dateColor);
+    }
+    else fillStrip((newYear-2000), 0, dateColor);
+  }
+
+
+  else if (mode == 4) {
+    
+    if (setupMode < 8) {
+    
+      if (setupMode == 5){
+        if (blinkFlag) fillStrip(37, 14, hrsColor);
+      }
+      else fillStrip(37, 14, hrsColor);
+      
+      if (setupMode == 6){
+        if (blinkFlag) fillStrip(77, 7, minColor);
+      }
+      else fillStrip(77, 7, minColor);
+
+      if (setupMode == 7){
+        if (blinkFlag) fillStrip(77, 0, secColor);
+      }
+      else fillStrip(77, 0, secColor);
     }
 
-    else if (mode == 1) {
-      now = rtc.now();
-      day = now.day();
-      month = now.month();
-      year = now.year();
-      strip.clear();
-      fillStrip((year-2000), 0, dateColor);
-      fillStrip(month, 7, dateColor);
-      fillStrip(day, 14, dateColor);
+    else {
+      if (blinkFlag) {
+        fillStrip(37, 14, dateColor);
+        fillStrip(77, 7, dateColor);
+        fillStrip(77, 0, dateColor);
+      }
+      
     }
-
-
-    else if (mode == 2) {
-      strip.clear();
-      
-      if (setupMode == 0){
-        if (blinkFlag) fillStrip(newHrs, 14, hrsColor);
-      }
-      else fillStrip(newHrs, 14, hrsColor);
-      
-      if (setupMode == 1){
-        if (blinkFlag) fillStrip(newMins, 7, minColor);
-      }
-      else fillStrip(newMins, 7, minColor);
-
-      fillStrip(secs, 0, secColor);
-    }
-
-
-    else if (mode == 3) {
-      strip.clear();
-      
-      if (setupMode == 2){
-        if (blinkFlag) fillStrip(newDay, 14, dateColor);
-      }
-      else fillStrip(newDay, 14, dateColor);
-      
-      if (setupMode == 3){
-        if (blinkFlag) fillStrip(newMonth, 7, dateColor);
-      }
-      else fillStrip(newMonth, 7, dateColor);
-
-      if (setupMode == 4){
-        if (blinkFlag) fillStrip((newYear-2000), 0, dateColor);
-      }
-      else fillStrip((newYear-2000), 0, dateColor);
-    }
-
-
-    else if (mode == 4) {
-      strip.clear();
-
-      if (setupMode < 8) {
-      
-        if (setupMode == 5){
-          if (blinkFlag) fillStrip(37, 14, hrsColor);
-        }
-        else fillStrip(37, 14, hrsColor);
-        
-        if (setupMode == 6){
-          if (blinkFlag) fillStrip(77, 7, minColor);
-        }
-        else fillStrip(77, 7, minColor);
-  
-        if (setupMode == 7){
-          if (blinkFlag) fillStrip(77, 0, secColor);
-        }
-        else fillStrip(77, 0, secColor);
-      }
-
-      else {
-        if (blinkFlag) {
-          fillStrip(37, 14, dateColor);
-          fillStrip(77, 7, dateColor);
-          fillStrip(77, 0, dateColor);
-        }
-        
-      }
-    }
+  }
     
     strip.show();
 }

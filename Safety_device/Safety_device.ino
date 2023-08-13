@@ -8,9 +8,10 @@
 #define SERVO_SPEED 180                    //Servo speed
 #define MAX_DELAY_COUNTER 6                //Maximum value of delay counter (number of possible states)
 #define DISARMED_LED_BLINK_INTERVAL 250    //How often LED blinks in Disarmed mode
-#define ARMED_LED_BLINK_INTERVAL 100       //How often LED blinks in Armed mode
+#define ARMED_LED_BLINK_INTERVAL 125       //How often LED blinks in Armed mode
 #define DISARMED_LED_SERIES_INTERVAL 3000  //How often the series of LED blinks is shown in Disarmed mode
 #define ARMED_LED_SERIES_INTERVAL 5000     //How often the series of LED blinks is shown in Armed mode
+#define MODE_CHANGE_INDICATION 2000        //How long the LED will be on when mode is changed
 
 
 //---------- Include libraries
@@ -26,13 +27,15 @@ ServoSmooth mainServo;
 //GTimer startUpTimer(MS, 3000);
 GTimer blinkTimer(MS);
 GTimer blinkSeriesTimer(MS);
+GTimer modeChangeTimer(MS);
 //GTimer blinkDisarmedTimer(MS, 3000);
 
 //---------- Variables
-boolean ledFlag = true;
+boolean ledFlag = false;
 boolean armedModeFlag = false;
 boolean startUpFlag = true;
 boolean ledBlinkFlag = false;
+boolean modeChangeFlag = false;
 byte setDelayCounter = 2;
 byte blinkCounter = 1;
 byte mode = 0;
@@ -57,6 +60,7 @@ void setup() {
 //  startUpTimer.start();
   blinkTimer.setInterval(DISARMED_LED_BLINK_INTERVAL);
   blinkSeriesTimer.setInterval(DISARMED_LED_SERIES_INTERVAL);
+  modeChangeTimer.setTimeout(MODE_CHANGE_INDICATION);
   mode = 1;
 
 }
@@ -94,15 +98,44 @@ void buttonTick(){
 
   if(btn1.held()){
     mode ++;
+    
     if(mode > 2){
       mode = 1;
     }
+    
+    if(mode == 1){
+      blinkTimer.setInterval(DISARMED_LED_BLINK_INTERVAL);
+      blinkSeriesTimer.setInterval(DISARMED_LED_SERIES_INTERVAL);
+    }
+
+    else if(mode == 2){
+      blinkTimer.setInterval(ARMED_LED_BLINK_INTERVAL);
+      blinkSeriesTimer.setInterval(ARMED_LED_SERIES_INTERVAL);
+    }
+
+    modeChangeIndication();
   }
 }
 
+void modeChangeIndication(){
+  modeChangeTimer.start();
+  modeChangeFlag = true;
+}
 
 void ledTick(){
-  if(blinkSeriesTimer.isReady()){
+  if(modeChangeFlag){
+    if(modeChangeTimer.isReady()){
+      ledFlag = false;
+      modeChangeFlag = false;
+      blinkSeriesTimer.reset();
+    }
+    else{
+      ledFlag = true;
+      return;
+    }
+  }
+  
+  if(blinkSeriesTimer.isReady() && (mode == 1 || mode == 2)){
     ledBlinkFlag = true;
     blinkCounter = 1;
     blinkTimer.reset();

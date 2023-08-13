@@ -7,10 +7,10 @@
 #define SAFETY_OFF_ANGLE 5               //Servo angle in open position (safety off)
 #define SERVO_SPEED 180                    //Servo speed
 #define MAX_DELAY_COUNTER 6                //Maximum value of delay counter (number of possible states)
-#define DISARMED_LED_BLINK_PERIOD 250      //How often LED blinks in Disarmed mode
-#define ARMED_LED_BLINK_PERIOD 100         //How often LED blinks in Armed mode
-#define DISARMED_LED_SERIES_PERIOD 3000    //How often the series of LED blinks is shown in Disarmed mode
-#define ARMED_LED_SERIES_PERIOD 5000       //How often the series of LED blinks is shown in Armed mode
+#define DISARMED_LED_BLINK_INTERVAL 250    //How often LED blinks in Disarmed mode
+#define ARMED_LED_BLINK_INTERVAL 100       //How often LED blinks in Armed mode
+#define DISARMED_LED_SERIES_INTERVAL 3000  //How often the series of LED blinks is shown in Disarmed mode
+#define ARMED_LED_SERIES_INTERVAL 5000     //How often the series of LED blinks is shown in Armed mode
 
 
 //---------- Include libraries
@@ -24,8 +24,8 @@ ServoSmooth mainServo;
 
 //---------- Timers
 //GTimer startUpTimer(MS, 3000);
-GTimer blinkTimer(MS, DISARMED_LED_BLINK_PERIOD);
-GTimer blinkSeriesTimer(MS, DISARMED_LED_SERIES_PERIOD);
+GTimer blinkTimer(MS);
+GTimer blinkSeriesTimer(MS);
 //GTimer blinkDisarmedTimer(MS, 3000);
 
 //---------- Variables
@@ -35,6 +35,7 @@ boolean startUpFlag = true;
 boolean ledBlinkFlag = false;
 byte setDelayCounter = 2;
 byte blinkCounter = 1;
+byte mode = 0;
 
 
 
@@ -54,7 +55,9 @@ void setup() {
 //  //digitalWrite(LED_BUILTIN, false);
 //  closeSafetyGate();
 //  startUpTimer.start();
-  blinkSeriesTimer.start();
+  blinkTimer.setInterval(DISARMED_LED_BLINK_INTERVAL);
+  blinkSeriesTimer.setInterval(DISARMED_LED_SERIES_INTERVAL);
+  mode = 1;
 
 }
 
@@ -79,10 +82,20 @@ void loop() {
 
 void buttonTick(){
   btn1.poll(!digitalRead(BUTTON_1_PIN));
-  if(btn1.click()){
-    setDelayCounter ++;
-    if(setDelayCounter > MAX_DELAY_COUNTER){
-      setDelayCounter = 1;
+  
+  if(mode == 1){    
+    if(btn1.click()){
+      setDelayCounter ++;
+      if(setDelayCounter > MAX_DELAY_COUNTER){
+        setDelayCounter = 1;
+      }
+    }
+  }
+
+  if(btn1.held()){
+    mode ++;
+    if(mode > 2){
+      mode = 1;
     }
   }
 }
@@ -91,7 +104,8 @@ void buttonTick(){
 void ledTick(){
   if(blinkSeriesTimer.isReady()){
     ledBlinkFlag = true;
-    blinkCounter = 0;
+    blinkCounter = 1;
+    blinkTimer.reset();
   }
 
   if(ledBlinkFlag){

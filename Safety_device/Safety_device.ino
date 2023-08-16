@@ -1,17 +1,17 @@
-//Safety device
+//Safety device by Rostyslav Gurevych
 
-//---------- Define pins and settings
+//---------- Define pins and constants
 #define BUTTON_1_PIN 3                     //Button pin
 #define SERVO_PIN 5                        //Servo pin
-#define SAFETY_ON_ANGLE 150                  //Servo angle in closed position (safety on)
-#define SAFETY_OFF_ANGLE 5               //Servo angle in open position (safety off)
-#define SERVO_SPEED 180                    //Servo speed
-#define MAX_DELAY_COUNTER 6                //Maximum value of delay counter (number of possible states)
+#define SAFETY_ON_ANGLE 160                //Servo angle in closed position (safety on)
+#define SAFETY_OFF_ANGLE 5                 //Servo angle in open position (safety off)
+#define MAX_DELAY_COUNTER 6                //Maximum value of delay counter steps (number of timer intervals)
 #define DISARMED_LED_BLINK_INTERVAL 250    //How often LED blinks in Disarmed mode
 #define ARMED_LED_BLINK_INTERVAL 125       //How often LED blinks in Armed mode
 #define DISARMED_LED_SERIES_INTERVAL 3000  //How often the series of LED blinks is shown in Disarmed mode
 #define ARMED_LED_SERIES_INTERVAL 5000     //How often the series of LED blinks is shown in Armed mode
 #define MODE_CHANGE_INDICATION 2000        //How long the LED will be on when mode is changed
+#define OPERATION_MULTIPLICATOR 10         //Period of time equal to one unit of delay counter (seconds)
 
 
 //---------- Include libraries
@@ -24,11 +24,10 @@ VButton btn1;
 ServoSmooth mainServo;
 
 //---------- Timers
-//GTimer startUpTimer(MS, 3000);
 GTimer blinkTimer(MS);
 GTimer blinkSeriesTimer(MS);
 GTimer modeChangeTimer(MS);
-//GTimer blinkDisarmedTimer(MS, 3000);
+GTimer operationTimer(MS);
 
 //---------- Variables
 boolean ledFlag = false;
@@ -46,43 +45,34 @@ void setup() {
   //Pin modes
   pinMode(BUTTON_1_PIN, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
-
   mainServo.attach(SERVO_PIN);
-  //mainServo.smoothStart();
-  
-//  mainServo.setAccel(0);
-//  mainServo.setSpeed(SERVO_SPEED);
 
-//  digitalWrite(LED_BUILTIN, true);
-//  delay(3000);
-//  //digitalWrite(LED_BUILTIN, false);
-//  closeSafetyGate();
-//  startUpTimer.start();
+  //Startup check
+  ledFlag = true;
+  ledSwitch();
+  closeSafetyGate();
+  delay(MODE_CHANGE_INDICATION);
+  openSafetyGate();
+  delay(MODE_CHANGE_INDICATION);
+  closeSafetyGate();
+  ledFlag = false;
+  ledSwitch();
+
+  //Start timers
   blinkTimer.setInterval(DISARMED_LED_BLINK_INTERVAL);
   blinkSeriesTimer.setInterval(DISARMED_LED_SERIES_INTERVAL);
   modeChangeTimer.setTimeout(MODE_CHANGE_INDICATION);
   mode = 1;
-
 }
 
 
 void loop() {
-  //mainServo.tick();
-//  if(startUpFlag){
-//    if(startUpTimer.isReady()){
-//      startUpFlag = false;
-//      ledFlag = false;
-//      closeSafetyGate();      
-//    }
-//    else{
-//      openSafetyGate();
-//    }   
-//  }
-
   buttonTick();
+  operationTick();
   ledTick();
   ledSwitch();
 }
+
 
 void buttonTick(){
   btn1.poll(!digitalRead(BUTTON_1_PIN));
@@ -106,21 +96,27 @@ void buttonTick(){
     if(mode == 1){
       blinkTimer.setInterval(DISARMED_LED_BLINK_INTERVAL);
       blinkSeriesTimer.setInterval(DISARMED_LED_SERIES_INTERVAL);
+      operationTimer.stop();
+      closeSafetyGate();
     }
 
     else if(mode == 2){
       blinkTimer.setInterval(ARMED_LED_BLINK_INTERVAL);
       blinkSeriesTimer.setInterval(ARMED_LED_SERIES_INTERVAL);
+      operationTimer.setTimeout(setDelayCounter * OPERATION_MULTIPLICATOR * 1000);
+      operationTimer.start();
     }
 
     modeChangeIndication();
   }
 }
 
+
 void modeChangeIndication(){
   modeChangeTimer.start();
   modeChangeFlag = true;
 }
+
 
 void ledTick(){
   if(modeChangeFlag){
@@ -159,13 +155,27 @@ void ledTick(){
   }
 }
 
+
+void operationTick(){
+  if(mode == 2){
+    if(operationTimer.isReady()){
+      mode = 3;
+      modeChangeIndication();
+      openSafetyGate();
+    }
+  }
+}
+
+
 void openSafetyGate(){
   mainServo.write(SAFETY_OFF_ANGLE);
 }
 
+
 void closeSafetyGate(){
   mainServo.write(SAFETY_ON_ANGLE);
 }
+
 
 void ledSwitch() {
   digitalWrite(LED_BUILTIN, ledFlag);

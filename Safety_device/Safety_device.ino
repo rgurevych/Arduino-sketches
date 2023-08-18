@@ -5,13 +5,15 @@
 #define SERVO_PIN 5                        //Servo pin
 #define SAFETY_ON_ANGLE 160                //Servo angle in closed position (safety on)
 #define SAFETY_OFF_ANGLE 5                 //Servo angle in open position (safety off)
-#define MAX_DELAY_COUNTER 6                //Maximum value of delay counter steps (number of timer intervals)
+#define MIN_TIMER_UNIT_VALUE 2             //Minimum timer value (in units)
+#define MAX_TIMER_UNIT_VALUE 3             //Maximum timer value (in units)
+#define DEFAULT_TIMER_VALUE 2              //Default timer value on startup (in units)
 #define DISARMED_LED_BLINK_INTERVAL 250    //How often LED blinks in Disarmed mode
 #define ARMED_LED_BLINK_INTERVAL 125       //How often LED blinks in Armed mode
 #define DISARMED_LED_SERIES_INTERVAL 3000  //How often the series of LED blinks is shown in Disarmed mode
 #define ARMED_LED_SERIES_INTERVAL 5000     //How often the series of LED blinks is shown in Armed mode
 #define MODE_CHANGE_INDICATION 2000        //How long the LED will be on when mode is changed
-#define OPERATION_MULTIPLICATOR 10         //Period of time equal to one unit of delay counter (seconds)
+#define OPERATION_MULTIPLICATOR 600        //Period of time equal to one unit of delay counter (seconds)
 
 
 //---------- Include libraries
@@ -35,8 +37,8 @@ boolean armedModeFlag = false;
 boolean startUpFlag = true;
 boolean ledBlinkFlag = false;
 boolean modeChangeFlag = false;
-byte setDelayCounter = 2;
-byte blinkCounter = 1;
+byte setDelayCounter = DEFAULT_TIMER_VALUE;
+byte blinkCounter;
 byte mode = 0;
 
 
@@ -80,8 +82,8 @@ void buttonTick(){
   if(mode == 1){    
     if(btn1.click()){
       setDelayCounter ++;
-      if(setDelayCounter > MAX_DELAY_COUNTER){
-        setDelayCounter = 1;
+      if(setDelayCounter > MAX_TIMER_UNIT_VALUE){
+        setDelayCounter = MIN_TIMER_UNIT_VALUE;
       }
     }
   }
@@ -103,10 +105,12 @@ void buttonTick(){
     else if(mode == 2){
       blinkTimer.setInterval(ARMED_LED_BLINK_INTERVAL);
       blinkSeriesTimer.setInterval(ARMED_LED_SERIES_INTERVAL);
-      operationTimer.setTimeout(setDelayCounter * OPERATION_MULTIPLICATOR * 1000);
+      operationTimer.setTimeout(setDelayCounter * OPERATION_MULTIPLICATOR * 1000L);
       operationTimer.start();
     }
-
+    
+    blinkSeriesTimer.reset();
+    ledBlinkFlag = false;
     modeChangeIndication();
   }
 }

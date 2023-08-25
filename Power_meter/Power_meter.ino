@@ -1,6 +1,7 @@
 /* Power meter by R. Gurevych */
 
 // Includes
+#include <ArduinoJson.h>
 #include <PZEM004Tv30.h>
 #include <SoftwareSerial.h>
 #include <GyverTimer.h>
@@ -8,32 +9,55 @@
 #include <LiquidCrystal_I2C.h>
 #include <RTClib.h>
 #include <EncButton.h>
-#include <EEPROM.h>
-
+//#include <EEPROM.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+#include <WiFiUdp.h>
+#include <NTPClient.h>
+#include <DST_RTC.h>
+#include <ThingSpeak.h>
+#include <EEPROM_Rotate.h>
 
 // Pins
 #define PZEM_RX_PIN 12
-#define PZEM_TX_PIN 13
-#define CLKe A0             // encoder S1
-#define DTe A1              // encoder S2
-#define SWe A2              // encoder Key
-#define BACKLIGHT 3         //LCD backlight pin
+#define PZEM_TX_PIN 14
+#define CLKe 4             // encoder S1
+#define DTe 5              // encoder S2
+#define SWe 13             // encoder Key
+#define BACKLIGHT 15         //LCD backlight pin
 
 
 // Timer durations
-#define MEASURE_TIMEOUT 1500             //Interval between measure occurs
+#define MEASURE_TIMEOUT 3000             //Interval between measure occurs
 #define TIME_TICKER 1000                 //Interval for reading the time from RTC module
 #define PRINT_TIMEOUT 500                //Interval between printing to the screen occurs
 #define MENU_EXIT_TIMEOUT 120000         //Interval for automatic exit from menu
+#define CHECK_TELEGRAM_TIMEOUT 10000     //Interval for checking Telegram bot
+#define PUBLISH_DATA_TIMEOUT 60000       //Interval for publishing data to ThingSpeak
 
 
 // Settings
-#define INIT_ADDR 1023                    // Number of EEPROM initial cell
+#define INIT_ADDR 500                    // Number of EEPROM initial cell
 #define INIT_KEY 0                        // First launch key
 #define DEBUG_MODE 0
 #define RESET_CLOCK 0
 #define DAY_TARIFF_START 7
 #define NIGHT_TARIFF_START 23
+// Newtork credentials
+const char* ssid = "Penthouse_72";
+const char* password = "3Gurevych+1Mirkina";
+#define BOTtoken "5089942864:AAGk7ItUZyzCrfXsIWWRWaWHzY2TZAEZLjs"
+#define CHAT_ID "1289811885"
+unsigned long myChannelNumber = 1637460;
+const char * myWriteAPIKey = "5QL2A6124OLI8Y1X";
+const char rulesDST[] = "EU";
+bool DEMO_MODE = true;
+bool telegramEnabled = true;
+bool automaticallyUpdateTime = true;
+bool sendDailyMeterValuesViaTelegram = true;
+bool sendMonthlyMeterValuesViaTelegram = true;
+bool enableWiFi = true;
 
 
 // Timers:
@@ -41,19 +65,29 @@ GTimer measureTimer(MS, MEASURE_TIMEOUT);
 GTimer printTimer(MS, PRINT_TIMEOUT);
 GTimer timeTimer(MS, TIME_TICKER);
 GTimer menuExitTimer;
+GTimer checkTelegramTimer(MS, CHECK_TELEGRAM_TIMEOUT);
+GTimer publishDataTimer(MS, PUBLISH_DATA_TIMEOUT);
 
 
 // Setting up modules
+EEPROM_Rotate EEPROMr;
 SoftwareSerial pzemSWSerial(PZEM_TX_PIN, PZEM_RX_PIN);
 PZEM004Tv30 pzem;
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 RTC_DS3231 rtc;
-DateTime now;
+DST_RTC dst_rtc;
+DateTime now, raw_now;
 EncButton<EB_TICK, CLKe, DTe, SWe> enc;
-
+X509List cert(TELEGRAM_CERTIFICATE_ROOT);
+WiFiClientSecure client;
+UniversalTelegramBot bot(BOTtoken, client);
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
+WiFiClient tsClient;
 
 // Global variables
-uint8_t hour, min, second, month, day, new_hour, new_min, new_second, new_month, new_day, new_year;
+uint8_t hour, minute, second, month, day;
+int8_t new_hour, new_minute, new_second, new_month, new_day, new_year;
 uint16_t year;
 uint16_t mom_voltage = 0;
 uint16_t mom_current = 0;
@@ -63,13 +97,19 @@ uint16_t mom_frequency = 0;
 uint16_t mom_pf = 0;
 byte mode = 0;
 byte screen = 0;
-byte menu = 1;
+int8_t menu = 1;
 float latest_energy = 0;
 float day_energy = 0;
 float night_energy = 0;
 float total_energy = 0;
+float av_voltage = 0, av_current = 0, av_power = 0;
+float energyDelta, dailyDayEnergyDelta, dailyNightEnergyDelta, monthlyDayEnergyDelta, monthlyNightEnergyDelta;
+uint8_t av_counter = 1;
 byte lcd_bright = 5;
+byte timezone = 2;
+long utcOffsetInSeconds = 3600*timezone;
 bool newDemoMode;
+int plot_array[20];
 
 
 //Flags
@@ -77,7 +117,14 @@ bool screenReadyFlag = false;
 bool lcdBacklight = true;
 bool recordMeterDoneFlag = false;
 bool blinkFlag = true;
-bool DEMO_MODE = true;
+bool autoUpdateTimeDoneFlag = false;
+bool resetAverageDataFlag = true;
+bool publishHourlyEnergyFlag = false;
+bool publishDailyEnergyFlag = false;
+bool publishDailyTelegramReport = false;
+bool publishMonthlyTelegramReport = false;
+bool meterPowered;
+bool WiFiReady;
 
 void(* resetFunc) (void) = 0;
 
@@ -85,35 +132,62 @@ void setup() {
   if (DEBUG_MODE) {
     Serial.begin(115200);
   }
-
+  
+  EEPROMr.size(4);
+  EEPROMr.offset(200);
+  EEPROMr.begin(512);
+  
   // Reset to default settings
-  if (EEPROM.read(INIT_ADDR) != INIT_KEY) {
-    EEPROM.write(INIT_ADDR, INIT_KEY);
-    EEPROM.put(0, latest_energy);
-    EEPROM.put(4, day_energy);
-    EEPROM.put(8, night_energy);
-    EEPROM.put(12, total_energy);
-    EEPROM.put(16, lcd_bright);
-    EEPROM.put(100, latest_energy);
-    EEPROM.put(104, day_energy);
-    EEPROM.put(108, night_energy);
-    EEPROM.put(112, total_energy);
-    EEPROM.put(18, 0);
+  if (EEPROMr.read(INIT_ADDR) != INIT_KEY) {
+    EEPROMr.write(INIT_ADDR, INIT_KEY);
+    EEPROMr.put(0, latest_energy);                       //latest recorded energy value for normal mode
+    EEPROMr.put(4, day_energy);                          //latest recorded day tariff energy for normal mode
+    EEPROMr.put(8, night_energy);                        //latest recorded night tariff energy for normal mode
+    EEPROMr.put(12, total_energy);                       //latest recorded total energy for normal mode
+    EEPROMr.put(16, lcd_bright);                         //LCD backlight brightness value
+    EEPROMr.put(17, telegramEnabled);                    //is telegram bot enabled?
+    EEPROMr.put(18, 0);                                  //Demo mode (true/false)
+    EEPROMr.put(19, automaticallyUpdateTime);            //should time be updated automatically
+    EEPROMr.put(20, 0);                                  //latest recorded daily value for day tariff for normal mode
+    EEPROMr.put(24, 0);                                  //latest recorded daily value for night tariff for normal mode
+    EEPROMr.put(30, 0);                                  //latest recorded monthly value for day tariff for normal mode
+    EEPROMr.put(34, 0);                                  //latest recorded monthly value for night tariff for normal mode
+    EEPROMr.put(40, sendDailyMeterValuesViaTelegram);    //Should daily reports be sent via telegram
+    EEPROMr.put(41, sendMonthlyMeterValuesViaTelegram);  //Should monthly reports be sent via telegram
+    EEPROMr.put(42, enableWiFi);                         //is WiFi connection enabled?
+    EEPROMr.put(100, latest_energy);                     //latest recorded energy value for demo mode
+    EEPROMr.put(104, day_energy);                        //latest recorded day tariff energy for demo mode
+    EEPROMr.put(108, night_energy);                      //latest recorded night tariff energy for demo mode
+    EEPROMr.put(112, total_energy);                      //latest recorded total energy for demo mode
+    EEPROMr.put(120, 0);                                 //latest recorded daily value for day tariff for demo mode
+    EEPROMr.put(124, 0);                                 //latest recorded daily value for night tariff for demo mode
+    EEPROMr.put(130, 0);                                 //latest recorded monthly value for day tariff for demo mode
+    EEPROMr.put(134, 0);                                 //latest recorded monthly value for night tariff for demo mode
+    EEPROMr.put(300, plot_array);                        //array of latest 20 hourly energy values for normal mode
+    EEPROMr.put(400, plot_array);                        //array of latest 20 hourly energy values for demo mode
+    EEPROMr.commit();
   }
 
-  pinMode(BACKLIGHT, OUTPUT);
   getBrightness();
+
+  Wire.begin(0, 2);
   
   // RTC module
   rtc.begin();
   if (RESET_CLOCK || rtc.lostPower()){
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
-  now = rtc.now();
+  raw_now = rtc.now();
   
+  pzemSWSerial.begin(9600);
   pzem = PZEM004Tv30(pzemSWSerial);
 
-  EEPROM.get(18, DEMO_MODE);
+  EEPROMr.get(18, DEMO_MODE);
+  EEPROMr.get(17, telegramEnabled);
+  EEPROMr.get(19, automaticallyUpdateTime);
+  EEPROMr.get(40, sendDailyMeterValuesViaTelegram);
+  EEPROMr.get(41, sendMonthlyMeterValuesViaTelegram);
+  EEPROMr.get(42, enableWiFi);
   
   lcd.init();
   lcd.setBacklight(lcdBacklight);
@@ -136,6 +210,7 @@ void setup() {
   }
   else {
     if (pzem.readAddress() == 0) {
+      meterPowered = false;
       lcd.setCursor(5, 0);
       lcd.print(F("The meter"));
       lcd.setCursor(3, 1);
@@ -144,6 +219,7 @@ void setup() {
       lcd.print(F("Check connection"));
     }
     else {
+      meterPowered = true;
       lcd.setCursor(3, 1);
       lcd.print(F("Initialization"));
       lcd.setCursor(6, 2);
@@ -152,8 +228,23 @@ void setup() {
   }
   delay(2000);
   menuExitTimer.setTimeout(MENU_EXIT_TIMEOUT);
+  menuExitTimer.start();
+  configTime(0, 0, "pool.ntp.org");
+  client.setTrustAnchors(&cert);
+  WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(true);
 
-  //pzem.resetEnergy();
+  if (enableWiFi) {
+    WiFi.begin(ssid, password);
+  }
+  
+  timeClient.begin();
+  timeClient.setTimeOffset(utcOffsetInSeconds);
+
+  ThingSpeak.begin(tsClient);
+
+  initPlot();
 }
 
 
@@ -162,14 +253,21 @@ void loop() {
   getPowerData();
   checkMode();
   recordMeter();
+  checkInternetServices();
+  publishData();
 }
 
 
 void checkMode(){
-  if(mode != 0 && menuExitTimer.isReady()) {
-    mode = 0;
-    screen = 1;
-    screenReadyFlag = false;
+  if(menuExitTimer.isReady()) {
+    lcdBacklight = false;
+    lcd.setBacklight(lcdBacklight);
+    enc.resetState();
+    if (mode != 0) {
+      mode = 0;
+      screen = 1;
+      screenReadyFlag = false;
+    }
   }
   
   if (mode == 0) {
@@ -185,6 +283,14 @@ void checkMode(){
   
   if (mode == 2) {
     showMeter();
+  }
+
+  if (mode == 3) {
+    drawEnergyPlot();
+  }
+
+  if (mode == 4) {
+    showNetwork();
   }
 
   if (mode == 5) {
@@ -218,13 +324,21 @@ void checkMode(){
 
 
 void getBrightness(){
-  EEPROM.get(16, lcd_bright);
+  EEPROMr.get(16, lcd_bright);
   analogWrite(BACKLIGHT, lcd_bright*15);
 }
 
 
 void printPowerData() {
-  if(enc.click()){
+  if (enc.turn()) {
+    lcdBacklight = true;
+    lcd.setBacklight(lcdBacklight);
+    menuExitTimer.start();
+  }
+  
+  if (enc.click()) {
+    lcdBacklight = true;
+    lcd.setBacklight(lcdBacklight);
     mode = 1;
     screenReadyFlag = false;
     screen = 0;
@@ -238,7 +352,7 @@ void printPowerData() {
     getTime();
     
     if (DEBUG_MODE) {
-      Serial.print(hour); Serial.print(F(":")); Serial.print(min); Serial.print(F(":")); Serial.print(second);
+      Serial.print(hour); Serial.print(F(":")); Serial.print(minute); Serial.print(F(":")); Serial.print(second);
       Serial.print(F("  ")); Serial.print(day); Serial.print(F("/")); Serial.print(month); Serial.print(F("/")); Serial.println(year);
       Serial.print(F("U: "));      Serial.print(mom_voltage / 10.0);      Serial.println(F("V"));
       Serial.print(F("I: "));      Serial.print(mom_current / 100.0);     Serial.println(F("A"));
@@ -282,7 +396,7 @@ void printPowerData() {
       }
   
       lcd.setCursor(0,0); if (hour < 10){lcd.print(F("0"));} lcd.print(hour); 
-      lcd.setCursor(3,0); if (min < 10){lcd.print(F("0"));} lcd.print(min); 
+      lcd.setCursor(3,0); if (minute < 10){lcd.print(F("0"));} lcd.print(minute); 
       lcd.setCursor(6,0); if (second < 10){lcd.print(F("0"));} lcd.print(second);
       lcd.setCursor(9,0); if (day < 10){lcd.print(F("0"));} lcd.print(day); 
       lcd.setCursor(12,0); if (month < 10){lcd.print(F("0"));} lcd.print(month); 
@@ -308,17 +422,6 @@ void printEnergy(float energy, bool meter_energy){
 }
 
 
-void getTime() {
-  now = rtc.now();
-  second = now.second();
-  min = now.minute();
-  hour = now.hour();
-  day = now.day();
-  month = now.month();
-  year = now.year();
-}
-
-
 void backgroundTime(){
   if (timeTimer.isReady()){
     getTime();
@@ -333,9 +436,9 @@ void mainMenu(){
     
   if (!screenReadyFlag){
     lcd.setCursor(5, 0);  lcd.print(F("Main menu"));
-    lcd.setCursor(1, 1);  lcd.print(F("Back       Min/max"));
+    lcd.setCursor(1, 1);  lcd.print(F("Back       Network"));
     lcd.setCursor(1, 2);  lcd.print(F("Meter      Settings"));
-    lcd.setCursor(1, 3);  lcd.print(F("Charts"));
+    lcd.setCursor(1, 3);  lcd.print(F("Chart"));
     setMenuCursor(); lcd.print(F(">"));
     screenReadyFlag = true;
     }
@@ -368,9 +471,22 @@ void mainMenu(){
     }
 
     if(menu == 2){
+      enc.turn();
       mode = 2;
       screenReadyFlag = false;
+      screen = 0;
+    }
 
+    if(menu == 3){
+      enc.turn();
+      mode = 3;
+      screenReadyFlag = false;
+    }
+
+    if(menu == 4){
+      mode = 4;
+      screenReadyFlag = false;
+      screen = 1;
     }
 
     if(menu == 5){
@@ -435,7 +551,7 @@ void settingsMenu(){
 
     else if(menu == 2){
       mode = 6;
-      menu = 1;
+      menu = 0;
       screenReadyFlag = false;
     }
 
@@ -472,13 +588,13 @@ void setTime(){
     }
     
   if (!screenReadyFlag){
-    lcd.setCursor(2, 0);  lcd.print(F("Set time&date"));
+    lcd.setCursor(0, 0);  lcd.print(F("Autocorrect time"));
     lcd.setCursor(0, 1);  lcd.print(F("Time:")); lcd.setCursor(7, 1); lcd.print(F(":")); lcd.setCursor(10,1); lcd.print(F(":"));
     lcd.setCursor(0, 2);  lcd.print(F("Date:")); lcd.setCursor(7, 2); lcd.print(F("/")); lcd.setCursor(10,2); lcd.print(F("/"));
     lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
     
     new_hour = hour;
-    new_min = min;
+    new_minute = minute;
     new_second = second;
     new_day = day;
     new_month = month;
@@ -487,8 +603,9 @@ void setTime(){
     }
 
   if(printTimer.isReady()) {
+    lcd.setCursor(17,0); if (automaticallyUpdateTime) {lcd.print(F("On "));} else {lcd.print(F("Off"));}
     lcd.setCursor(5,1); if (new_hour < 10){lcd.print(F("0"));} lcd.print(new_hour); 
-    lcd.setCursor(8,1); if (new_min < 10){lcd.print(F("0"));} lcd.print(new_min); 
+    lcd.setCursor(8,1); if (new_minute < 10){lcd.print(F("0"));} lcd.print(new_minute); 
     lcd.setCursor(11,1); if (new_second < 10){lcd.print(F("0"));} lcd.print(new_second);
     lcd.setCursor(5,2); if (new_day < 10){lcd.print(F("0"));} lcd.print(new_day); 
     lcd.setCursor(8,2); if (new_month < 10){lcd.print(F("0"));} lcd.print(new_month); 
@@ -500,14 +617,14 @@ void setTime(){
   
   if(enc.right()) {
     menu += 1;
-    if (menu > 8) menu = 1;
+    if (menu > 8) menu = 0;
     timeSetMenu(menu);
     menuExitTimer.start();
   }
 
   if(enc.left()) {
     menu -= 1;
-    if (menu < 1) menu = 8;
+    if (menu < 0) menu = 8;
     timeSetMenu(menu);
     menuExitTimer.start();
   }
@@ -527,6 +644,7 @@ void setTime(){
   if(enc.click()){
     menuExitTimer.start();
     if(menu == 7){
+      EEPROMr.get(19, automaticallyUpdateTime);
       mode = 5;
       menu = 2;
       screenReadyFlag = false;
@@ -535,7 +653,19 @@ void setTime(){
     }
 
     if(menu == 8){
-      rtc.adjust(DateTime(2000+new_year, new_month, new_day, new_hour, new_min, new_second));
+      if (EEPROMr.read(19) != automaticallyUpdateTime) {
+        EEPROMr.put(19, automaticallyUpdateTime);
+        EEPROMr.commit();
+        if (DEBUG_MODE) {
+          Serial.print(F("Saving new value for automaticallyUpdateTime flag=")); Serial.println(automaticallyUpdateTime);
+        }
+      }
+      else {
+        saveNewTime(true);
+        if (DEBUG_MODE) {
+          Serial.print(F("Saving new time values"));
+        }
+      }
       mode = 5;
       menu = 2;
       screen = 1;
@@ -550,6 +680,11 @@ void timeSetMenu(byte menu){
   lcd.setCursor(11, 3); lcd.print(F(" "));
   
   switch(menu){
+    case 0:
+      lcd.setCursor(17,0);
+      lcd.print(F("   "));
+      break;
+    
     case 1:
       lcd.setCursor(5,1);
       lcd.print(F("  "));
@@ -654,10 +789,11 @@ void setMeter(){
     }
 
     if(menu == 4){
-      EEPROM.put(4+s, day_energy);
-      EEPROM.put(8+s, night_energy);
+      EEPROMr.put(4+s, day_energy);
+      EEPROMr.put(8+s, night_energy);
       total_energy = day_energy + night_energy;
-      EEPROM.put(12+s, total_energy);
+      EEPROMr.put(12+s, total_energy);
+      EEPROMr.commit();
       mode = 5;
       menu = 3;
       screen = 1;
@@ -753,7 +889,8 @@ void setBright(){
     }
 
     if(menu == 3){
-      EEPROM.put(16, lcd_bright);
+      EEPROMr.put(16, lcd_bright);
+      EEPROMr.commit();
       analogWrite(BACKLIGHT, lcd_bright*15);
       mode = 5;
       menu = 4;
@@ -793,16 +930,25 @@ void setDemoMode(){
     }
     
   if (!screenReadyFlag){
-    lcd.setCursor(4, 0);  lcd.print(F("Select mode"));
-    lcd.setCursor(0, 1);  lcd.print(F("Demo mode:")); 
+    lcd.setCursor(0, 0);  lcd.print(F("Demo mode:"));
+    lcd.setCursor(0, 1);  lcd.print(F("WiFi enabled:"));
+    lcd.setCursor(0, 2);  lcd.print(F("Telegram bot:"));
     lcd.setCursor(2, 3);  lcd.print(F("Back      Save"));
     newDemoMode = DEMO_MODE;
     screenReadyFlag = true;
     }
 
   if(printTimer.isReady()) {
-    lcd.setCursor(12,1);  
+    lcd.setCursor(14,0);  
     if (newDemoMode) lcd.print(F("On "));
+    else lcd.print(F("Off"));
+
+    lcd.setCursor(14,1);
+    if (enableWiFi) lcd.print(F("On "));
+    else lcd.print(F("Off"));
+
+    lcd.setCursor(14,2);
+    if (telegramEnabled) lcd.print(F("On "));
     else lcd.print(F("Off"));
     modeSetMenu(menu);
     blinkFlag = !blinkFlag;
@@ -810,35 +956,72 @@ void setDemoMode(){
   
   if(enc.right()) {
     menu += 1;
-    if (menu > 3) menu = 1;
+    if (menu > 5) menu = 1;
     menuExitTimer.start();
     modeSetMenu(menu);
   }
 
   if(enc.left()) {
     menu -= 1;
-    if (menu < 1) menu = 3;
+    if (menu < 1) menu = 5;
     menuExitTimer.start();
     modeSetMenu(menu);
   }
 
-  if(enc.click()){
+  if(enc.rightH() || enc.leftH()){
     menuExitTimer.start();
     if(menu == 1) {
       newDemoMode = !newDemoMode;
-      modeSetMenu(menu);
     }
+
+    if(menu == 2) {
+      enableWiFi = !enableWiFi;
+    }
+
+    if(menu == 3) {
+      telegramEnabled = !telegramEnabled;
+    }
+    modeSetMenu(menu);
+  }
     
-    if(menu == 2){
+  if(enc.click()){  
+    if(menu == 4){
+      EEPROMr.get(42, enableWiFi);
+      EEPROMr.get(17, telegramEnabled);
       mode = 5;
       menu = 5;
       screen = 1;
       screenReadyFlag = false;
     }
 
-    if(menu == 3){
-      DEMO_MODE = newDemoMode;
-      EEPROM.put(18, DEMO_MODE);
+    if(menu == 5){
+      bool commitNeeded = false;
+      
+      if (DEMO_MODE != newDemoMode) {
+        DEMO_MODE = newDemoMode;
+        EEPROMr.put(18, DEMO_MODE);
+        commitNeeded = true;
+      }
+
+      if (EEPROMr.read(42) != enableWiFi) {
+        EEPROMr.put(42, enableWiFi);
+        commitNeeded = true;
+        if (enableWiFi) {
+          WiFi.begin(ssid, password);
+        }
+        else {
+          WiFi.disconnect();
+        }
+      }
+
+      if (EEPROMr.read(17) != telegramEnabled) {
+        EEPROMr.put(17, telegramEnabled);
+        commitNeeded = true;
+      }
+      
+      if (commitNeeded) {
+        EEPROMr.commit();
+      }
       mode = 5;
       menu = 5;
       screen = 1;
@@ -854,16 +1037,26 @@ void modeSetMenu(byte menu){
   
   switch(menu){
     case 1:
-      lcd.setCursor(12,1); 
+      lcd.setCursor(14,0); 
       if(blinkFlag) lcd.print(F("   "));
       break;
 
     case 2:
+      lcd.setCursor(14,1); 
+      if(blinkFlag) lcd.print(F("   "));
+      break;
+
+    case 3:
+      lcd.setCursor(14,2); 
+      if(blinkFlag) lcd.print(F("   "));
+      break;
+
+    case 4:
       lcd.setCursor(1, 3);
       lcd.print(F(">"));
       break;
 
-    case 3:
+    case 5:
       lcd.setCursor(11, 3);
       lcd.print(F(">"));
       break;
@@ -976,7 +1169,7 @@ void performReset(){
         screen = 1;
         screenReadyFlag = false;
         }
-      else if (screen == 1 && pzem.readAddress() != 0 && !DEMO_MODE) {
+      else if (screen == 1 && meterPowered && !DEMO_MODE) {
         pzem.resetEnergy();
         mode = 10;
         menu = 2;
@@ -984,7 +1177,8 @@ void performReset(){
         screenReadyFlag = false;
         }
       else if (screen == 2) {
-        EEPROM.write(INIT_ADDR, 1);
+        EEPROMr.write(INIT_ADDR, 1);
+        EEPROMr.commit();
         resetFunc();
       }
     }
@@ -1012,6 +1206,10 @@ void performResetMenu(byte menu){
 
 void adjustTimeDate(float delta, byte menu){
   switch(menu){
+    case 0:
+      automaticallyUpdateTime = !automaticallyUpdateTime;
+      break;
+    
     case 1:
       new_hour += delta;
       if(new_hour > 23) new_hour = 0;
@@ -1019,9 +1217,9 @@ void adjustTimeDate(float delta, byte menu){
       break;
 
     case 2:
-      new_min += delta;
-      if(new_min > 59) new_min = 0;
-      if(new_min < 0) new_min = 59;
+      new_minute += delta;
+      if(new_minute > 59) new_minute = 0;
+      if(new_minute < 0) new_minute = 59;
       break;
 
     case 3:

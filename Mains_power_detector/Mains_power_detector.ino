@@ -5,13 +5,14 @@
 #include <FastBot.h>
  
 //---------- Define pins and constants
-#define BUTTON_1_PIN 0                     //Button pin
+#define DETECTOR_PIN 4                     //Button pin
 
 //---------- Define variables
 const char* ssid = "Gurevych_2";
 const char* password = "3Gurevych+1Mirkina";
 #define BOTtoken "6408191151:AAG_VAOgyXl1x61B6gV9CJYbDpgD3t1Lygw"
-#define CHAT_ID "1289811885"
+//#define CHAT_ID "1289811885"
+#define CHAT_ID "-1001813650904"
  
 FastBot bot(BOTtoken);
 
@@ -26,7 +27,7 @@ void setup() {
   Serial.begin(9600);
  
   //Pin modes
-  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
+  pinMode(DETECTOR_PIN, INPUT_PULLUP);
  
 // Connect to WiFi
   Serial.print("Connecting to Wifi: ");
@@ -44,13 +45,12 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  powerPresent = digitalRead(BUTTON_1_PIN);
-  currentState = digitalRead(BUTTON_1_PIN);
+  powerPresent = !digitalRead(DETECTOR_PIN);
+  currentState = !digitalRead(DETECTOR_PIN);
 
-   bot.setChatID(CHAT_ID); // передайте "" (пустую строку) чтобы отключить проверку
-   bot.attach(newMsg);
-   bot.sendMessage("ESP запущен и готов к работе!");
-   sendCurrentPowerState();
+   bot.setChatID(CHAT_ID);
+//   bot.attach(newMsg);
+//   sendCurrentPowerState();
 }
  
 void loop() {
@@ -74,7 +74,7 @@ void sendCurrentPowerState(){
 
 void checkPowerState(){
   if(checkTimer.isReady()){
-    powerPresent = digitalRead(BUTTON_1_PIN);
+    powerPresent = !digitalRead(DETECTOR_PIN);
     if(powerPresent != currentState){
       currentState = powerPresent;
       printPowerState();
@@ -96,39 +96,3 @@ void newMsg(FB_msg& msg) {
     sendCurrentPowerState();
   }
 }
-
-//U+2705
-//void checkTelegram(){
-//  if (checkTelegramTimer.isReady()){
-//    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-//    while(numNewMessages) {
-//      handleNewMessages(numNewMessages);
-//      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-//    }
-//  }
-//}
-
-//void handleNewMessages(int numNewMessages) {
-//  for (int i=0; i<numNewMessages; i++) {
-//    // Chat id of the requester
-//    String chat_id = String(bot.messages[i].chat_id);
-//    String from_name = bot.messages[i].from_name;
-//    
-//    if (chat_id != CHAT_ID){
-//      bot.sendMessage(chat_id, "Sorry, " + from_name + ", you are not authorized to use this bot!", "");
-//      continue;
-//    }
-//    
-//    // Print the received message
-//    String text = bot.messages[i].text;
-//    Serial.println(text);
-//
-//    if (text == "/start") {
-//      String welcome = "Welcome, " + from_name + ".\n";
-//      welcome += F("This bot will inform you about the current power status in Bozdosh, OSBB Parkoviy \n");
-//      welcome += F("/status: to receive the realtime status of your power line \n");
-//      
-//      bot.sendMessage(chat_id, welcome, "");
-//    }
-//  }
-//}

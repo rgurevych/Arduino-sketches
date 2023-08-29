@@ -3,6 +3,8 @@
 //---------- Include libraries
 #include <GyverTimer.h>
 #include <FastBot.h>
+#include <EEPROM.h>
+#include <ESP8266WiFi.h>
  
 //---------- Define pins and constants
 #define DETECTOR_PIN 4                     //Button pin
@@ -13,6 +15,8 @@ const char* password = "3Gurevych+1Mirkina";
 #define BOTtoken "6408191151:AAG_VAOgyXl1x61B6gV9CJYbDpgD3t1Lygw"
 #define MASTER_CHAT_ID "1289811885"
 #define CHAT_ID "-1001813650904"
+#define INIT_ADDR 500                    // Number of EEPROM initial cell
+#define INIT_KEY 25                      // First launch key
  
 FastBot bot(BOTtoken);
 
@@ -26,24 +30,38 @@ bool broadcastFlag = true;
 uint32_t savedUnixTime, currentUnixTime, unixTimeDelta;
 
 
-void setup() {
+void setup(){
   Serial.begin(9600);
  
 //Pin modes
   pinMode(DETECTOR_PIN, INPUT_PULLUP);
+
+// Start EEPROM
+  EEPROM.begin(512);
+  
+  if (EEPROM.read(INIT_ADDR) != INIT_KEY){
+    EEPROM.write(INIT_ADDR, INIT_KEY);
+    EEPROM.put(0, broadcastFlag);
+    EEPROM.put(40, 0);
+    EEPROM.commit();
+  }
+
+  EEPROM.get(0, broadcastFlag);
+  EEPROM.get(40, savedUnixTime);
  
 // Connect to WiFi
   Serial.print("Connecting to Wifi: ");
   Serial.println(ssid);
  
-  WiFi.setAutoReconnect(true);
-  WiFi.persistent(true);
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
     delay(500);
   }
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(true);
+  
   Serial.println("WiFi connected");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
@@ -57,13 +75,26 @@ void setup() {
   sendStartupMessage();
   
 // Визначення поточного часу, збереження його та виведення в консоль
-  savedUnixTime = bot.getUnix();
-  FB_Time savedTime(savedUnixTime);
+  if(savedUnixTime == 0){
+    savedUnixTime = bot.getUnix();
+    EEPROM.put(40, savedUnixTime);
+    EEPROM.commit();
+  }
 
-  Serial.print("Поточний час: ");
+  currentUnixTime = bot.getUnix();
+  
+  FB_Time savedTime(savedUnixTime);
+  FB_Time currentTime(currentUnixTime);
+
+  Serial.print("Останній збережений час: ");
   Serial.print(savedTime.timeString());
   Serial.print(' ');
   Serial.println(savedTime.dateString());
+
+  Serial.print("Поточний час: ");
+  Serial.print(currentTime.timeString());
+  Serial.print(' ');
+  Serial.println(currentTime.dateString());
 }
 
 
@@ -136,6 +167,10 @@ void checkPowerState(){
       currentState = powerPresent;
       currentUnixTime = bot.getUnix();
       sendCurrentPowerState(CHAT_ID);
+
+      savedUnixTime = currentUnixTime;
+      EEPROM.put(40, currentUnixTime);
+      EEPROM.commit();
     }
   }
 }
@@ -252,18 +287,24 @@ void newMsg(FB_msg& msg) {
 
   if(msg.text == "/broadcast") {
     broadcastFlag = true;
+    EEPROM.put(0, broadcastFlag);
+    EEPROM.commit();
     bot.sendMessage("Бот БУДЕ надсилати повідомлення в канал", MASTER_CHAT_ID);
     return;
   }
 
   if(msg.text == "/no_broadcast") {
     broadcastFlag = false;
+    EEPROM.put(0, broadcastFlag);
+    EEPROM.commit();
     bot.sendMessage("Бот НЕ БУДЕ надсилати повідомлення в канал", MASTER_CHAT_ID);
     return;
   }
 
   if(msg.text == "/reset_timer") {
     savedUnixTime = bot.getUnix();
+    EEPROM.put(40, savedUnixTime);
+    EEPROM.commit();
     bot.sendMessage("Таймер розрахунку поточного періоду наявності/вісутності світла скинуто, облік часу почався з 0", MASTER_CHAT_ID);
     return;
   }

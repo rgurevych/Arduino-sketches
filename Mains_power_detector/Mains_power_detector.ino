@@ -21,12 +21,11 @@ const char* password = "3Gurevych+1Mirkina";
 FastBot bot(BOTtoken);
 
 GTimer checkTimer(MS, 1000);
-GTimer checkTelegramTimer(MS, 3000);
  
 bool powerPresent;
 bool currentState;
+bool WiFiReady;
 bool broadcastFlag = true;
-
 uint32_t savedUnixTime, currentUnixTime, unixTimeDelta;
 
 
@@ -35,6 +34,7 @@ void setup(){
  
 //Pin modes
   pinMode(DETECTOR_PIN, INPUT_PULLUP);
+  pinMode(LED_BUILTIN, OUTPUT);
 
 // Start EEPROM
   EEPROM.begin(512);
@@ -56,9 +56,11 @@ void setup(){
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
+    digitalWrite(LED_BUILTIN, HIGH);
     Serial.print(".");
     delay(500);
   }
+  digitalWrite(LED_BUILTIN, LOW);
   WiFi.setAutoReconnect(true);
   WiFi.persistent(true);
   
@@ -121,6 +123,18 @@ void loop() {
 }
 
 
+void checkWiFi(){
+  if (WiFi.status() == WL_CONNECTED){
+    digitalWrite(LED_BUILTIN, LOW);
+    WiFiReady = true;
+  }
+  else {
+    digitalWrite(LED_BUILTIN, HIGH);
+    WiFiReady = false;
+  }
+}
+
+
 // Вивід поточного статуту електроенергії в консоль
 void printPowerState(){
   Serial.print("Поточний стан: ");
@@ -153,7 +167,7 @@ void sendCurrentPowerState(String ChatId){
   
   Serial.println(botMessage);
 
-  if(broadcastFlag){
+  if(broadcastFlag && WiFiReady){
     bot.sendMessage(botMessage, ChatId);
   }
 }
@@ -162,6 +176,7 @@ void sendCurrentPowerState(String ChatId){
 // Перевірка наявності електроенергії
 void checkPowerState(){
   if(checkTimer.isReady()){
+    checkWiFi();
     powerPresent = !digitalRead(DETECTOR_PIN);
     if(powerPresent != currentState){
       currentState = powerPresent;
@@ -276,7 +291,7 @@ void newMsg(FB_msg& msg) {
   }
 
   if(msg.text == "/status") {
-    sendCurrentPowerState(MASTER_CHAT_ID);
+    bot.sendMessage(defineCurrentPowerState(), MASTER_CHAT_ID);
     return;
   }
 

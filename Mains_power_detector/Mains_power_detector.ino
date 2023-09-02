@@ -204,7 +204,7 @@ String prepareTimeDeltaString(uint32_t timeDelta){
 
   if(deltaDay > 0){
     timeDeltaString += String(deltaDay);
-    if(deltaHour >= 5 && deltaHour <= 20){
+    if(deltaDay >= 5 && deltaDay <= 20){
       timeDeltaString += " днів ";
     }
     else if(deltaDay % 10 == 1){
@@ -291,7 +291,12 @@ void newMsg(FB_msg& msg) {
   }
 
   if(msg.text == "/status") {
-    bot.sendMessage(defineCurrentPowerState(), MASTER_CHAT_ID);
+    currentUnixTime = bot.getUnix();
+    unixTimeDelta = currentUnixTime - savedUnixTime;
+    String statusMessage = defineCurrentPowerState();
+    statusMessage += F("\n\U000023F1 Це триває вже ");
+    statusMessage += prepareTimeDeltaString(unixTimeDelta);
+    bot.sendMessage(statusMessage, MASTER_CHAT_ID);
     return;
   }
 

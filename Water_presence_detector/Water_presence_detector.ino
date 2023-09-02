@@ -1,4 +1,4 @@
-//Mains power detector with Telegram bot by Rostyslav Gurevych
+//Water pressure detector with Telegram bot by Rostyslav Gurevych
 
 //---------- Include libraries
 #include <GyverTimer.h>
@@ -12,9 +12,10 @@
 //---------- Define variables
 const char* ssid = "Gurevych_2";
 const char* password = "3Gurevych+1Mirkina";
-#define BOTtoken "6408191151:AAG_VAOgyXl1x61B6gV9CJYbDpgD3t1Lygw"
+#define BOTtoken "6407096726:AAHM8kWsL6e8i0PyrulmfoBPbQig98h1xUg"
 #define MASTER_CHAT_ID "1289811885"
-#define CHAT_ID "-1001813650904"
+#define CHAT_ID "1289811885"
+// #define CHAT_ID "-1001813650904"
 #define INIT_ADDR 500                    // Number of EEPROM initial cell
 #define INIT_KEY 25                      // First launch key
  
@@ -22,7 +23,7 @@ FastBot bot(BOTtoken);
 
 GTimer checkTimer(MS, 1000);
  
-bool powerPresent;
+bool waterPresent;
 bool currentState;
 bool WiFiReady;
 bool broadcastFlag = true;
@@ -68,9 +69,9 @@ void setup(){
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-// Визначення поточного стану електроенергії і збереження флагів
-  powerPresent = !digitalRead(DETECTOR_PIN);
-  currentState = !digitalRead(DETECTOR_PIN);
+// Визначення поточного стану наявності води і збереження флагів
+  waterPresent = digitalRead(DETECTOR_PIN);
+  currentState = digitalRead(DETECTOR_PIN);
 
 // Підключення обробника повідомлень до бота, відправлення стартового повідомлення
   bot.attach(newMsg);
@@ -112,13 +113,13 @@ void sendStartupMessage(){
       startUpMessage += F("\nБот не надсилає повідомлення в канал");
     }
   startUpMessage += F("\nПоточний стан: ");
-  startUpMessage += defineCurrentPowerState();
+  startUpMessage += defineCurrentWaterState();
   bot.sendMessage(startUpMessage, MASTER_CHAT_ID);
 }
 
 
 void loop() {
-  checkPowerState();
+  checkWaterState();
   bot.tick();
 }
 
@@ -135,33 +136,33 @@ void checkWiFi(){
 }
 
 
-// Вивід поточного статуту електроенергії в консоль
-void printPowerState(){
+// Вивід поточного статуту води в консоль
+void printWaterState(){
   Serial.print("Поточний стан: ");
-  Serial.println(defineCurrentPowerState());
+  Serial.println(defineCurrentWaterState());
 }
 
 
-// Визначення поточного статуту електроенергії і повернення строки з відповідним текстом.
-String defineCurrentPowerState(){
+// Визначення поточного статуса води і повернення строки з відповідним текстом.
+String defineCurrentWaterState(){
   if(currentState){
-    return F("\U0001F4A1 Світло є!");
+    return F("\U0001F6B0 Вода є!");
   }
   else{
-    return F("\U0000274C Світло вимкнули!");
+    return F("\U0001F6B1 Воду вимкнули!");
   }
 }
 
 
-// Відправка поточного статусу електроенергії в телеграм
-void sendCurrentPowerState(String ChatId){
-  String botMessage = defineCurrentPowerState();
+// Відправка поточного статусу води в телеграм
+void sendCurrentWaterState(String ChatId){
+  String botMessage = defineCurrentWaterState();
   unixTimeDelta = currentUnixTime - savedUnixTime;
   if(currentState){
-    botMessage += F("\n\U000023F1 Темна пора тривала ");
+    botMessage += F("\n\U000023F1 Посуха тривала ");
   }
   else{
-    botMessage += F("\n\U000023F1 Світла пора тривала ");
+    botMessage += F("\n\U000023F1 Період гідратації тривав ");
   }
   botMessage += prepareTimeDeltaString(unixTimeDelta);
   
@@ -173,15 +174,15 @@ void sendCurrentPowerState(String ChatId){
 }
 
 
-// Перевірка наявності електроенергії
-void checkPowerState(){
+// Перевірка наявності тиску води
+void checkWaterState(){
   if(checkTimer.isReady()){
     checkWiFi();
-    powerPresent = !digitalRead(DETECTOR_PIN);
-    if(powerPresent != currentState){
-      currentState = powerPresent;
+    waterPresent = digitalRead(DETECTOR_PIN);
+    if(waterPresent != currentState){
+      currentState = waterPresent;
       currentUnixTime = bot.getUnix();
-      sendCurrentPowerState(CHAT_ID);
+      sendCurrentWaterState(CHAT_ID);
 
       savedUnixTime = currentUnixTime;
       EEPROM.put(40, currentUnixTime);
@@ -277,10 +278,10 @@ void newMsg(FB_msg& msg) {
   
   if(msg.text == "/start") {
     String welcome = "Привіт, " + msg.username + "!\n";
-    welcome += F("Цей бот повідомлятиме про наявність світла в ОСББ 'Парковий' \n");
+    welcome += F("Цей бот повідомлятиме про наявність води в ОСББ 'Парковий' \n");
     welcome += F("Нагадую команди, які ви можете відправляти боту: \n");
     welcome += F("/start: вивід цього повідомлення \n");
-    welcome += F("/status: дізнатись поточну наявність світла \n");
+    welcome += F("/status: дізнатись поточну наявність води \n");
     welcome += F("/IPaddress: дізнатись поточну IP-адресу, до якої підключено пристрій \n");
     welcome += F("/broadcast: відсилати повідомлення в загальний канал \n");
     welcome += F("/no_broadcast: не відсилати повідомлення в загальний канал \n");
@@ -293,7 +294,7 @@ void newMsg(FB_msg& msg) {
   if(msg.text == "/status") {
     currentUnixTime = bot.getUnix();
     unixTimeDelta = currentUnixTime - savedUnixTime;
-    String statusMessage = defineCurrentPowerState();
+    String statusMessage = defineCurrentWaterState();
     statusMessage += F("\n\U000023F1 Це триває вже ");
     statusMessage += prepareTimeDeltaString(unixTimeDelta);
     bot.sendMessage(statusMessage, MASTER_CHAT_ID);
@@ -325,7 +326,7 @@ void newMsg(FB_msg& msg) {
     savedUnixTime = bot.getUnix();
     EEPROM.put(40, savedUnixTime);
     EEPROM.commit();
-    bot.sendMessage("Таймер розрахунку поточного періоду наявності/вісутності світла скинуто, облік часу почався з 0", MASTER_CHAT_ID);
+    bot.sendMessage("Таймер розрахунку поточного періоду наявності/вісутності води скинуто, облік часу почався з 0", MASTER_CHAT_ID);
     return;
   }
 

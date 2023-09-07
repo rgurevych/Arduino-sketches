@@ -14,8 +14,7 @@ const char* ssid = "Gurevych_2";
 const char* password = "3Gurevych+1Mirkina";
 #define BOTtoken "6407096726:AAHM8kWsL6e8i0PyrulmfoBPbQig98h1xUg"
 #define MASTER_CHAT_ID "1289811885"
-#define CHAT_ID "1289811885"
-// #define CHAT_ID "-1001813650904"
+#define CHAT_ID "-1001813650904"
 #define INIT_ADDR 500                    // Number of EEPROM initial cell
 #define INIT_KEY 25                      // First launch key
  
@@ -272,7 +271,9 @@ void newMsg(FB_msg& msg) {
   Serial.println(msg.toString());
 
   if(msg.chatID != MASTER_CHAT_ID){
-    bot.sendMessage("Вибачте, " + msg.username + ", але ви не можете керувати цим ботом!", msg.chatID);
+    if(msg.chatID != CHAT_ID){
+      bot.sendMessage("Вибачте, " + msg.username + ", але ви не можете керувати цим ботом!", msg.chatID);
+    }
     return;
   }
   

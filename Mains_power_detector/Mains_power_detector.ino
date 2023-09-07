@@ -271,7 +271,9 @@ void newMsg(FB_msg& msg) {
   Serial.println(msg.toString());
 
   if(msg.chatID != MASTER_CHAT_ID){
-    bot.sendMessage("Вибачте, " + msg.username + ", але ви не можете керувати цим ботом!", msg.chatID);
+    if(msg.chatID != CHAT_ID){
+      bot.sendMessage("Вибачте, " + msg.username + ", але ви не можете керувати цим ботом!", msg.chatID);
+    }
     return;
   }
   

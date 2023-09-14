@@ -29,15 +29,15 @@ boolean dots = true;
 
 
 void setup() {
+// Setting up display  
+  disp.begin();
+  disp.setBright(10);
+  disp.textDisplayMode(GFX_ADD);
+  disp.clear();
+  
   Serial.begin(9600);
   
-  randomSeed(analogRead(0));
-  disp.begin();
-  disp.setBright(15);
-  disp.textDisplayMode(GFX_ADD);
-
-
-// Setting up RTC module and display time
+// Setting up RTC module
   rtc.begin();
   if (rtc.lostPower()) {
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
@@ -48,6 +48,8 @@ void setup() {
   mins = now.minute();
   hrs = now.hour();
   Serial.print("Setup ready");
+
+
 }
 
 void loop() {
@@ -66,9 +68,10 @@ void timeTick(){
       secs = now.second();
       mins = now.minute();
       hrs = now.hour();
-    }
-    printTimeSerial();
+    }  
     displayTime();
+
+    if(dots) printTimeSerial();
   }
   
 }
@@ -96,22 +99,21 @@ void printTimeSerial(){
 
 
 void drawDigit(byte dig, int x) {
-#ifdef __AVR__
-  disp.drawBitmap(x, 0, (const uint8_t*)pgm_read_word(&(digs[dig])), d_width, 36, 0);
-#else
   disp.drawBitmap(x, 0, (const uint8_t*)pgm_read_dword(&(digs[dig])), d_width, 36, 0);
-#endif
 }
 
 void displayTime() {
+  byte minsShift = 0, minsLastShift = 0;
   disp.clear();
-  if (hrs > 9) drawDigit(hrs / 10, 0);
-  drawDigit(hrs % 10, d_width + 2);
+  if (hrs > 9) drawDigit(hrs / 10, -3);
+  drawDigit(hrs % 10, d_width - 1);
   if (dots) {
-    disp.setByte(11, 2, 0b0011101);
+    disp.setByte(11, 2, 0b1100011);
     disp.setByte(11, 4, 0b1100011);
   }
-  drawDigit(mins / 10, 95 - d_width * 2 - 3);
-  drawDigit(mins % 10, 95 - d_width);
+  if(mins / 10 == 1) minsShift = 2;
+  drawDigit(mins / 10, 95 - d_width * 2 - 4 - minsShift);
+  if(mins % 10 == 1) minsLastShift = 2;
+  drawDigit(mins % 10, 95 - d_width - minsShift*2 - minsLastShift);
   disp.update();
 }

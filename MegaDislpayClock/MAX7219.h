@@ -16,12 +16,14 @@ struct MaxDisp : public GyverGFX {
   void begin() {
     SPI.begin();
     pinMode(CS, OUTPUT);
-
+    digitalWrite(CS, HIGH);
+    
     sendCMD(0xF, 0x00);  // отключить тест
     sendCMD(0x9, 0x00);  // откл декодирование
     sendCMD(0xA, 0x00);  // яркость мин
     sendCMD(0xB, 0x07);  // отображаем всё
     sendCMD(0xC, 0x01);  // включить
+
   }
 
   void setBright(uint8_t value) {

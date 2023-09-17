@@ -17,7 +17,11 @@
 #define DW 6       // number of 7219 chips horizontaly 
 #define DH 3       // number of 7219 chips vertically
 #define DWW (DW*4)  
-#define DHH (DH*2)  
+#define DHH (DH*2)
+#define NIGHT_MODE_ENABLED 1        // Night mode enabled
+#define NIGHT_START 23              // Begin of night mode
+#define NIGHT_END 7                 // End of night mode
+#define PRECISE_TIME_SYNC_HOUR 22    // Hour when the precise time sync happens with NTP server  
 
 //WiFi settings
 const char* ssid = "Gurevych_2";
@@ -44,8 +48,8 @@ GTimer halfSecondTimer(MS, 500);
 DateTime now;
 byte secs, mins, hrs;
 boolean dots = true;
-boolean WiFiInitialConnected = false, WiFiConnected;
-boolean autoUpdateTimeDoneFlag = false;
+boolean WiFiStartCompletedFlag = true, WiFiStopCompletedFlag = true, WiFiConnected = false;
+boolean autoUpdateTimeDoneFlag = false, nightModeFlag;
 byte timezone = 2;
 long utcOffsetInSeconds = 3600*timezone;
 
@@ -70,17 +74,14 @@ delay(1500);
   rtc.begin();
   if (rtc.lostPower()) {
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-    Serial.print("Adjusting date and time");
+    Serial.print("Adjusting date and time after loosing power");
   }
   now = rtc.now();
   secs = now.second();
   mins = now.minute();
   hrs = now.hour();
-  Serial.println("RTC ready");
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi");
+  if (now.year() >= 2023) Serial.println("RTC initialized and ready");
+  else Serial.println ("RTC initialization failed");
 
 // Setting up NTP time client
   timeClient.begin();
@@ -106,23 +107,37 @@ void timeTick(){
       secs = now.second();
       mins = now.minute();
       hrs = now.hour();
+      checkNightMode();
+      printTimeSerial();
       automaticTimeUpdate();
     }  
     displayTime();
-
-    if(dots) printTimeSerial();
   } 
 }
 
 void automaticTimeUpdate() {
-  if (mins == 30 && !autoUpdateTimeDoneFlag) {
-    if (WiFiConnected) {
-      updateTime();
+  if (hrs == PRECISE_TIME_SYNC_HOUR){
+    if (mins == 0 && !WiFiConnected){
+      startWiFi();
+      autoUpdateTimeDoneFlag = false;
     }
-    autoUpdateTimeDoneFlag = true;
+    
+    else if (mins >= 1 && !autoUpdateTimeDoneFlag) {
+      if (WiFiConnected) {
+        updateTime();
+        if(autoUpdateTimeDoneFlag) stopWiFi();
+      } 
+    }
   }
-  else if (mins != 30) {
-    autoUpdateTimeDoneFlag = false;
+}
+
+
+void checkNightMode(){
+  if ((hrs >= NIGHT_START && hrs <= 23) || (hrs >= 0 && hrs < NIGHT_END)) {
+    nightModeFlag = true;
+  }
+  else {
+    nightModeFlag = false;
   }
 }
 
@@ -131,21 +146,53 @@ void wifiTick(){
   if(WiFiCheckTimer.isReady()){
     checkWiFi(); 
   
-    if(!WiFiInitialConnected){
+    if(!WiFiStartCompletedFlag){
       if(!WiFiConnected){
         Serial.print(".");   
       }
       else{
+        Serial.println("");
         Serial.println("WiFi connected");
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP());
         WiFi.setAutoReconnect(true);
         WiFi.persistent(true);
-        WiFiInitialConnected = true;
+        WiFiStartCompletedFlag = true;
+      }
+    }
+
+    if(!WiFiStopCompletedFlag){
+      if(WiFiConnected){
+        Serial.print(".");   
+      }
+      else{
+        Serial.println("");
+        Serial.println("WiFi disconnected");
+        WiFiStopCompletedFlag = true;
       }
     }
     digitalWrite(LED_BUILTIN, !WiFiConnected);
   }
+}
+
+
+void startWiFi(){
+  printTimeSerial();
+  Serial.print("Starting connection to WiFi");
+  WiFi.forceSleepWake();
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  WiFiStartCompletedFlag = false;
+}
+
+
+void stopWiFi(){
+  printTimeSerial();
+  Serial.print("Terminating WiFi connection");
+  WiFi.disconnect();
+  WiFi.mode(WIFI_OFF);
+  WiFi.forceSleepBegin();
+  WiFiStopCompletedFlag = false;
 }
 
 
@@ -185,11 +232,11 @@ void updateTime(){
     DateTime newTime = dst_rtc.calculateTime(DateTime(2000+new_year, new_month, new_day, new_hour, new_minute, new_second));  
     rtc.adjust(newTime);
     Serial.println("Time updated successfully");
+    autoUpdateTimeDoneFlag = true;
   }
   else{
-    Serial.println("Something went wrong, time was not updated");
+    Serial.println("Something went wrong, NTP did not return correct time, time was not updated");
   }
-  
 }
 
 //void running() {
@@ -214,6 +261,11 @@ void drawDigit(byte dig, int x) {
 void displayTime() {
   byte minsShift = 0, minsLastShift = 0, hoursShift = 0, hoursLastShift = 0;
   disp.clear();
+
+  if(nightModeFlag) {
+    disp.update();
+    return;
+  }
   
   if(hrs > 9){
     if(hrs / 10 == 2 && hrs % 10 != 0) hoursShift = 2; 
@@ -231,5 +283,6 @@ void displayTime() {
   drawDigit(mins / 10, 95 - d_width * 2 - 4 - minsShift);
   if(mins % 10 == 1) minsLastShift = 2;
   drawDigit(mins % 10, 95 - d_width - minsShift*2 - minsLastShift);
+  
   disp.update();
 }

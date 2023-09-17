@@ -15,7 +15,7 @@
 #define DATE_DISPLAY_TIMEOUT 10000  // How long the date is displayed after pressing Button1
 #define NIGHT_MODE_ENABLED 1        // Night mode enabled
 #define NIGHT_START 23              // Begin of night mode
-#define NIGHT_END 7                 // End of night mode
+#define NIGHT_END 9                 // End of night mode
 
 
 //---------- Include libraries

@@ -18,10 +18,12 @@
 #define DH 3       // number of 7219 chips vertically
 #define DWW (DW*4)  
 #define DHH (DH*2)
+#define SHOW_CALENDAR 1             // Show calendar enabled
 #define NIGHT_MODE_ENABLED 1        // Night mode enabled
 #define NIGHT_START 23              // Begin of night mode
 #define NIGHT_END 7                 // End of night mode
-#define PRECISE_TIME_SYNC_HOUR 22    // Hour when the precise time sync happens with NTP server  
+#define PRECISE_TIME_SYNC_HOUR 5    // Hour when the precise time sync happens with NTP server
+#define CALENDAR_SCROLL_SPEED 13    // How fast the text with calendar is scrolled (the lower - the faster)  
 
 //WiFi settings
 const char* ssid = "Gurevych_2";
@@ -29,6 +31,9 @@ const char* password = "3Gurevych+1Mirkina";
 
 // Define EU rules for DST
 const char rulesDST[] = "EU";
+
+char* monthNames[] = {"сiчня", "лютого", "березня", "квiтня", "травня", "червня", "липня", "серпня", "вересня", "жовтня", "листопада", "грудня"};
+char* dayNames[] = {"Недiля", "Понедiлок", "Вiвторок", "Середа", "Четвер", "П'ятниця", "Субота"};
 
 // Initialize defices
 MaxDisp<MAX_CS, DW, DH> disp;
@@ -76,10 +81,7 @@ delay(1500);
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     Serial.print("Adjusting date and time after loosing power");
   }
-  now = rtc.now();
-  secs = now.second();
-  mins = now.minute();
-  hrs = now.hour();
+  readRTC();
   if (now.year() >= 2023) Serial.println("RTC initialized and ready");
   else Serial.println ("RTC initialization failed");
 
@@ -95,18 +97,30 @@ void loop() {
 }
 
 
+void readRTC(){
+  now = rtc.now();
+  secs = now.second();
+  mins = now.minute();
+  hrs = now.hour();
+}
+
+
 void timeTick(){
   if (halfSecondTimer.isReady()){
     if(dots){
       secs++;
     }
     dots = !dots;
+
+    if(SHOW_CALENDAR && secs == 30){
+      if(!nightModeFlag) {
+        showCalendar();
+        readRTC();
+      }
+    }
   
     if (secs > 59){
-      now = rtc.now();
-      secs = now.second();
-      mins = now.minute();
-      hrs = now.hour();
+      readRTC();
       checkNightMode();
       printTimeSerial();
       automaticTimeUpdate();
@@ -114,6 +128,7 @@ void timeTick(){
     displayTime();
   } 
 }
+
 
 void automaticTimeUpdate() {
   if (hrs == PRECISE_TIME_SYNC_HOUR){
@@ -133,6 +148,11 @@ void automaticTimeUpdate() {
 
 
 void checkNightMode(){
+  if(NIGHT_MODE_ENABLED == 0){
+    nightModeFlag = false;
+    return;
+  }
+  
   if ((hrs >= NIGHT_START && hrs <= 23) || (hrs >= 0 && hrs < NIGHT_END)) {
     nightModeFlag = true;
   }
@@ -205,6 +225,7 @@ void checkWiFi(){
   }
 }
 
+
 void printTimeSerial(){
   Serial.print(hrs); Serial.print(":");
   Serial.print(mins); Serial.print(":");
@@ -239,19 +260,23 @@ void updateTime(){
   }
 }
 
-//void running() {
-//  // бегущая
-//  disp.setScale(3);
-//  char* txt = "Лайк, подписка, колокольчик! =) AlexGyver Show";
-//  int w = strlen(txt) * 5 * 3 + disp.W();
-//  for (int x = disp.W(); x > -w; x--) {
-//    disp.clear();
-//    disp.setCursor(x, 6);
-//    disp.print(txt);
-//    disp.update();
-//    delay(10);
-//  }
-//}
+
+void showCalendar() {
+  disp.setScale(3);
+  String txt = dayNames[now.dayOfTheWeek()];
+  txt += ", ";
+  txt += (now.day());
+  txt += " ";
+  txt += monthNames[now.month()-1];
+  int w = txt.length() * 5 * 3;
+  for (int x = disp.W(); x > -w + disp.W(); x--) {
+    disp.clear();
+    disp.setCursor(x, 6);
+    disp.print(txt);
+    disp.update();
+    delay(CALENDAR_SCROLL_SPEED);
+  }
+}
 
 
 void drawDigit(byte dig, int x) {

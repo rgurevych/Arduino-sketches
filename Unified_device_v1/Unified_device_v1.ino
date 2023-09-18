@@ -1,0 +1,166 @@
+//Unified device by Rostyslav Gurevych
+
+//---------- Define pins and settings
+#define BUTTON_1_PIN 2                     //Button 1 pin
+#define BUTTON_2_PIN 3                     //Button 2 pin
+#define RELAY_1_PIN 6                      //Relay 1 pin
+#define RELAY_2_PIN 7                      //Relay 2 pin
+#define MIN_GUARD_TIMER_VALUE 30           //Minimum guard timer value (in minutes)
+#define MAX_GUARD_TIMER_VALUE 60           //Maximum guard timer value (in minutes)
+#define DEFAULT_GUARD_TIMER_VALUE 40       //Default guard timer value on startup (in minutes)
+#define MIN_EXPLOSION_TIMER_VALUE 60       //Minimum explosion timer value (in minutes)
+#define MAX_EXPLOSION_TIMER_VALUE 600      //Maximum explosion timer value (in minutes)
+#define DEFAULT_EXPLOSION_TIMER_VALUE 300  //Default explosion timer value on startup (in minutes)
+
+//#define DISARMED_LED_BLINK_INTERVAL 250    //How often LED blinks in Disarmed mode
+//#define ARMED_LED_BLINK_INTERVAL 125       //How often LED blinks in Armed mode
+//#define DISARMED_LED_SERIES_INTERVAL 3000  //How often the series of LED blinks is shown in Disarmed mode
+//#define ARMED_LED_SERIES_INTERVAL 5000     //How often the series of LED blinks is shown in Armed mode
+//#define MODE_CHANGE_INDICATION 2000        //How long the LED will be on when mode is changed
+//#define OPERATION_MULTIPLICATOR 600        //Period of time equal to one unit of delay counter (seconds)
+#define DEMO_MODE 1                        //Demo mode enabled (all times are reduced to seconds)
+
+
+//---------- Include libraries
+#include <GyverTimer.h>
+#include <EncButton.h>
+#include <Wire.h>
+
+
+//---------- Initialize devices
+Button leftBtn(BUTTON_1_PIN, INPUT_PULLUP);
+Button rightBtn(BUTTON_2_PIN, INPUT_PULLUP);
+
+
+//---------- Timers
+//GTimer blinkTimer(MS);
+//GTimer blinkSeriesTimer(MS);
+GTimer safetyGuardTimer(MS);
+GTimer explosionTimer(MS);
+
+//---------- Variables
+boolean safetyGuardActiveFlag = false;
+boolean ledFlag = false;
+//boolean armedModeFlag = false;
+boolean startUpFlag = true;
+//boolean ledBlinkFlag = false;
+//boolean modeChangeFlag = false;
+//byte setDelayCounter = DEFAULT_TIMER_VALUE;
+//byte blinkCounter;
+byte mode = 0;
+
+
+
+void setup() {
+  Serial.begin(9600);
+  //Pin modes
+//  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
+//  pinMode(BUTTON_2_PIN, INPUT_PULLUP);
+  pinMode(RELAY_1_PIN, OUTPUT);
+  pinMode(RELAY_2_PIN, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+
+
+  //Startup check
+  ledFlag = true;
+  ledSwitch();
+  delay(500);
+  ledFlag = false;
+  ledSwitch();
+
+  //Start timers
+  mode = 1;
+}
+
+
+void loop() {
+  buttonTick();
+//  operationTick();
+//  ledTick();
+  ledSwitch();
+}
+
+
+void buttonTick(){
+  leftBtn.tick();
+  rightBtn.tick();
+  
+  if(leftBtn.click()){
+    ledFlag = true;
+  }
+
+
+  if(rightBtn.click()){
+    ledFlag = false;
+  }
+}
+
+//
+//void modeChangeIndication(){
+//  modeChangeTimer.start();
+//  modeChangeFlag = true;
+//}
+
+
+//void ledTick(){
+//  if(modeChangeFlag){
+//    if(modeChangeTimer.isReady()){
+//      ledFlag = false;
+//      modeChangeFlag = false;
+//      blinkSeriesTimer.reset();
+//    }
+//    else{
+//      ledFlag = true;
+//      return;
+//    }
+//  }
+//  
+//  if(blinkSeriesTimer.isReady() && (mode == 1 || mode == 2)){
+//    ledBlinkFlag = true;
+//    blinkCounter = 1;
+//    blinkTimer.reset();
+//  }
+//
+//  if(ledBlinkFlag){
+//    if(blinkCounter > setDelayCounter){
+//      ledBlinkFlag = false;
+//    }
+//    
+//    if(blinkTimer.isReady()){
+//      if(ledFlag){
+//        ledFlag = false;
+//        blinkCounter ++;
+//        blinkSeriesTimer.reset();
+//      }
+//      else{
+//        ledFlag = true;
+//      }
+//    }
+//  }
+//}
+
+
+//void operationTick(){
+//  if(mode == 2){
+//    if(operationTimer.isReady()){
+//      mode = 3;
+//      modeChangeIndication();
+//      openSafetyGate();
+//    }
+//  }
+//}
+//
+//
+//void openSafetyGate(){
+//  mainServo.write(SAFETY_OFF_ANGLE);
+//}
+//
+//
+//void closeSafetyGate(){
+//  mainServo.write(SAFETY_ON_ANGLE);
+//}
+
+
+void ledSwitch() {
+  digitalWrite(LED_BUILTIN, ledFlag);
+}

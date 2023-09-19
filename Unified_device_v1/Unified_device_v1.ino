@@ -1,16 +1,16 @@
 //Unified device by Rostyslav Gurevych
 
 //---------- Define pins and settings
-#define BUTTON_1_PIN 2                     //Button 1 pin
-#define BUTTON_2_PIN 3                     //Button 2 pin
-#define RELAY_1_PIN 6                      //Relay 1 pin
-#define RELAY_2_PIN 7                      //Relay 2 pin
-#define MIN_GUARD_TIMER_VALUE 30           //Minimum guard timer value (in minutes)
-#define MAX_GUARD_TIMER_VALUE 60           //Maximum guard timer value (in minutes)
-#define DEFAULT_GUARD_TIMER_VALUE 40       //Default guard timer value on startup (in minutes)
-#define MIN_EXPLOSION_TIMER_VALUE 60       //Minimum explosion timer value (in minutes)
-#define MAX_EXPLOSION_TIMER_VALUE 600      //Maximum explosion timer value (in minutes)
-#define DEFAULT_EXPLOSION_TIMER_VALUE 300  //Default explosion timer value on startup (in minutes)
+#define BUTTON_1_PIN 2                         //Button 1 pin
+#define BUTTON_2_PIN 3                         //Button 2 pin
+#define RELAY_1_PIN 6                          //Relay 1 pin
+#define RELAY_2_PIN 7                          //Relay 2 pin
+#define MIN_GUARD_TIMER_VALUE 30               //Minimum guard timer value (in minutes)
+#define MAX_GUARD_TIMER_VALUE 60               //Maximum guard timer value (in minutes)
+#define DEFAULT_GUARD_TIMER_VALUE 40           //Default guard timer value on startup (in minutes)
+#define MIN_SELF_DESTRUCT_TIMER_VALUE 60       //Minimum self-destruction timer value (in minutes)
+#define MAX_SELF_DESTRUCT_TIMER_VALUE 600      //Maximum self-destruction timer value (in minutes)
+#define DEFAULT_SELF_DESTRUCT_TIMER_VALUE 300  //Default self-destruction timer value on startup (in minutes)
 
 //#define DISARMED_LED_BLINK_INTERVAL 250    //How often LED blinks in Disarmed mode
 //#define ARMED_LED_BLINK_INTERVAL 125       //How often LED blinks in Armed mode
@@ -35,11 +35,11 @@ Button rightBtn(BUTTON_2_PIN, INPUT_PULLUP);
 //---------- Timers
 //GTimer blinkTimer(MS);
 //GTimer blinkSeriesTimer(MS);
-GTimer safetyGuardTimer(MS);
+GTimer oneSecondTimer(MS, 1000);
 GTimer explosionTimer(MS);
 
 //---------- Variables
-boolean safetyGuardActiveFlag = false;
+boolean safetyGuardActiveFlag = false, selfDestructActiveFlag = false;
 boolean ledFlag = false;
 //boolean armedModeFlag = false;
 boolean startUpFlag = true;
@@ -47,34 +47,38 @@ boolean startUpFlag = true;
 //boolean modeChangeFlag = false;
 //byte setDelayCounter = DEFAULT_TIMER_VALUE;
 //byte blinkCounter;
+unsigned int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
 byte mode = 0;
 
 
 
 void setup() {
   Serial.begin(9600);
+
   //Pin modes
-//  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
-//  pinMode(BUTTON_2_PIN, INPUT_PULLUP);
   pinMode(RELAY_1_PIN, OUTPUT);
   pinMode(RELAY_2_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
 
 
-  //Startup check
+  //Startup preparation and check
+  safetyGuardDisable();
   ledFlag = true;
   ledSwitch();
   delay(500);
   ledFlag = false;
   ledSwitch();
 
-  //Start timers
+  //Variables
+  safetyGuardTimeout = DEFAULT_GUARD_TIMER_VALUE;
   mode = 1;
 }
 
 
 void loop() {
   buttonTick();
+  timersCountdown();
+  operationTick();
 //  operationTick();
 //  ledTick();
   ledSwitch();
@@ -87,6 +91,7 @@ void buttonTick(){
   
   if(leftBtn.click()){
     ledFlag = true;
+    safetyGuardCountdownStart();
   }
 
 
@@ -140,25 +145,73 @@ void buttonTick(){
 //}
 
 
-//void operationTick(){
-//  if(mode == 2){
-//    if(operationTimer.isReady()){
-//      mode = 3;
-//      modeChangeIndication();
-//      openSafetyGate();
-//    }
-//  }
-//}
-//
-//
-//void openSafetyGate(){
-//  mainServo.write(SAFETY_OFF_ANGLE);
-//}
-//
-//
-//void closeSafetyGate(){
-//  mainServo.write(SAFETY_ON_ANGLE);
-//}
+void operationTick(){
+  if(safetyGuardActiveFlag){
+    if(safetyGuardTimeoutCounter == 0){
+      Serial.println(F("Deactivating Safety guard, system armed"));
+      safetyGuardDisable();
+      safetyGuardActiveFlag = false;
+    }
+  }
+}
+
+
+void safetyGuardCountdownStart(){
+  if(!safetyGuardActiveFlag){
+    safetyGuardTimeoutCounter = safetyGuardTimeout;
+    if(!DEMO_MODE) safetyGuardTimeoutCounter *= 60;
+    Serial.print(F("Activating Safety guard, timeout: "));
+    Serial.print(safetyGuardTimeoutCounter);
+    Serial.println(F(" s"));
+    safetyGuardEnable();
+    safetyGuardActiveFlag = true;
+  }
+}
+
+void selfDestructCountdownStart(){
+  if(!selfDestructActiveFlag){
+    selfDestructTimeoutCounter = selfDestructTimeout;
+    if(!DEMO_MODE) selfDestructTimeoutCounter *= 60;
+    Serial.print(F("Starting Self-destruct timeout: "));
+    Serial.print(selfDestructTimeoutCounter);
+    Serial.println(F(" s"));
+    selfDestructActiveFlag = true;
+  }
+}
+
+void timersCountdown(){
+  if(oneSecondTimer.isReady()){
+    
+    if(safetyGuardActiveFlag){
+      if(safetyGuardTimeoutCounter > 0){
+        safetyGuardTimeoutCounter --;
+      }
+      Serial.print(F("Safety guard remaining time: "));
+      Serial.print(safetyGuardTimeoutCounter);
+      Serial.println(F(" s"));
+    }
+
+    if(selfDestructActiveFlag){
+      if(selfDestructTimeoutCounter > 0){
+        selfDestructTimeoutCounter --;
+      }
+      Serial.print(F("Self-destruct remaining time: "));
+      Serial.print(selfDestructTimeoutCounter);
+      Serial.println(F(" s"));
+    }
+  }
+  
+}
+
+
+void safetyGuardEnable(){
+  digitalWrite(RELAY_1_PIN, LOW);
+}
+
+
+void safetyGuardDisable(){
+  digitalWrite(RELAY_1_PIN, HIGH);
+}
 
 
 void ledSwitch() {

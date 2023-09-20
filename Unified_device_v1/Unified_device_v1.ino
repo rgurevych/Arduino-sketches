@@ -10,7 +10,7 @@
 #define DEFAULT_GUARD_TIMER_VALUE 40           //Default guard timer value on startup (in minutes)
 #define MIN_SELF_DESTRUCT_TIMER_VALUE 60       //Minimum self-destruction timer value (in minutes)
 #define MAX_SELF_DESTRUCT_TIMER_VALUE 600      //Maximum self-destruction timer value (in minutes)
-#define DEFAULT_SELF_DESTRUCT_TIMER_VALUE 300  //Default self-destruction timer value on startup (in minutes)
+#define DEFAULT_SELF_DESTRUCT_TIMER_VALUE 60   //Default self-destruction timer value on startup (in minutes)
 
 //#define DISARMED_LED_BLINK_INTERVAL 250    //How often LED blinks in Disarmed mode
 //#define ARMED_LED_BLINK_INTERVAL 125       //How often LED blinks in Armed mode
@@ -30,6 +30,7 @@
 //---------- Initialize devices
 Button leftBtn(BUTTON_1_PIN, INPUT_PULLUP);
 Button rightBtn(BUTTON_2_PIN, INPUT_PULLUP);
+VirtButton bothBtn;
 
 
 //---------- Timers
@@ -63,6 +64,7 @@ void setup() {
 
   //Startup preparation and check
   safetyGuardDisable();
+  detonateDisable();
   ledFlag = true;
   ledSwitch();
   delay(500);
@@ -71,6 +73,7 @@ void setup() {
 
   //Variables
   safetyGuardTimeout = DEFAULT_GUARD_TIMER_VALUE;
+  selfDestructTimeout = DEFAULT_SELF_DESTRUCT_TIMER_VALUE;
   mode = 1;
 }
 
@@ -79,8 +82,6 @@ void loop() {
   buttonTick();
   timersCountdown();
   operationTick();
-//  operationTick();
-//  ledTick();
   ledSwitch();
 }
 
@@ -88,15 +89,19 @@ void loop() {
 void buttonTick(){
   leftBtn.tick();
   rightBtn.tick();
+  bothBtn.tick(leftBtn, rightBtn);
   
   if(leftBtn.click()){
     ledFlag = true;
-    safetyGuardCountdownStart();
   }
-
 
   if(rightBtn.click()){
     ledFlag = false;
+  }
+
+  if(bothBtn.hold()){
+    safetyGuardCountdownStart();
+    selfDestructCountdownStart();
   }
 }
 
@@ -148,9 +153,23 @@ void buttonTick(){
 void operationTick(){
   if(safetyGuardActiveFlag){
     if(safetyGuardTimeoutCounter == 0){
-      Serial.println(F("Deactivating Safety guard, system armed"));
+      Serial.println(F("Deactivating Safety guard, device armed"));
       safetyGuardDisable();
       safetyGuardActiveFlag = false;
+    }
+  }
+
+  if(selfDestructActiveFlag){
+    if(selfDestructTimeoutCounter == 0){
+      Serial.print(F("Self-destruct timeout is reached! "));
+      if(safetyGuardActiveFlag){
+        Serial.println(F("Safety guard is still on, detonation blocked!"));
+      }
+      else{
+      Serial.println(F("Detonating!!!"));
+      detonateEnable();
+      }
+      selfDestructActiveFlag = false;
     }
   }
 }
@@ -172,7 +191,7 @@ void selfDestructCountdownStart(){
   if(!selfDestructActiveFlag){
     selfDestructTimeoutCounter = selfDestructTimeout;
     if(!DEMO_MODE) selfDestructTimeoutCounter *= 60;
-    Serial.print(F("Starting Self-destruct timeout: "));
+    Serial.print(F("Starting Self-destruct timer with timeout: "));
     Serial.print(selfDestructTimeoutCounter);
     Serial.println(F(" s"));
     selfDestructActiveFlag = true;
@@ -211,6 +230,16 @@ void safetyGuardEnable(){
 
 void safetyGuardDisable(){
   digitalWrite(RELAY_1_PIN, HIGH);
+}
+
+
+void detonateEnable(){
+  digitalWrite(RELAY_2_PIN, LOW);
+}
+
+
+void detonateDisable(){
+  digitalWrite(RELAY_2_PIN, HIGH);
 }
 
 

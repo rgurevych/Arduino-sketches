@@ -48,13 +48,14 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org");
 GTimer WiFiCheckTimer(MS, 2000);
 GTimer oneSecondTimer(MS, 1000);
 GTimer halfSecondTimer(MS, 500);
+GTimer updateTimeTimer(MS, 20000);
 
 // Set variables
 DateTime now;
 byte secs, mins, hrs;
 boolean dots = true;
 boolean WiFiStartCompletedFlag = true, WiFiStopCompletedFlag = true, WiFiConnected = false;
-boolean autoUpdateTimeDoneFlag = false, nightModeFlag;
+boolean autoUpdateTimeDoneFlag = false, timeUpdateNeededFlag = false, nightModeFlag;
 byte timezone = 2;
 long utcOffsetInSeconds = 3600*timezone;
 
@@ -84,6 +85,7 @@ delay(1500);
   readRTC();
   if (now.year() >= 2023) Serial.println("RTC initialized and ready");
   else Serial.println ("RTC initialization failed");
+  timeUpdateNeededFlag = true;
 
 // Setting up NTP time client
   timeClient.begin();
@@ -94,6 +96,7 @@ delay(1500);
 void loop() {
   wifiTick();
   timeTick();
+  performTimeUpdate();
 }
 
 
@@ -130,19 +133,31 @@ void timeTick(){
 }
 
 
+void performTimeUpdate(){
+  if(timeUpdateNeededFlag){
+    if(updateTimeTimer.isReady()){
+      if(!WiFiConnected){
+        startWiFi();
+        autoUpdateTimeDoneFlag = false;
+      }
+
+      if(!autoUpdateTimeDoneFlag) {
+        if (WiFiConnected) {
+          updateTime();
+          if(autoUpdateTimeDoneFlag){
+            stopWiFi();
+            timeUpdateNeededFlag = false;
+          }
+        } 
+      }
+    }
+  }
+}
+
+
 void automaticTimeUpdate() {
-  if (hrs == PRECISE_TIME_SYNC_HOUR){
-    if (mins == 0 && !WiFiConnected){
-      startWiFi();
-      autoUpdateTimeDoneFlag = false;
-    }
-    
-    else if (mins >= 1 && !autoUpdateTimeDoneFlag) {
-      if (WiFiConnected) {
-        updateTime();
-        if(autoUpdateTimeDoneFlag) stopWiFi();
-      } 
-    }
+  if (hrs == PRECISE_TIME_SYNC_HOUR && mins == 0){
+    timeUpdateNeededFlag = true;
   }
 }
 
@@ -253,6 +268,7 @@ void updateTime(){
     DateTime newTime = dst_rtc.calculateTime(DateTime(2000+new_year, new_month, new_day, new_hour, new_minute, new_second));  
     rtc.adjust(newTime);
     Serial.println("Time updated successfully");
+    readRTC();
     autoUpdateTimeDoneFlag = true;
   }
   else{

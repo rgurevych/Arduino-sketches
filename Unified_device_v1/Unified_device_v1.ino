@@ -1,6 +1,8 @@
 //Unified device by Rostyslav Gurevych
 
 //---------- Define pins and settings
+#define INIT_ADDR 1023                         // Number of EEPROM initial cell
+#define INIT_KEY 10                            // First launch key
 #define BUTTON_1_PIN 2                         //Button 1 pin
 #define BUTTON_2_PIN 3                         //Button 2 pin
 #define RELAY_1_PIN 6                          //Safety guard relay pin (relay 1)
@@ -14,7 +16,7 @@
 #define MIN_ACCELERATION 1                     //Minimum acceleration limit
 #define MAX_ACCELERATION 10                    //Maximum acceleration limit
 #define DEFAULT_ACCELERATION 6                 //Default acceleration limit value
-
+#define BUTTON_TIMEOUT 20000                   //Timeout after which device will return to idle mode from settings (without saving)
 #define DEMO_MODE 0                            //Demo mode enabled (all times are reduced to seconds)
 
 
@@ -23,6 +25,7 @@
 #include <EncButton.h>
 #include <Wire.h>
 #include <GyverOLED.h>
+#include <EEPROM.h>
 
 
 //---------- Initialize devices
@@ -37,21 +40,15 @@ GyverOLED<SSD1306_128x64, OLED_NO_BUFFER> oled;
 GTimer updateScreenTimer(MS, 500);
 GTimer oneSecondTimer(MS, 1000);
 GTimer explosionTimer(MS);
+GTimer menuExitTimer(MS);
 
 //---------- Variables
 boolean safetyGuardActiveFlag = false, selfDestructActiveFlag = false;
-boolean ledFlag = false;
 boolean blinkFlag = true;
-//boolean armedModeFlag = false;
-//boolean startUpFlag = true;
-//boolean ledBlinkFlag = false;
-//boolean modeChangeFlag = false;
-//byte setDelayCounter = DEFAULT_TIMER_VALUE;
 byte accelerationLimit;
 unsigned int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
 byte mode = 0, oldMode = 0;
 byte pointer = 2;
-
 
 
 void setup() {
@@ -71,22 +68,30 @@ void setup() {
   oled.clear();
   oled.setContrast(200);
   drawIntroScreen();
+
+    // EEPROM
+  if (EEPROM.read(INIT_ADDR) != INIT_KEY) {     // First launch
+    EEPROM.write(INIT_ADDR, INIT_KEY);
+    EEPROM.put(10, DEFAULT_GUARD_TIMER_VALUE);
+    EEPROM.put(20, DEFAULT_SELF_DESTRUCT_TIMER_VALUE);
+    EEPROM.put(30, DEFAULT_ACCELERATION);
+  }
+  EEPROM.get(10, safetyGuardTimeout);
+  EEPROM.get(20, selfDestructTimeout);
+  EEPROM.get(30, accelerationLimit);
   
   //Startup preparation and check
   safetyGuardDisable();
   detonateDisable();
-  ledFlag = true;
-  ledSwitch();
+  digitalWrite(LED_BUILTIN, HIGH);
   delay(1000);
-  ledFlag = false;
-  ledSwitch();
+  digitalWrite(LED_BUILTIN, LOW);
 
   //Variables
-  safetyGuardTimeout = DEFAULT_GUARD_TIMER_VALUE;
-  selfDestructTimeout = DEFAULT_SELF_DESTRUCT_TIMER_VALUE;
-  accelerationLimit = DEFAULT_ACCELERATION;
   mode = 1;
+  menuExitTimer.setTimeout(BUTTON_TIMEOUT);
 
+  //Draw default screen after setup
   drawDefaultScreen();
 }
 
@@ -101,8 +106,7 @@ void loop() {
 
 
 void buttonTick(){
-  leftBtn.tick();
-  rightBtn.tick();
+  if(leftBtn.tick() || rightBtn.tick()) menuExitTimer.start();
   bothBtn.tick(leftBtn, rightBtn);
   
   if(mode == 1){
@@ -125,11 +129,21 @@ void buttonTick(){
     }
 
     else if(leftBtn.hold()){
+      EEPROM.put(10, safetyGuardTimeout);
+      EEPROM.put(20, selfDestructTimeout);
+      EEPROM.put(30, accelerationLimit);
       mode = 1;
     }
 
     else if(rightBtn.hold()){
       mode = 3;
+    }
+
+    if(menuExitTimer.isReady()){
+      EEPROM.get(10, safetyGuardTimeout);
+      EEPROM.get(20, selfDestructTimeout);
+      EEPROM.get(30, accelerationLimit);
+      mode = 1;
     }
   }
 
@@ -158,6 +172,13 @@ void buttonTick(){
     if(leftBtn.hold()){
       mode = 2;
     }
+
+    if(menuExitTimer.isReady()){
+      EEPROM.get(10, safetyGuardTimeout);
+      EEPROM.get(20, selfDestructTimeout);
+      EEPROM.get(30, accelerationLimit);
+      mode = 1;
+    }
   }
 
   else if(mode == 4 || mode == 5 || mode == 6){
@@ -169,15 +190,6 @@ void buttonTick(){
       mode = 1;
     }
   }
-//  if(leftBtn.click()){
-//    ledFlag = true;
-////    drawScreen();
-//  }
-//
-//  if(rightBtn.click()){
-//    ledFlag = false;
-//    oled.clear();
-//  }
 }
 
 
@@ -337,7 +349,7 @@ void changeMode(){
       updateScreenTimer.reset();
       
       oled.setCursor(48, 0);
-      oled.print(F("ON, DISARMED "));
+      oled.print(F("ACTIVE, SAFE "));
 
       oled.setCursor(0, 6);
       oled.println(F("                     "));
@@ -346,7 +358,7 @@ void changeMode(){
 
     else if(mode == 5){
       oled.setCursor(48, 0);
-      oled.print(F("ON, ARMED!   "));
+      oled.print(F("ACTIVE, ARMED"));
 
       oled.setCursor(90, 2);
       oled.print(F("Off   "));
@@ -392,20 +404,6 @@ void updateScreen(){
         if(i == pointer) oled.print(F(">"));
         else oled.print(F(" "));
       }
-      
-//      oled.setCursor(90, 2);
-//      oled.print(safetyGuardTimeout);
-//      if(DEMO_MODE) oled.print(F(" s"));
-//      else oled.print(F(" m"));
-//
-//      oled.setCursor(90, 3);
-//      oled.print(selfDestructTimeout);
-//      if(DEMO_MODE) oled.print(F(" s"));
-//      else oled.print(F(" m"));
-//
-//      oled.setCursor(90, 4);
-//      oled.print(accelerationLimit);
-//      oled.print(F(" G"));
     }
 
     if(mode == 3){
@@ -528,9 +526,4 @@ void detonateEnable(){
 
 void detonateDisable(){
   digitalWrite(RELAY_2_PIN, HIGH);
-}
-
-
-void ledSwitch() {
-  digitalWrite(LED_BUILTIN, ledFlag);
 }

@@ -1,8 +1,9 @@
 //Unified device by Rostyslav Gurevych
 
 //---------- Define pins and settings
-#define INIT_ADDR 1023                         // Number of EEPROM initial cell
-#define INIT_KEY 10                            // First launch key
+#define INIT_ADDR 1023                         //Number of EEPROM initial cell
+#define INIT_KEY 10                            //First launch key
+#define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
 #define BUTTON_1_PIN 2                         //Button 1 pin
 #define BUTTON_2_PIN 3                         //Button 2 pin
 #define RELAY_1_PIN 6                          //Safety guard relay pin (relay 1)
@@ -13,8 +14,8 @@
 #define MIN_SELF_DESTRUCT_TIMER_VALUE 60       //Minimum self-destruction timer value (in minutes)
 #define MAX_SELF_DESTRUCT_TIMER_VALUE 600      //Maximum self-destruction timer value (in minutes)
 #define DEFAULT_SELF_DESTRUCT_TIMER_VALUE 90   //Default self-destruction timer value on startup (in minutes)
-#define MIN_ACCELERATION 1                     //Minimum acceleration limit
-#define MAX_ACCELERATION 10                    //Maximum acceleration limit
+#define MIN_ACCELERATION 4                     //Minimum acceleration limit
+#define MAX_ACCELERATION 16                    //Maximum acceleration limit
 #define DEFAULT_ACCELERATION 6                 //Default acceleration limit value
 #define BUTTON_TIMEOUT 20000                   //Timeout after which device will return to idle mode from settings (without saving)
 #define DEMO_MODE 0                            //Demo mode enabled (all times are reduced to seconds)
@@ -26,6 +27,7 @@
 #include <Wire.h>
 #include <GyverOLED.h>
 #include <EEPROM.h>
+#include "MPU6050.h"
 
 
 //---------- Initialize devices
@@ -33,6 +35,7 @@ Button leftBtn(BUTTON_1_PIN, INPUT_PULLUP);
 Button rightBtn(BUTTON_2_PIN, INPUT_PULLUP);
 VirtButton bothBtn;
 GyverOLED<SSD1306_128x64, OLED_NO_BUFFER> oled;
+MPU6050 mpu;
 
 
 //---------- Timers
@@ -41,6 +44,7 @@ GTimer updateScreenTimer(MS, 500);
 GTimer oneSecondTimer(MS, 1000);
 GTimer explosionTimer(MS);
 GTimer menuExitTimer(MS);
+GTimer accelTimer(MS, 10);
 
 //---------- Variables
 boolean safetyGuardActiveFlag = false, selfDestructActiveFlag = false;
@@ -49,10 +53,13 @@ byte accelerationLimit;
 unsigned int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
 byte mode = 0, oldMode = 0;
 byte pointer = 2;
-
+int32_t acc_x, acc_y, acc_z;
+int16_t ax, ay, az;
+long offsets[6] = {0,0,0,0,0,0};
 
 void setup() {
   Serial.begin(9600);
+  Wire.begin();
 
   //Pin modes
   safetyGuardDisable();
@@ -69,16 +76,34 @@ void setup() {
   oled.setContrast(200);
   drawIntroScreen();
 
-    // EEPROM
+  // EEPROM
   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {     // First launch
     EEPROM.write(INIT_ADDR, INIT_KEY);
     EEPROM.put(10, DEFAULT_GUARD_TIMER_VALUE);
     EEPROM.put(20, DEFAULT_SELF_DESTRUCT_TIMER_VALUE);
     EEPROM.put(30, DEFAULT_ACCELERATION);
+    EEPROM.put(ACCEL_OFFSETS_BYTE, offsets);
   }
   EEPROM.get(10, safetyGuardTimeout);
   EEPROM.get(20, selfDestructTimeout);
   EEPROM.get(30, accelerationLimit);
+  EEPROM.get(ACCEL_OFFSETS_BYTE, offsets);
+
+  //Accelerometer
+  mpu.initialize();
+  if(mpu.testConnection()){
+    Serial.println(F("MPU6050 Connected"));
+  }
+  else{
+    Serial.println(F("Connection to MPU6050 failed"));
+  }
+  mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
+  mpu.setXAccelOffset(offsets[0]);
+  mpu.setYAccelOffset(offsets[1]);
+  mpu.setZAccelOffset(offsets[2]);
+  mpu.setXGyroOffset(offsets[3]);
+  mpu.setYGyroOffset(offsets[4]);
+  mpu.setZGyroOffset(offsets[5]);
   
   //Startup preparation and check
   safetyGuardDisable();
@@ -102,6 +127,7 @@ void loop() {
   changeMode();
   updateScreen();
   operationTick();
+  //checkAccel();
 }
 
 
@@ -508,6 +534,19 @@ void drawIntroScreen(){
   oled.update();
 }
 
+void checkAccel(){
+  if(accelTimer.isReady()){
+    mpu.getAcceleration(&ax, &ay, &az);
+
+    acc_x = abs(ax / 2048);
+    acc_y = abs(ay / 2048);
+    acc_z = abs(az / 2048);
+    
+    Serial.print(acc_x); Serial.print(" ");
+    Serial.print(acc_y); Serial.print(" ");
+    Serial.print(acc_z); Serial.println(" ");
+  }
+}
 
 void safetyGuardEnable(){
   digitalWrite(RELAY_1_PIN, LOW);

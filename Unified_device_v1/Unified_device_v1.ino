@@ -8,7 +8,7 @@
 #define BUTTON_2_PIN 3                         //Button 2 pin
 #define RELAY_1_PIN 6                          //Safety guard relay pin (relay 1)
 #define RELAY_2_PIN 7                          //Detonation relay pin (relay 2)
-#define MIN_GUARD_TIMER_VALUE 20               //Minimum safety guard timer value (in minutes)
+#define MIN_GUARD_TIMER_VALUE 10               //Minimum safety guard timer value (in minutes)
 #define MAX_GUARD_TIMER_VALUE 60               //Maximum safety guard timer value (in minutes)
 #define DEFAULT_GUARD_TIMER_VALUE 40           //Default safety guard timer value on startup (in minutes)
 #define MIN_SELF_DESTRUCT_TIMER_VALUE 60       //Minimum self-destruction timer value (in minutes)
@@ -21,6 +21,9 @@
 #define DEMO_MODE 1                            //Demo mode enabled (all times are reduced to seconds)
 #define DEBUG_MODE 1                           //Debug mode enabled (Serial is activated and used for debugging)
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
+#define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
+#define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
+#define ACCEL_REQUEST_TIMEOUT 50               //Delay between accelerometer request
 
 
 //---------- Include libraries
@@ -46,7 +49,7 @@ GTimer updateScreenTimer(MS, 500);
 GTimer oneSecondTimer(MS, 1000);
 GTimer explosionTimer(MS);
 GTimer menuExitTimer(MS);
-GTimer accelTimer(MS, 10);
+GTimer accelTimer(MS, ACCEL_REQUEST_TIMEOUT);
 
 
 //---------- Variables
@@ -135,6 +138,9 @@ void loop() {
 }
 
 
+void(* resetFunc) (void) = 0;
+
+
 void buttonTick(){
   if(leftBtn.tick() || rightBtn.tick()) menuExitTimer.start();
   bothBtn.tick(leftBtn, rightBtn);
@@ -149,6 +155,10 @@ void buttonTick(){
       safetyGuardCountdownStart();
       selfDestructCountdownStart();
       mode = 4;
+    }
+
+    if(rightBtn.hasClicks(5)){
+      calibrateAccel();
     }
   }
 

@@ -1,16 +1,16 @@
 //Unified device by Rostyslav Gurevych
 
 //---------- Define pins and settings
-#define INIT_ADDR 1023                         //Number of EEPROM initial cell
+#define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
 #define BUTTON_1_PIN 2                         //Button 1 pin
 #define BUTTON_2_PIN 3                         //Button 2 pin
 #define RELAY_1_PIN 6                          //Safety guard relay pin (relay 1)
 #define RELAY_2_PIN 7                          //Detonation relay pin (relay 2)
-#define MIN_GUARD_TIMER_VALUE 20               //Minimum guard timer value (in minutes)
-#define MAX_GUARD_TIMER_VALUE 60               //Maximum guard timer value (in minutes)
-#define DEFAULT_GUARD_TIMER_VALUE 40           //Default guard timer value on startup (in minutes)
+#define MIN_GUARD_TIMER_VALUE 20               //Minimum safety guard timer value (in minutes)
+#define MAX_GUARD_TIMER_VALUE 60               //Maximum safety guard timer value (in minutes)
+#define DEFAULT_GUARD_TIMER_VALUE 40           //Default safety guard timer value on startup (in minutes)
 #define MIN_SELF_DESTRUCT_TIMER_VALUE 60       //Minimum self-destruction timer value (in minutes)
 #define MAX_SELF_DESTRUCT_TIMER_VALUE 600      //Maximum self-destruction timer value (in minutes)
 #define DEFAULT_SELF_DESTRUCT_TIMER_VALUE 90   //Default self-destruction timer value on startup (in minutes)
@@ -18,7 +18,9 @@
 #define MAX_ACCELERATION 16                    //Maximum acceleration limit
 #define DEFAULT_ACCELERATION 6                 //Default acceleration limit value
 #define BUTTON_TIMEOUT 20000                   //Timeout after which device will return to idle mode from settings (without saving)
-#define DEMO_MODE 0                            //Demo mode enabled (all times are reduced to seconds)
+#define DEMO_MODE 1                            //Demo mode enabled (all times are reduced to seconds)
+#define DEBUG_MODE 1                           //Debug mode enabled (Serial is activated and used for debugging)
+#define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 
 
 //---------- Include libraries
@@ -46,10 +48,11 @@ GTimer explosionTimer(MS);
 GTimer menuExitTimer(MS);
 GTimer accelTimer(MS, 10);
 
+
 //---------- Variables
-boolean safetyGuardActiveFlag = false, selfDestructActiveFlag = false;
-boolean blinkFlag = true;
-byte accelerationLimit;
+boolean safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFlag = false;
+boolean blinkFlag = true, ledFlag = true;
+byte max_acc, accelerationLimit;
 unsigned int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
 byte mode = 0, oldMode = 0;
 byte pointer = 2;
@@ -58,7 +61,7 @@ int16_t ax, ay, az;
 long offsets[6] = {0,0,0,0,0,0};
 
 void setup() {
-  Serial.begin(9600);
+  if(DEBUG_MODE) Serial.begin(9600);
   Wire.begin();
 
   //Pin modes
@@ -74,7 +77,6 @@ void setup() {
   oled.init();
   oled.clear();
   oled.setContrast(200);
-  drawIntroScreen();
 
   // EEPROM
   if (EEPROM.read(INIT_ADDR) != INIT_KEY) {     // First launch
@@ -92,10 +94,13 @@ void setup() {
   //Accelerometer
   mpu.initialize();
   if(mpu.testConnection()){
-    Serial.println(F("MPU6050 Connected"));
+    if(DEBUG_MODE) Serial.println(F("MPU6050 check - SUCCESS"));
+    drawIntroScreen();
   }
   else{
-    Serial.println(F("Connection to MPU6050 failed"));
+    if(DEBUG_MODE) Serial.println(F("MPU6050 check - FAILED"));
+    drawErrorIntroScreen();
+    while(1) {delay(1000);}
   }
   mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
   mpu.setXAccelOffset(offsets[0]);
@@ -108,9 +113,7 @@ void setup() {
   //Startup preparation and check
   safetyGuardDisable();
   detonateDisable();
-  digitalWrite(LED_BUILTIN, HIGH);
   delay(1000);
-  digitalWrite(LED_BUILTIN, LOW);
 
   //Variables
   mode = 1;
@@ -126,8 +129,9 @@ void loop() {
   timersCountdown();
   changeMode();
   updateScreen();
+  checkAccel();
   operationTick();
-  //checkAccel();
+  ledCheck();
 }
 
 
@@ -207,10 +211,11 @@ void buttonTick(){
     }
   }
 
-  else if(mode == 4 || mode == 5 || mode == 6){
+  else if(mode >= 4 && mode <= 7){
     if(bothBtn.hold()){
       safetyGuardActiveFlag = false;
       selfDestructActiveFlag = false;
+      accelCheckFlag = false;
       detonateDisable();
       safetyGuardDisable();
       mode = 1;
@@ -220,23 +225,37 @@ void buttonTick(){
 
 
 void operationTick(){
+  if(accelCheckFlag){
+    if(max_acc >= accelerationLimit){
+      if(DEBUG_MODE){
+        Serial.print(F("Acceleration limit ")); Serial.print(accelerationLimit);
+        Serial.print(F(" is reached, current acc = ")); Serial.print(max_acc);
+        Serial.println(F(", detonating!!!"));
+      }
+      detonateEnable();
+      mode = 7;
+      accelCheckFlag = false;
+    }
+  }
+  
   if(safetyGuardActiveFlag){
     if(safetyGuardTimeoutCounter == 0){
-      Serial.println(F("Deactivating Safety guard, device armed"));
+      if(DEBUG_MODE) Serial.println(F("Deactivating Safety guard, device armed"));
       safetyGuardDisable();
       safetyGuardActiveFlag = false;
+      accelCheckFlag = true;
       mode = 5;
     }
   }
 
   if(selfDestructActiveFlag){
     if(selfDestructTimeoutCounter == 0){
-      Serial.print(F("Self-destruct timeout is reached! "));
+      if(DEBUG_MODE) Serial.print(F("Self-destruct timeout is reached! "));
       if(safetyGuardActiveFlag){
-        Serial.println(F("Safety guard is still on, detonation blocked!"));
+        if(DEBUG_MODE) Serial.println(F("Safety guard is still on, detonation blocked!"));
       }
       else{
-      Serial.println(F("Detonating!!!"));
+      if(DEBUG_MODE) Serial.println(F("Detonating!!!"));
       detonateEnable();
       }
       mode = 6;
@@ -250,11 +269,14 @@ void safetyGuardCountdownStart(){
   if(!safetyGuardActiveFlag){
     safetyGuardTimeoutCounter = safetyGuardTimeout;
     if(!DEMO_MODE) safetyGuardTimeoutCounter *= 60;
-    Serial.print(F("Activating Safety guard, timeout: "));
-    Serial.print(safetyGuardTimeoutCounter);
-    Serial.println(F(" s"));
+    if(DEBUG_MODE){
+      Serial.print(F("Activating Safety guard, timeout: "));
+      Serial.print(safetyGuardTimeoutCounter);
+      Serial.println(F(" s"));
+    }
     safetyGuardEnable();
     safetyGuardActiveFlag = true;
+    accelCheckFlag = false;
   }
 }
 
@@ -262,307 +284,67 @@ void selfDestructCountdownStart(){
   if(!selfDestructActiveFlag){
     selfDestructTimeoutCounter = selfDestructTimeout;
     if(!DEMO_MODE) selfDestructTimeoutCounter *= 60;
-    Serial.print(F("Starting Self-destruct timer with timeout: "));
-    Serial.print(selfDestructTimeoutCounter);
-    Serial.println(F(" s"));
+    if(DEBUG_MODE){
+      Serial.print(F("Activating Self-destruct timer with timeout: "));
+      Serial.print(selfDestructTimeoutCounter);
+      Serial.println(F(" s"));
+    }
     selfDestructActiveFlag = true;
   }
 }
 
+
 void timersCountdown(){
   if(oneSecondTimer.isReady()){
+    ledFlag = !ledFlag;
     
     if(safetyGuardActiveFlag){
       if(safetyGuardTimeoutCounter > 0){
         safetyGuardTimeoutCounter --;
       }
-//      Serial.print(F("Safety guard remaining time: "));
-//      Serial.print(safetyGuardTimeoutCounter);
-//      Serial.println(F(" s"));
+//      if(DEBUG_MODE){
+//        Serial.print(F("Safety guard remaining time: "));
+//        Serial.print(safetyGuardTimeoutCounter);
+//        Serial.println(F(" s"));
+//      }
     }
 
     if(selfDestructActiveFlag){
       if(selfDestructTimeoutCounter > 0){
         selfDestructTimeoutCounter --;
       }
-//      Serial.print(F("Self-destruct remaining time: "));
-//      Serial.print(selfDestructTimeoutCounter);
-//      Serial.println(F(" s"));
+//      if(DEBUG_MODE){
+//        Serial.print(F("Self-destruct remaining time: "));
+//        Serial.print(selfDestructTimeoutCounter);
+//        Serial.println(F(" s"));
+//      }
     }
-  //drawScreen();
-  }
-  
-}
-
-
-void changeMode(){
-  if(mode != oldMode){
-    
-    if(mode == 1){
-      oled.setCursor(48, 0);
-      oled.print(F("IDLE         "));
-
-      oled.setCursor(90, 2);
-      oled.print(safetyGuardTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
-      else oled.print(F(" m"));
-
-      oled.setCursor(90, 3);
-      oled.print(selfDestructTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
-      else oled.print(F(" m"));
-
-      oled.setCursor(90, 4);
-      oled.print(accelerationLimit);
-      oled.print(F(" G"));
-
-      oled.setCursor(0, 6);
-      oled.println(F("Hold R for settings  "));
-      oled.println(F("Hold L+R 2s to start "));
-
-      clearPointer();
-    }
-
-    else if(mode == 2){
-      oled.setCursor(48, 0);
-      oled.print(F("SETTINGS     "));
-
-      oled.setCursor(90, 2);
-      oled.print(safetyGuardTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
-      else oled.print(F(" m"));
-
-      oled.setCursor(90, 3);
-      oled.print(selfDestructTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
-      else oled.print(F(" m"));
-
-      oled.setCursor(90, 4);
-      oled.print(accelerationLimit);
-      oled.print(F(" G"));
-
-      oled.setCursor(0, 6);
-      oled.println(F("L-move, Hold R-change"));
-      oled.println(F("Hold L to save & exit"));
-    }
-
-    else if(mode == 3){
-      updateScreenTimer.reset();
-      
-      oled.setCursor(48, 0);
-      oled.print(F("CHANGE VALUE "));
-
-      oled.setCursor(90, 2);
-      oled.print(safetyGuardTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
-      else oled.print(F(" m"));
-
-      oled.setCursor(90, 3);
-      oled.print(selfDestructTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
-      else oled.print(F(" m"));
-
-      oled.setCursor(90, 4);
-      oled.print(accelerationLimit);
-      oled.print(F(" G"));
-
-      oled.setCursor(0, 6);
-      oled.println(F("Click L/R for -/+    "));
-      oled.println(F("Hold L to return     "));
-    }
-
-    else if(mode == 4){
-      updateScreenTimer.reset();
-      
-      oled.setCursor(48, 0);
-      oled.print(F("ACTIVE, SAFE "));
-
-      oled.setCursor(0, 6);
-      oled.println(F("                     "));
-      oled.println(F("Hold L+R 2s to stop  "));
-    }
-
-    else if(mode == 5){
-      oled.setCursor(48, 0);
-      oled.print(F("ACTIVE, ARMED"));
-
-      oled.setCursor(90, 2);
-      oled.print(F("Off   "));
-
-      oled.setCursor(0, 6);
-      oled.println(F("                     "));
-      oled.println(F("Hold L+R 2s to stop  "));
-    }
-
-    else if(mode == 6){
-      oled.setCursor(48, 0);
-      oled.print(F("COMPLETED    "));
-
-      oled.setCursor(90, 2);
-      oled.print(F("Off   "));
-
-      oled.setCursor(90, 3);
-      oled.print(F("Boom  "));
-
-      oled.setCursor(0, 6);
-      oled.println(F("                     "));
-      oled.println(F("Hold L+R 2s to reset "));     
-    }
-
-    oldMode = mode;
   }
 }
 
-void clearPointer(){
-    for(byte i=2; i<5; i++){
-      oled.setCursor(0, i);
-      oled.print(F(" "));
-  }
-}
-
-void updateScreen(){
-  if(updateScreenTimer.isReady()){
-    blinkFlag = !blinkFlag;
-
-    if(mode == 2){
-      for(byte i=2; i<5; i++){
-        oled.setCursor(0, i);
-        if(i == pointer) oled.print(F(">"));
-        else oled.print(F(" "));
-      }
-    }
-
-    if(mode == 3){
-      oled.setCursor(0, pointer);
-      if(blinkFlag) oled.print(F(">"));
-      else oled.print(F(" "));
-
-      if(pointer == 2){
-        oled.setCursor(90, 2);
-        if(blinkFlag) {
-          oled.print(safetyGuardTimeout);
-          if(DEMO_MODE) oled.print(F(" s"));
-          else oled.print(F(" m"));
-        }
-        else oled.print(F("       "));
-      }
-
-      else if(pointer == 3){
-        oled.setCursor(90, 3);
-        if(blinkFlag) {
-          oled.print(selfDestructTimeout);
-          if(DEMO_MODE) oled.print(F(" s"));
-          else oled.print(F(" m"));
-        }
-        else oled.print(F("       "));
-      }
-
-      else if(pointer == 4){
-        oled.setCursor(90, 4);
-        if(blinkFlag) {
-          oled.print(accelerationLimit);
-          oled.print(F(" G"));
-        }
-        else oled.print(F("       "));
-      }
-    }
-
-    else if(mode == 4){
-      
-      oled.setCursor(90, 2);
-      oled.print(safetyGuardTimeoutCounter / 60);
-      if(blinkFlag) oled.print(F(":"));
-      else oled.print(F(" "));
-      if(safetyGuardTimeoutCounter % 60 < 10) oled.print(F("0"));
-      oled.print(safetyGuardTimeoutCounter % 60);
-      oled.print(F("    "));
-
-      oled.setCursor(90, 3);
-      oled.print(selfDestructTimeoutCounter / 60);
-      if(blinkFlag) oled.print(F(":"));
-      else oled.print(F(" "));
-      if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
-      oled.print(selfDestructTimeoutCounter % 60);
-      oled.print(F("    "));
-    }
-
-    else if(mode == 5){
-      oled.setCursor(90, 3);
-      oled.print(selfDestructTimeoutCounter / 60);
-      if(blinkFlag) oled.print(F(":"));
-      else oled.print(F(" "));
-      if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
-      oled.print(selfDestructTimeoutCounter % 60);
-      oled.print(F("    "));
-    }    
-  }
-}
-
-
-void drawDefaultScreen(){
-  oled.clear();
-  oled.home();
-  oled.setScale(1);
-
-  oled.print(F("Status: "));
-  oled.line(0, 12, 127, 12);
-
-  oled.setCursor(0, 2);
-  oled.println(F(" Safety guard:       "));
-  oled.println(F(" Self-destroy:       "));
-  oled.println(F(" Acceleration:       "));
-
-  oled.line(0, 44, 127, 44);
-  oled.update();
-}
-
-
-void drawIntroScreen(){
-  oled.clear();
-  oled.setScale(1);
-  oled.setCursor(40, 1);
-  oled.println("MAY THE");
-
-  oled.setScale(2);
-  oled.setCursor(10, 3);
-  oled.println("SCHWARTZ");
-
-  oled.setScale(1);
-  oled.setCursor(30, 6);
-  oled.println("BE WITH YOU");
-  
-  oled.update();
-}
 
 void checkAccel(){
-  if(accelTimer.isReady()){
-    mpu.getAcceleration(&ax, &ay, &az);
-
-    acc_x = abs(ax / 2048);
-    acc_y = abs(ay / 2048);
-    acc_z = abs(az / 2048);
-    
-    Serial.print(acc_x); Serial.print(" ");
-    Serial.print(acc_y); Serial.print(" ");
-    Serial.print(acc_z); Serial.println(" ");
+  if(accelCheckFlag){
+    if(accelTimer.isReady()){
+      mpu.getAcceleration(&ax, &ay, &az);
+  
+      acc_x = abs(ax / ACC_COEF);
+      acc_y = abs(ay / ACC_COEF);
+      acc_z = abs(az / ACC_COEF);
+  
+      max_acc = defineMaxAccel(acc_x, acc_y, acc_z);
+  
+      if(DEBUG_MODE){
+      Serial.print(acc_x); Serial.print(F("  "));
+      Serial.print(acc_y); Serial.print(F("  "));
+      Serial.print(acc_z); Serial.print(F("  Max is: "));
+      Serial.println(max_acc);
+      }
+    }
   }
 }
 
-void safetyGuardEnable(){
-  digitalWrite(RELAY_1_PIN, LOW);
-}
 
-
-void safetyGuardDisable(){
-  digitalWrite(RELAY_1_PIN, HIGH);
-}
-
-
-void detonateEnable(){
-  digitalWrite(RELAY_2_PIN, LOW);
-}
-
-
-void detonateDisable(){
-  digitalWrite(RELAY_2_PIN, HIGH);
+byte defineMaxAccel(int16_t acc_x, int16_t acc_y, int16_t acc_z){
+  return max(max(acc_x, acc_y), acc_z);
 }

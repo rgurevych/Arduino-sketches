@@ -8,6 +8,8 @@
 #define BUTTON_2_PIN 3                         //Button 2 pin
 #define RELAY_1_PIN 6                          //Safety guard relay pin (relay 1)
 #define RELAY_2_PIN 7                          //Detonation relay pin (relay 2)
+#define RELAY_1_TEST_PIN 8                     //Safety guard relay test pin (relay 1)
+#define RELAY_2_TEST_PIN 9                     //Detonation relay test pin (relay 2)
 #define MIN_GUARD_TIMER_VALUE 10               //Minimum safety guard timer value (in minutes)
 #define MAX_GUARD_TIMER_VALUE 60               //Maximum safety guard timer value (in minutes)
 #define DEFAULT_GUARD_TIMER_VALUE 40           //Default safety guard timer value on startup (in minutes)
@@ -74,6 +76,8 @@ void setup() {
   pinMode(RELAY_1_PIN, OUTPUT);
   pinMode(RELAY_2_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(RELAY_1_TEST_PIN, INPUT_PULLUP);
+  pinMode(RELAY_2_TEST_PIN, INPUT_PULLUP);
   bothBtn.setHoldTimeout(2000);
 
   //OLED
@@ -154,11 +158,17 @@ void buttonTick(){
     if(bothBtn.hold()){
       safetyGuardCountdownStart();
       selfDestructCountdownStart();
+      pinMode(RELAY_1_TEST_PIN, OUTPUT);
+      digitalWrite(RELAY_1_TEST_PIN, HIGH);
       mode = 4;
     }
 
     if(rightBtn.hasClicks(5)){
       calibrateAccel();
+    }
+
+    if(leftBtn.hasClicks(5)){
+      selfTest();
     }
   }
 

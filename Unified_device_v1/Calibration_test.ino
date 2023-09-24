@@ -38,6 +38,47 @@ void calibrateAccel(){
 }
 
 
+void selfTest(){
+  oled.clear();
+  oled.home();
+  oled.setScale(1);
+  oled.println(F("Run self-test?"));
+  oled.setCursor(0, 2);
+  oled.println(F("L-Yes, R-Cancel"));
+
+  while (true) {
+    rightBtn.tick();
+    leftBtn.tick();
+    if(rightBtn.click()){
+      resetFunc();
+    }
+    if(leftBtn.click()){
+      oled.clear();
+      oled.home();
+      oled.setScale(2);
+      oled.println(F("Attention!"));
+      oled.println(F("Disconnect"));
+      oled.println(F("detonator!"));
+      oled.setScale(1);
+      oled.setCursor(0, 7);
+      oled.println(F("L-Start, R-Reset"));
+    
+      while (true) {
+        rightBtn.tick();
+        leftBtn.tick();
+        if(rightBtn.click()){
+          resetFunc();
+        }
+        if(leftBtn.click()){
+          runSelfTest();
+          return;
+        }
+      }
+    }
+  }
+}
+
+
 void doAccelCalibration() {
   oled.clear();
   oled.home();
@@ -135,6 +176,95 @@ void doAccelCalibration() {
   }
   else oled.print(F("FAIL! Reset and retry"));
     
+  oled.setCursor(0, 7);
+  oled.print(F("Click L or R to reset"));
+  while (true) {
+    rightBtn.tick();
+    leftBtn.tick();
+    if(rightBtn.click() || leftBtn.click()){
+      resetFunc();
+    }
+  } 
+}
+
+
+void runSelfTest(){
+  digitalWrite(RELAY_1_TEST_PIN, LOW);
+  pinMode(RELAY_1_TEST_PIN, INPUT_PULLUP);
+  boolean selfTestSuccessFlag = true;
+
+  oled.clear();
+  oled.home();
+  oled.println(F("Starting Self-test:"));
+  oled.setCursor(0, 2);
+  oled.print(F("Safety guard relay:"));
+
+  if(digitalRead(RELAY_1_TEST_PIN)) oled.print(F("+"));
+  else{
+    oled.print(F("-"));
+    selfTestSuccessFlag = false;
+  }
+
+  safetyGuardEnable();
+  delay(200);
+
+  if(!digitalRead(RELAY_1_TEST_PIN)){
+    oled.print(F("+"));
+  }
+  else{
+    oled.print(F("-"));
+    selfTestSuccessFlag = false;
+  }
+
+  safetyGuardDisable();
+  delay(200);
+
+  oled.setCursor(0, 3);
+  oled.print(F("Detonation relay: "));
+
+  if(!digitalRead(RELAY_2_TEST_PIN)){
+    oled.print(F("+"));
+  }
+  else{
+    oled.print(F("-"));
+    selfTestSuccessFlag = false;
+  }
+  
+  detonateEnable();
+  delay(200);
+
+  if(digitalRead(RELAY_2_TEST_PIN)){
+    oled.print(F("+"));
+  }
+  else{
+    oled.print(F("-"));
+    selfTestSuccessFlag = false;
+  }
+
+  detonateDisable();
+  delay(200);
+
+  oled.setCursor(0, 4);
+  oled.print(F("Accelerometer: "));
+  accelCheckFlag = true;
+  checkAccel();
+  accelCheckFlag = false;
+  if(max_acc <= 1){
+    oled.println(F("+"));
+  }
+  else{
+    oled.print(F("-"));
+    selfTestSuccessFlag = false;
+  }
+
+  oled.setCursor(0, 5);
+  if(selfTestSuccessFlag){
+    oled.print(F("SUCCESS"));
+  }
+  else{
+    oled.print(F("FAIL! Fix the device!"));
+  }
+
   oled.setCursor(0, 7);
   oled.print(F("Click L or R to reset"));
   while (true) {

@@ -1,5 +1,6 @@
 void ledCheck(){
   digitalWrite(LED_BUILTIN, ledFlag);
+  if(mode == 4) digitalWrite(RELAY_1_TEST_PIN, ledFlag);
 }
 
 void safetyGuardEnable(){

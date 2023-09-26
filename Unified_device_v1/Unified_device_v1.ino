@@ -159,7 +159,6 @@ void buttonTick(){
       safetyGuardCountdownStart();
       selfDestructCountdownStart();
       pinMode(RELAY_1_TEST_PIN, OUTPUT);
-      digitalWrite(RELAY_1_TEST_PIN, HIGH);
       mode = 4;
     }
 

@@ -17,7 +17,7 @@ void changeMode(){
 
       oled.setCursor(90, 4);
       oled.print(accelerationLimit);
-      oled.print(F(" G"));
+      oled.print(F(" G  "));
 
       oled.setCursor(0, 6);
       oled.println(F("Hold R for settings  "));
@@ -42,7 +42,7 @@ void changeMode(){
 
       oled.setCursor(90, 4);
       oled.print(accelerationLimit);
-      oled.print(F(" G"));
+      oled.print(F(" G  "));
 
       oled.setCursor(0, 6);
       oled.println(F("L-move, Hold R-change"));
@@ -67,7 +67,7 @@ void changeMode(){
 
       oled.setCursor(90, 4);
       oled.print(accelerationLimit);
-      oled.print(F(" G"));
+      oled.print(F(" G  "));
 
       oled.setCursor(0, 6);
       oled.println(F("Click L/R for -/+    "));

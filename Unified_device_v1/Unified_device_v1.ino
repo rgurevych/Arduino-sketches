@@ -4,8 +4,8 @@
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
-#define BUTTON_1_PIN 2                         //Button 1 pin
-#define BUTTON_2_PIN 3                         //Button 2 pin
+#define BUTTON_1_PIN 17                        //Button 1 pin
+#define BUTTON_2_PIN 16                        //Button 2 pin
 #define RELAY_1_PIN 6                          //Safety guard relay pin (relay 1)
 #define RELAY_2_PIN 7                          //Detonation relay pin (relay 2)
 #define RELAY_1_TEST_PIN 8                     //Safety guard relay test pin (relay 1)

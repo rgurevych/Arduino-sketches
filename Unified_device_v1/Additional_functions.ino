@@ -79,6 +79,33 @@ void selfTest(){
 }
 
 
+void changeDemoMode(){
+  oled.clear();
+  oled.home();
+  oled.setScale(1);
+  oled.println(F("Switch Demo-mode?"));
+  oled.setCursor(0, 2);
+  oled.println(F("L-Yes, R-Cancel"));
+
+  while (true) {
+    rightBtn.tick();
+    leftBtn.tick();
+    if(rightBtn.click()){
+      resetFunc();
+    }
+    if(leftBtn.click()){
+      oled.clear();
+      oled.home();
+      demoMode = !demoMode;
+      EEPROM.put(40, demoMode);
+      oled.println(F("Demo-mode changed"));
+      oled.println(F("Restarting device"));
+      delay(1000);
+      resetFunc();
+    }
+  }
+}
+
 void doAccelCalibration() {
   oled.clear();
   oled.home();

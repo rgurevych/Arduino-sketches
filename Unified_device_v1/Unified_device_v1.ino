@@ -34,7 +34,7 @@
 #include <Wire.h>
 #include <GyverOLED.h>
 #include <EEPROM.h>
-#include "MPU6050.h"
+#include <MPU6050.h>
 
 
 //---------- Initialize devices
@@ -55,12 +55,13 @@ GTimer accelTimer(MS, ACCEL_REQUEST_TIMEOUT);
 
 
 //---------- Variables
-boolean safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFlag = false;
-boolean blinkFlag = true, ledFlag = true;
-byte max_acc, accelerationLimit;
+bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFlag = false;
+bool blinkFlag = true, ledFlag = true;
+bool demoMode;
+uint8_t max_acc, accelerationLimit;
 unsigned int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
-byte mode = 0, oldMode = 0;
-byte pointer = 2;
+uint8_t mode = 1, oldMode = 0;
+uint8_t pointer = 2;
 int32_t acc_x, acc_y, acc_z;
 int16_t ax, ay, az;
 long offsets[6] = {0,0,0,0,0,0};
@@ -91,11 +92,13 @@ void setup() {
     EEPROM.put(10, DEFAULT_GUARD_TIMER_VALUE);
     EEPROM.put(20, DEFAULT_SELF_DESTRUCT_TIMER_VALUE);
     EEPROM.put(30, DEFAULT_ACCELERATION);
+    EEPROM.put(40, DEMO_MODE);
     EEPROM.put(ACCEL_OFFSETS_BYTE, offsets);
   }
   EEPROM.get(10, safetyGuardTimeout);
   EEPROM.get(20, selfDestructTimeout);
   EEPROM.get(30, accelerationLimit);
+  EEPROM.get(40, demoMode);
   EEPROM.get(ACCEL_OFFSETS_BYTE, offsets);
 
   //Accelerometer
@@ -122,8 +125,7 @@ void setup() {
   detonateDisable();
   delay(1000);
 
-  //Variables
-  mode = 1;
+  //Setup timer timeouts
   menuExitTimer.setTimeout(BUTTON_TIMEOUT);
 
   //Draw default screen after setup
@@ -166,8 +168,12 @@ void buttonTick(){
       calibrateAccel();
     }
 
-    if(leftBtn.hasClicks(5)){
+    if(leftBtn.hasClicks(3)){
       selfTest();
+    }
+
+    if(leftBtn.hasClicks(7)){
+      changeDemoMode();
     }
   }
 
@@ -287,7 +293,7 @@ void operationTick(){
 void safetyGuardCountdownStart(){
   if(!safetyGuardActiveFlag){
     safetyGuardTimeoutCounter = safetyGuardTimeout;
-    if(!DEMO_MODE) safetyGuardTimeoutCounter *= 60;
+    if(!demoMode) safetyGuardTimeoutCounter *= 60;
     if(DEBUG_MODE){
       Serial.print(F("Activating Safety guard, timeout: "));
       Serial.print(safetyGuardTimeoutCounter);
@@ -321,22 +327,12 @@ void timersCountdown(){
       if(safetyGuardTimeoutCounter > 0){
         safetyGuardTimeoutCounter --;
       }
-//      if(DEBUG_MODE){
-//        Serial.print(F("Safety guard remaining time: "));
-//        Serial.print(safetyGuardTimeoutCounter);
-//        Serial.println(F(" s"));
-//      }
     }
 
     if(selfDestructActiveFlag){
       if(selfDestructTimeoutCounter > 0){
         selfDestructTimeoutCounter --;
       }
-//      if(DEBUG_MODE){
-//        Serial.print(F("Self-destruct remaining time: "));
-//        Serial.print(selfDestructTimeoutCounter);
-//        Serial.println(F(" s"));
-//      }
     }
   }
 }

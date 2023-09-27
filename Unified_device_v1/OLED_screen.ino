@@ -7,12 +7,12 @@ void changeMode(){
 
       oled.setCursor(90, 2);
       oled.print(safetyGuardTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
+      if(demoMode) oled.print(F(" s"));
       else oled.print(F(" m"));
 
       oled.setCursor(90, 3);
       oled.print(selfDestructTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
+      if(demoMode) oled.print(F(" s"));
       else oled.print(F(" m"));
 
       oled.setCursor(90, 4);
@@ -32,12 +32,12 @@ void changeMode(){
 
       oled.setCursor(90, 2);
       oled.print(safetyGuardTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
+      if(demoMode) oled.print(F(" s"));
       else oled.print(F(" m"));
 
       oled.setCursor(90, 3);
       oled.print(selfDestructTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
+      if(demoMode) oled.print(F(" s"));
       else oled.print(F(" m"));
 
       oled.setCursor(90, 4);
@@ -57,12 +57,12 @@ void changeMode(){
 
       oled.setCursor(90, 2);
       oled.print(safetyGuardTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
+      if(demoMode) oled.print(F(" s"));
       else oled.print(F(" m"));
 
       oled.setCursor(90, 3);
       oled.print(selfDestructTimeout);
-      if(DEMO_MODE) oled.print(F(" s"));
+      if(demoMode) oled.print(F(" s"));
       else oled.print(F(" m"));
 
       oled.setCursor(90, 4);
@@ -158,7 +158,7 @@ void updateScreen(){
         oled.setCursor(90, 2);
         if(blinkFlag) {
           oled.print(safetyGuardTimeout);
-          if(DEMO_MODE) oled.print(F(" s"));
+          if(demoMode) oled.print(F(" s"));
           else oled.print(F(" m"));
         }
         else oled.print(F("       "));
@@ -168,7 +168,7 @@ void updateScreen(){
         oled.setCursor(90, 3);
         if(blinkFlag) {
           oled.print(selfDestructTimeout);
-          if(DEMO_MODE) oled.print(F(" s"));
+          if(demoMode) oled.print(F(" s"));
           else oled.print(F(" m"));
         }
         else oled.print(F("       "));
@@ -221,7 +221,7 @@ void drawDefaultScreen(){
   oled.home();
   oled.setScale(1);
 
-  if(DEMO_MODE) oled.print(F("!DEMO!: "));
+  if(demoMode) oled.print(F("!DEMO!: "));
   else oled.print(F("Status: "));
   
   oled.line(0, 12, 127, 12);

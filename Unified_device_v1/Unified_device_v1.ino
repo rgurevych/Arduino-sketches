@@ -282,9 +282,9 @@ void operationTick(){
       else{
       if(DEBUG_MODE) Serial.println(F("Detonating!!!"));
       detonateEnable();
-      }
       mode = 6;
       selfDestructActiveFlag = false;
+      }
     }
   }
 }
@@ -308,7 +308,7 @@ void safetyGuardCountdownStart(){
 void selfDestructCountdownStart(){
   if(!selfDestructActiveFlag){
     selfDestructTimeoutCounter = selfDestructTimeout;
-    if(!DEMO_MODE) selfDestructTimeoutCounter *= 60;
+    if(!demoMode) selfDestructTimeoutCounter *= 60;
     if(DEBUG_MODE){
       Serial.print(F("Activating Self-destruct timer with timeout: "));
       Serial.print(selfDestructTimeoutCounter);

@@ -257,6 +257,7 @@ void operationTick(){
       detonateEnable();
       mode = 7;
       accelCheckFlag = false;
+      selfDestructActiveFlag = false;
     }
   }
   
@@ -281,6 +282,7 @@ void operationTick(){
       detonateEnable();
       mode = 6;
       selfDestructActiveFlag = false;
+      accelCheckFlag = false;
       }
     }
   }

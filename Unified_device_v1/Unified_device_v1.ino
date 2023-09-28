@@ -191,7 +191,7 @@ void buttonTick(){
       mode = 3;
     }
 
-    if(menuExitTimer.ready()){
+    if(menuExitTimer.tick()){
       EEPROM.get(10, safetyGuardTimeout);
       EEPROM.get(20, selfDestructTimeout);
       EEPROM.get(30, accelerationLimit);
@@ -225,7 +225,7 @@ void buttonTick(){
       mode = 2;
     }
 
-    if(menuExitTimer.ready()){
+    if(menuExitTimer.tick()){
       EEPROM.get(10, safetyGuardTimeout);
       EEPROM.get(20, selfDestructTimeout);
       EEPROM.get(30, accelerationLimit);

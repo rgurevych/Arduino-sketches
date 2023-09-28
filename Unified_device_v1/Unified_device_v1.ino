@@ -10,7 +10,7 @@
 #define RELAY_2_PIN 7                          //Detonation relay pin (relay 2)
 #define RELAY_1_TEST_PIN 8                     //Safety guard relay test pin (relay 1)
 #define RELAY_2_TEST_PIN 9                     //Detonation relay test pin (relay 2)
-#define MIN_GUARD_TIMER_VALUE 10               //Minimum safety guard timer value (in minutes)
+#define MIN_GUARD_TIMER_VALUE 20               //Minimum safety guard timer value (in minutes)
 #define MAX_GUARD_TIMER_VALUE 60               //Maximum safety guard timer value (in minutes)
 #define DEFAULT_GUARD_TIMER_VALUE 40           //Default safety guard timer value on startup (in minutes)
 #define MIN_SELF_DESTRUCT_TIMER_VALUE 60       //Minimum self-destruction timer value (in minutes)
@@ -29,6 +29,7 @@
 
 
 //---------- Include libraries
+#include <TimerMs.h>
 #include <GyverTimer.h>
 #include <EncButton.h>
 #include <Wire.h>
@@ -47,11 +48,10 @@ MPU6050 mpu;
 
 //---------- Timers
 //GTimer blinkTimer(MS, 500);
-GTimer updateScreenTimer(MS, 500);
-GTimer oneSecondTimer(MS, 1000);
-GTimer explosionTimer(MS);
-GTimer menuExitTimer(MS);
-GTimer accelTimer(MS, ACCEL_REQUEST_TIMEOUT);
+TimerMs updateScreenTimer(500, 1);
+TimerMs oneSecondTimer(1000, 1);
+TimerMs menuExitTimer(BUTTON_TIMEOUT, 0, 1);
+TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
 
 
 //---------- Variables
@@ -125,9 +125,6 @@ void setup() {
   detonateDisable();
   delay(1000);
 
-  //Setup timer timeouts
-  menuExitTimer.setTimeout(BUTTON_TIMEOUT);
-
   //Draw default screen after setup
   drawDefaultScreen();
 }
@@ -194,7 +191,7 @@ void buttonTick(){
       mode = 3;
     }
 
-    if(menuExitTimer.isReady()){
+    if(menuExitTimer.ready()){
       EEPROM.get(10, safetyGuardTimeout);
       EEPROM.get(20, selfDestructTimeout);
       EEPROM.get(30, accelerationLimit);
@@ -228,7 +225,7 @@ void buttonTick(){
       mode = 2;
     }
 
-    if(menuExitTimer.isReady()){
+    if(menuExitTimer.ready()){
       EEPROM.get(10, safetyGuardTimeout);
       EEPROM.get(20, selfDestructTimeout);
       EEPROM.get(30, accelerationLimit);
@@ -320,7 +317,7 @@ void selfDestructCountdownStart(){
 
 
 void timersCountdown(){
-  if(oneSecondTimer.isReady()){
+  if(oneSecondTimer.tick()){
     ledFlag = !ledFlag;
     
     if(safetyGuardActiveFlag){
@@ -340,7 +337,7 @@ void timersCountdown(){
 
 void checkAccel(){
   if(accelCheckFlag){
-    if(accelTimer.isReady()){
+    if(accelTimer.tick()){
       mpu.getAcceleration(&ax, &ay, &az);
   
       acc_x = abs(ax / ACC_COEF);

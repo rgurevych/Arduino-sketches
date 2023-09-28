@@ -50,8 +50,6 @@ void changeMode(){
     }
 
     else if(mode == 3){
-      updateScreenTimer.reset();
-      
       oled.setCursor(48, 0);
       oled.print(F("CHANGE VALUE "));
 
@@ -75,7 +73,7 @@ void changeMode(){
     }
 
     else if(mode == 4){
-      updateScreenTimer.reset();
+      updateScreenTimer.start();
       
       oled.setCursor(48, 0);
       oled.print(F("ACTIVE, SAFE "));
@@ -138,7 +136,7 @@ void clearPointer(){
 
 
 void updateScreen(){
-  if(updateScreenTimer.isReady()){
+  if(updateScreenTimer.tick()){
     blinkFlag = !blinkFlag;
 
     if(mode == 2){

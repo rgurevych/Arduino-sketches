@@ -30,7 +30,6 @@
 
 //---------- Include libraries
 #include <TimerMs.h>
-#include <GyverTimer.h>
 #include <EncButton.h>
 #include <Wire.h>
 #include <GyverOLED.h>

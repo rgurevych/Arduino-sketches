@@ -1,131 +1,139 @@
 void changeMode(){
-  if(mode != oldMode){
+  if(mode == oldMode){
+    return;
+  }
+
+  oldMode = mode;
+  
+  if(mode == 1){
+    oled.setCursor(48, 0);
+    oled.print(F("IDLE         "));
+
+    oled.setCursor(90, 2);
+    oled.print(safetyGuardTimeout);
+    if(demoMode) oled.print(F(" s   "));
+    else oled.print(F(" m   "));
+
+    oled.setCursor(90, 3);
+    oled.print(selfDestructTimeout);
+    if(demoMode) oled.print(F(" s   "));
+    else oled.print(F(" m   "));
+
+    oled.setCursor(90, 4);
+    oled.print(accelerationLimit);
+    oled.print(F(" G  "));
+
+    oled.setCursor(0, 6);
+    oled.println(F("Hold R for settings  "));
+    oled.println(F("Hold L+R 2s to start "));
+
+    clearPointer();
+    return;
+  }
+
+  if(mode == 2){
+    oled.setCursor(48, 0);
+    oled.print(F("SETTINGS     "));
+
+    oled.setCursor(90, 2);
+    oled.print(safetyGuardTimeout);
+    if(demoMode) oled.print(F(" s   "));
+    else oled.print(F(" m   "));
+
+    oled.setCursor(90, 3);
+    oled.print(selfDestructTimeout);
+    if(demoMode) oled.print(F(" s   "));
+    else oled.print(F(" m   "));
+
+    oled.setCursor(90, 4);
+    oled.print(accelerationLimit);
+    oled.print(F(" G  "));
+
+    oled.setCursor(0, 6);
+    oled.println(F("L-move, Hold R-change"));
+    oled.println(F("Hold L to save & exit"));
+    return;
+  }
+
+  if(mode == 3){
+    oled.setCursor(48, 0);
+    oled.print(F("CHANGE VALUE "));
+
+    oled.setCursor(90, 2);
+    oled.print(safetyGuardTimeout);
+    if(demoMode) oled.print(F(" s"));
+    else oled.print(F(" m"));
+
+    oled.setCursor(90, 3);
+    oled.print(selfDestructTimeout);
+    if(demoMode) oled.print(F(" s"));
+    else oled.print(F(" m"));
+
+    oled.setCursor(90, 4);
+    oled.print(accelerationLimit);
+    oled.print(F(" G  "));
+
+    oled.setCursor(0, 6);
+    oled.println(F("Click L/R for -/+    "));
+    oled.println(F("Hold L to return     "));
+    return;
+  }
+
+  if(mode == 4){
+    updateScreenTimer.start();
     
-    if(mode == 1){
-      oled.setCursor(48, 0);
-      oled.print(F("IDLE         "));
+    oled.setCursor(48, 0);
+    oled.print(F("ACTIVE, SAFE "));
 
-      oled.setCursor(90, 2);
-      oled.print(safetyGuardTimeout);
-      if(demoMode) oled.print(F(" s   "));
-      else oled.print(F(" m   "));
+    oled.setCursor(0, 6);
+    oled.println(F("                     "));
+    oled.println(F("Hold L+R 2s to stop  "));
+    return;
+  }
 
-      oled.setCursor(90, 3);
-      oled.print(selfDestructTimeout);
-      if(demoMode) oled.print(F(" s   "));
-      else oled.print(F(" m   "));
+  if(mode == 5){
+    oled.setCursor(48, 0);
+    oled.print(F("ACTIVE, ARMED"));
 
-      oled.setCursor(90, 4);
-      oled.print(accelerationLimit);
-      oled.print(F(" G  "));
+    oled.setCursor(90, 2);
+    oled.print(F("Off   "));
 
-      oled.setCursor(0, 6);
-      oled.println(F("Hold R for settings  "));
-      oled.println(F("Hold L+R 2s to start "));
+    oled.setCursor(0, 6);
+    oled.println(F("                     "));
+    oled.println(F("Hold L+R 2s to stop  "));
+    return;
+  }
 
-      clearPointer();
-    }
+  if(mode == 6){
+    oled.setCursor(48, 0);
+    oled.print(F("COMPLETED    "));
 
-    else if(mode == 2){
-      oled.setCursor(48, 0);
-      oled.print(F("SETTINGS     "));
+    oled.setCursor(90, 3);
+    oled.print(F("Boom  "));
 
-      oled.setCursor(90, 2);
-      oled.print(safetyGuardTimeout);
-      if(demoMode) oled.print(F(" s   "));
-      else oled.print(F(" m   "));
+    oled.setCursor(90, 4);
+    oled.print(F("Off   "));
 
-      oled.setCursor(90, 3);
-      oled.print(selfDestructTimeout);
-      if(demoMode) oled.print(F(" s   "));
-      else oled.print(F(" m   "));
+    oled.setCursor(0, 6);
+    oled.println(F("                     "));
+    oled.println(F("Hold L+R 2s to reset ")); 
+    return;
+  }
 
-      oled.setCursor(90, 4);
-      oled.print(accelerationLimit);
-      oled.print(F(" G  "));
+  if(mode == 7){
+    oled.setCursor(48, 0);
+    oled.print(F("COMPLETED    "));
 
-      oled.setCursor(0, 6);
-      oled.println(F("L-move, Hold R-change"));
-      oled.println(F("Hold L to save & exit"));
-    }
+    oled.setCursor(90, 3);
+    oled.print(F("Off  "));
 
-    else if(mode == 3){
-      oled.setCursor(48, 0);
-      oled.print(F("CHANGE VALUE "));
+    oled.setCursor(90, 4);
+    oled.print(F("Boom  "));
 
-      oled.setCursor(90, 2);
-      oled.print(safetyGuardTimeout);
-      if(demoMode) oled.print(F(" s"));
-      else oled.print(F(" m"));
-
-      oled.setCursor(90, 3);
-      oled.print(selfDestructTimeout);
-      if(demoMode) oled.print(F(" s"));
-      else oled.print(F(" m"));
-
-      oled.setCursor(90, 4);
-      oled.print(accelerationLimit);
-      oled.print(F(" G  "));
-
-      oled.setCursor(0, 6);
-      oled.println(F("Click L/R for -/+    "));
-      oled.println(F("Hold L to return     "));
-    }
-
-    else if(mode == 4){
-      updateScreenTimer.start();
-      
-      oled.setCursor(48, 0);
-      oled.print(F("ACTIVE, SAFE "));
-
-      oled.setCursor(0, 6);
-      oled.println(F("                     "));
-      oled.println(F("Hold L+R 2s to stop  "));
-    }
-
-    else if(mode == 5){
-      oled.setCursor(48, 0);
-      oled.print(F("ACTIVE, ARMED"));
-
-      oled.setCursor(90, 2);
-      oled.print(F("Off   "));
-
-      oled.setCursor(0, 6);
-      oled.println(F("                     "));
-      oled.println(F("Hold L+R 2s to stop  "));
-    }
-
-    else if(mode == 6){
-      oled.setCursor(48, 0);
-      oled.print(F("COMPLETED    "));
-
-      oled.setCursor(90, 3);
-      oled.print(F("Boom  "));
-
-      oled.setCursor(90, 4);
-      oled.print(F("Off   "));
-
-      oled.setCursor(0, 6);
-      oled.println(F("                     "));
-      oled.println(F("Hold L+R 2s to reset "));     
-    }
-
-    else if(mode == 7){
-      oled.setCursor(48, 0);
-      oled.print(F("COMPLETED    "));
-
-      oled.setCursor(90, 3);
-      oled.print(F("Off  "));
-
-      oled.setCursor(90, 4);
-      oled.print(F("Boom  "));
-
-      oled.setCursor(0, 6);
-      oled.println(F("                     "));
-      oled.println(F("Hold L+R 2s to reset "));     
-    }
-
-    oldMode = mode;
+    oled.setCursor(0, 6);
+    oled.println(F("                     "));
+    oled.println(F("Hold L+R 2s to reset "));
+    return;   
   }
 }
 

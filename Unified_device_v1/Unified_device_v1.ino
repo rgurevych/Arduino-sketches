@@ -46,7 +46,6 @@ MPU6050 mpu;
 
 
 //---------- Timers
-//GTimer blinkTimer(MS, 500);
 TimerMs updateScreenTimer(500, 1);
 TimerMs oneSecondTimer(1000, 1);
 TimerMs menuExitTimer(BUTTON_TIMEOUT, 0, 1);
@@ -86,7 +85,7 @@ void setup() {
   oled.setContrast(200);
 
   // EEPROM
-  if (EEPROM.read(INIT_ADDR) != INIT_KEY) {     // First launch
+  if (EEPROM.read(INIT_ADDR) != INIT_KEY){
     EEPROM.write(INIT_ADDR, INIT_KEY);
     EEPROM.put(10, DEFAULT_GUARD_TIMER_VALUE);
     EEPROM.put(20, DEFAULT_SELF_DESTRUCT_TIMER_VALUE);
@@ -171,35 +170,31 @@ void buttonTick(){
     if(leftBtn.hasClicks(7)){
       changeDemoMode();
     }
+    return;
   }
 
-  else if(mode == 2){
+  if(mode == 2){
     if(leftBtn.click()){
       pointer++;
       if (pointer > 4) pointer = 2;
     }
 
-    else if(leftBtn.hold()){
+    if(leftBtn.hold()){
       EEPROM.put(10, safetyGuardTimeout);
       EEPROM.put(20, selfDestructTimeout);
       EEPROM.put(30, accelerationLimit);
       mode = 1;
     }
 
-    else if(rightBtn.hold()){
+    if(rightBtn.hold()){
       mode = 3;
     }
 
-    if(menuExitTimer.tick()){
-      EEPROM.get(10, safetyGuardTimeout);
-      EEPROM.get(20, selfDestructTimeout);
-      EEPROM.get(30, accelerationLimit);
-      mode = 1;
-    }
+    exitMenu();
+    return;
   }
 
-  else if(mode == 3){
-    
+  if(mode == 3){
     if(leftBtn.click()){
       if(pointer == 2) safetyGuardTimeout -= 10;
       
@@ -224,15 +219,11 @@ void buttonTick(){
       mode = 2;
     }
 
-    if(menuExitTimer.tick()){
-      EEPROM.get(10, safetyGuardTimeout);
-      EEPROM.get(20, selfDestructTimeout);
-      EEPROM.get(30, accelerationLimit);
-      mode = 1;
-    }
+    exitMenu();
+    return;
   }
 
-  else if(mode >= 4 && mode <= 7){
+  if(mode >= 4 && mode <= 7){
     if(bothBtn.hold()){
       safetyGuardActiveFlag = false;
       selfDestructActiveFlag = false;
@@ -241,6 +232,16 @@ void buttonTick(){
       safetyGuardDisable();
       mode = 1;
     }
+  }
+}
+
+
+void exitMenu(){
+  if(menuExitTimer.tick()){
+    EEPROM.get(10, safetyGuardTimeout);
+    EEPROM.get(20, selfDestructTimeout);
+    EEPROM.get(30, accelerationLimit);
+    mode = 1;
   }
 }
 

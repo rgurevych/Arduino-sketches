@@ -278,11 +278,11 @@ void operationTick(){
         if(DEBUG_MODE) Serial.println(F("Safety guard is still on, detonation blocked!"));
       }
       else{
-      if(DEBUG_MODE) Serial.println(F("Detonating!!!"));
-      detonateEnable();
-      mode = 6;
-      selfDestructActiveFlag = false;
-      accelCheckFlag = false;
+        if(DEBUG_MODE) Serial.println(F("Detonating!!!"));
+        detonateEnable();
+        mode = 6;
+        selfDestructActiveFlag = false;
+        accelCheckFlag = false;
       }
     }
   }
@@ -323,15 +323,11 @@ void timersCountdown(){
     ledFlag = !ledFlag;
     
     if(safetyGuardActiveFlag){
-      if(safetyGuardTimeoutCounter > 0){
-        safetyGuardTimeoutCounter --;
-      }
+      if(safetyGuardTimeoutCounter > 0) safetyGuardTimeoutCounter --;
     }
 
     if(selfDestructActiveFlag){
-      if(selfDestructTimeoutCounter > 0){
-        selfDestructTimeoutCounter --;
-      }
+      if(selfDestructTimeoutCounter > 0) selfDestructTimeoutCounter --;
     }
   }
 }
@@ -349,16 +345,16 @@ void checkAccel(){
       max_acc = defineMaxAccel(acc_x, acc_y, acc_z);
   
       if(DEBUG_MODE){
-      Serial.print(acc_x); Serial.print(F("  "));
-      Serial.print(acc_y); Serial.print(F("  "));
-      Serial.print(acc_z); Serial.print(F("  Max is: "));
-      Serial.println(max_acc);
+        Serial.print(acc_x); Serial.print(F("  "));
+        Serial.print(acc_y); Serial.print(F("  "));
+        Serial.print(acc_z); Serial.print(F("  Max is: "));
+        Serial.println(max_acc);
       }
     }
   }
 }
 
 
-byte defineMaxAccel(int16_t acc_x, int16_t acc_y, int16_t acc_z){
+int8_t defineMaxAccel(int16_t acc_x, int16_t acc_y, int16_t acc_z){
   return max(max(acc_x, acc_y), acc_z);
 }

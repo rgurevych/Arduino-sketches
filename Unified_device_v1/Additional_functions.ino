@@ -10,101 +10,29 @@ void calibrateAccel(){
   while (true) {
     rightBtn.tick();
     leftBtn.tick();
-    if(rightBtn.click()){
-      resetFunc();
-    }
-    if(leftBtn.click()){
-      oled.clear();
-      oled.home();
-      oled.println(F("Put device on flat"));
-      oled.println(F("surface with Z-axis"));
-      oled.println(F("strictly vertical"));
-      oled.setCursor(0, 4);
-      oled.println(F("L-Start, R-Reset"));
-    
-      while (true) {
-        rightBtn.tick();
-        leftBtn.tick();
-        if(rightBtn.click()){
-          resetFunc();
-        }
-        if(leftBtn.click()){
-          doAccelCalibration();
-          return;
-        }
-      }
-    }
+    if(rightBtn.click()) resetFunc();
+    if(leftBtn.click()) confirmAccelCalibration();
   }
 }
 
 
-void selfTest(){
+void confirmAccelCalibration(){
   oled.clear();
   oled.home();
-  oled.setScale(1);
-  oled.println(F("Run self-test?"));
-  oled.setCursor(0, 2);
-  oled.println(F("L-Yes, R-Cancel"));
+  oled.println(F("Put device on flat"));
+  oled.println(F("surface with Z-axis"));
+  oled.println(F("strictly vertical"));
+  oled.setCursor(0, 4);
+  oled.println(F("L-Start, R-Reset"));
 
   while (true) {
     rightBtn.tick();
     leftBtn.tick();
-    if(rightBtn.click()){
-      resetFunc();
-    }
-    if(leftBtn.click()){
-      oled.clear();
-      oled.home();
-      oled.setScale(2);
-      oled.println(F("Attention!"));
-      oled.println(F("Disconnect"));
-      oled.println(F("detonator!"));
-      oled.setScale(1);
-      oled.setCursor(0, 7);
-      oled.println(F("L-Start, R-Reset"));
-    
-      while (true) {
-        rightBtn.tick();
-        leftBtn.tick();
-        if(rightBtn.click()){
-          resetFunc();
-        }
-        if(leftBtn.click()){
-          runSelfTest();
-          return;
-        }
-      }
-    }
+    if(rightBtn.click()) resetFunc();
+    if(leftBtn.click()) doAccelCalibration();
   }
 }
 
-
-void changeDemoMode(){
-  oled.clear();
-  oled.home();
-  oled.setScale(1);
-  oled.println(F("Switch Demo-mode?"));
-  oled.setCursor(0, 2);
-  oled.println(F("L-Yes, R-Cancel"));
-
-  while (true) {
-    rightBtn.tick();
-    leftBtn.tick();
-    if(rightBtn.click()){
-      resetFunc();
-    }
-    if(leftBtn.click()){
-      oled.clear();
-      oled.home();
-      demoMode = !demoMode;
-      EEPROM.put(40, demoMode);
-      oled.println(F("Demo-mode changed"));
-      oled.println(F("Restarting device"));
-      delay(1000);
-      resetFunc();
-    }
-  }
-}
 
 void doAccelCalibration() {
   oled.clear();
@@ -208,10 +136,50 @@ void doAccelCalibration() {
   while (true) {
     rightBtn.tick();
     leftBtn.tick();
-    if(rightBtn.click() || leftBtn.click()){
+    if(rightBtn.click() || leftBtn.click()) resetFunc();
+  } 
+}
+
+
+void selfTest(){
+  oled.clear();
+  oled.home();
+  oled.setScale(1);
+  oled.println(F("Run self-test?"));
+  oled.setCursor(0, 2);
+  oled.println(F("L-Yes, R-Cancel"));
+
+  while (true) {
+    rightBtn.tick();
+    leftBtn.tick();
+    if(rightBtn.click()) resetFunc();
+    if(leftBtn.click()) confirmSelfTest();
+  }
+}
+
+
+void confirmSelfTest(){
+  oled.clear();
+  oled.home();
+  oled.setScale(2);
+  oled.println(F("Attention!"));
+  oled.println(F("Disconnect"));
+  oled.println(F("detonator!"));
+  oled.setScale(1);
+  oled.setCursor(0, 7);
+  oled.println(F("L-Start, R-Reset"));
+
+  while (true) {
+    rightBtn.tick();
+    leftBtn.tick();
+    if(rightBtn.click()){
       resetFunc();
     }
-  } 
+    if(leftBtn.click()){
+      runSelfTest();
+      return;
+    }
+  }
 }
 
 
@@ -301,4 +269,32 @@ void runSelfTest(){
       resetFunc();
     }
   } 
+}
+
+
+void changeDemoMode(){
+  oled.clear();
+  oled.home();
+  oled.setScale(1);
+  oled.println(F("Switch Demo-mode?"));
+  oled.setCursor(0, 2);
+  oled.println(F("L-Yes, R-Cancel"));
+
+  while (true) {
+    rightBtn.tick();
+    leftBtn.tick();
+    if(rightBtn.click()){
+      resetFunc();
+    }
+    if(leftBtn.click()){
+      oled.clear();
+      oled.home();
+      demoMode = !demoMode;
+      EEPROM.put(40, demoMode);
+      oled.println(F("Demo-mode changed"));
+      oled.println(F("Restarting device"));
+      delay(1000);
+      resetFunc();
+    }
+  }
 }

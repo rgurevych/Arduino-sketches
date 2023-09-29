@@ -147,81 +147,87 @@ void clearPointer(){
 
 
 void updateScreen(){
-  if(updateScreenTimer.tick()){
-    blinkFlag = !blinkFlag;
-
-    if(mode == 2){
-      for(byte i=2; i<5; i++){
-        oled.setCursor(0, i);
-        if(i == pointer) oled.print(F(">"));
-        else oled.print(F(" "));
-      }
-    }
-
-    if(mode == 3){
-      oled.setCursor(0, pointer);
-      if(blinkFlag) oled.print(F(">"));
-      else oled.print(F(" "));
-
-      if(pointer == 2){
-        oled.setCursor(90, 2);
-        if(blinkFlag) {
-          oled.print(safetyGuardTimeout);
-          if(demoMode) oled.print(F(" s"));
-          else oled.print(F(" m"));
-        }
-        else oled.print(F("       "));
-      }
-
-      else if(pointer == 3){
-        oled.setCursor(90, 3);
-        if(blinkFlag) {
-          oled.print(selfDestructTimeout);
-          if(demoMode) oled.print(F(" s"));
-          else oled.print(F(" m"));
-        }
-        else oled.print(F("       "));
-      }
-
-      else if(pointer == 4){
-        oled.setCursor(90, 4);
-        if(blinkFlag) {
-          oled.print(accelerationLimit);
-          oled.print(F(" G"));
-        }
-        else oled.print(F("       "));
-      }
-    }
-
-    else if(mode == 4){
-      
-      oled.setCursor(90, 2);
-      oled.print(safetyGuardTimeoutCounter / 60);
-      if(blinkFlag) oled.print(F(":"));
-      else oled.print(F(" "));
-      if(safetyGuardTimeoutCounter % 60 < 10) oled.print(F("0"));
-      oled.print(safetyGuardTimeoutCounter % 60);
-      oled.print(F("   "));
-
-      oled.setCursor(90, 3);
-      oled.print(selfDestructTimeoutCounter / 60);
-      if(blinkFlag) oled.print(F(":"));
-      else oled.print(F(" "));
-      if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
-      oled.print(selfDestructTimeoutCounter % 60);
-      oled.print(F("   "));
-    }
-
-    else if(mode == 5){
-      oled.setCursor(90, 3);
-      oled.print(selfDestructTimeoutCounter / 60);
-      if(blinkFlag) oled.print(F(":"));
-      else oled.print(F(" "));
-      if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
-      oled.print(selfDestructTimeoutCounter % 60);
-      oled.print(F("   "));
-    }    
+  if(!updateScreenTimer.tick()){
+    return;
   }
+  blinkFlag = !blinkFlag;
+
+  if(mode == 2){
+    for(byte i=2; i<5; i++){
+      oled.setCursor(0, i);
+      if(i == pointer) oled.print(F(">"));
+      else oled.print(F(" "));
+    }
+    return;
+  }
+
+  if(mode == 3){
+    oled.setCursor(0, pointer);
+    if(blinkFlag) oled.print(F(">"));
+    else oled.print(F(" "));
+
+    if(pointer == 2){
+      oled.setCursor(90, 2);
+      if(blinkFlag) {
+        oled.print(safetyGuardTimeout);
+        if(demoMode) oled.print(F(" s"));
+        else oled.print(F(" m"));
+      }
+      else oled.print(F("       "));
+      return;
+    }
+
+    if(pointer == 3){
+      oled.setCursor(90, 3);
+      if(blinkFlag) {
+        oled.print(selfDestructTimeout);
+        if(demoMode) oled.print(F(" s"));
+        else oled.print(F(" m"));
+      }
+      else oled.print(F("       "));
+      return;
+    }
+
+    if(pointer == 4){
+      oled.setCursor(90, 4);
+      if(blinkFlag) {
+        oled.print(accelerationLimit);
+        oled.print(F(" G"));
+      }
+      else oled.print(F("       "));
+      return;
+    }
+  }
+
+  if(mode == 4){
+    oled.setCursor(90, 2);
+    oled.print(safetyGuardTimeoutCounter / 60);
+    if(blinkFlag) oled.print(F(":"));
+    else oled.print(F(" "));
+    if(safetyGuardTimeoutCounter % 60 < 10) oled.print(F("0"));
+    oled.print(safetyGuardTimeoutCounter % 60);
+    oled.print(F("   "));
+
+    oled.setCursor(90, 3);
+    oled.print(selfDestructTimeoutCounter / 60);
+    if(blinkFlag) oled.print(F(":"));
+    else oled.print(F(" "));
+    if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
+    oled.print(selfDestructTimeoutCounter % 60);
+    oled.print(F("   "));
+    return;
+  }
+
+  if(mode == 5){
+    oled.setCursor(90, 3);
+    oled.print(selfDestructTimeoutCounter / 60);
+    if(blinkFlag) oled.print(F(":"));
+    else oled.print(F(" "));
+    if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
+    oled.print(selfDestructTimeoutCounter % 60);
+    oled.print(F("   "));
+    return;
+  }    
 }
 
 

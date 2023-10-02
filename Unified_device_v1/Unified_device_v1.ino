@@ -10,7 +10,7 @@
 #define RELAY_2_PIN 7                          //Detonation relay pin (relay 2)
 #define RELAY_1_TEST_PIN 8                     //Safety guard relay test pin (relay 1)
 #define RELAY_2_TEST_PIN 9                     //Detonation relay test pin (relay 2)
-#define MIN_GUARD_TIMER_VALUE 20               //Minimum safety guard timer value (in minutes)
+#define MIN_GUARD_TIMER_VALUE 10               //Minimum safety guard timer value (in minutes)
 #define MAX_GUARD_TIMER_VALUE 60               //Maximum safety guard timer value (in minutes)
 #define DEFAULT_GUARD_TIMER_VALUE 40           //Default safety guard timer value on startup (in minutes)
 #define MIN_SELF_DESTRUCT_TIMER_VALUE 60       //Minimum self-destruction timer value (in minutes)

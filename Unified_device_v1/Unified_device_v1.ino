@@ -1,4 +1,13 @@
-//Unified device by Rostyslav Gurevych
+/*Unified device by Rostyslav Gurevych
+Mode description:
+1 - Idle
+2 - Settings
+3 - Change value
+4 - Working, safety guard enabled
+5 - Working, armed (safety guard off)
+6 - Detonation by timer
+7 - Detonation by accelerometer
+*/
 
 //---------- Define pins and settings
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
@@ -231,6 +240,8 @@ void buttonTick(){
       detonateDisable();
       safetyGuardDisable();
       mode = 1;
+      bothBtn.setHoldTimeout(2000);
+      if(!demoMode) drawDefaultScreen();
     }
   }
 }
@@ -258,6 +269,7 @@ void operationTick(){
       mode = 7;
       accelCheckFlag = false;
       selfDestructActiveFlag = false;
+      bothBtn.setHoldTimeout(2000);
     }
   }
   
@@ -268,6 +280,7 @@ void operationTick(){
       safetyGuardActiveFlag = false;
       accelCheckFlag = true;
       mode = 5;
+      bothBtn.setHoldTimeout(4000);
     }
   }
 
@@ -283,6 +296,7 @@ void operationTick(){
         mode = 6;
         selfDestructActiveFlag = false;
         accelCheckFlag = false;
+        bothBtn.setHoldTimeout(2000);
       }
     }
   }

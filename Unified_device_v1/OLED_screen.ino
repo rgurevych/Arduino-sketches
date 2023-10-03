@@ -92,19 +92,26 @@ void changeMode(){
   }
 
   if(mode == 5){
-    oled.setCursor(48, 0);
-    oled.print(F("ACTIVE, ARMED"));
+    if(!demoMode){
+      drawIntroScreen();
+    }
+    else{
+      oled.setCursor(48, 0);
+      oled.print(F("ACTIVE, ARMED"));
 
-    oled.setCursor(90, 2);
-    oled.print(F("Off   "));
+      oled.setCursor(90, 2);
+      oled.print(F("Off   "));
 
-    oled.setCursor(0, 6);
-    oled.println(F("                     "));
-    oled.println(F("Hold L+R 2s to stop  "));
+      oled.setCursor(0, 6);
+      oled.println(F("                     "));
+      oled.println(F("Hold L+R 4s to stop  "));
+    }
     return;
   }
 
   if(mode == 6){
+    if(!demoMode) drawDefaultScreen();
+
     oled.setCursor(48, 0);
     oled.print(F("COMPLETED    "));
 
@@ -121,6 +128,8 @@ void changeMode(){
   }
 
   if(mode == 7){
+    if(!demoMode) drawDefaultScreen();
+
     oled.setCursor(48, 0);
     oled.print(F("COMPLETED    "));
 
@@ -219,14 +228,21 @@ void updateScreen(){
   }
 
   if(mode == 5){
-    oled.setCursor(90, 3);
-    oled.print(selfDestructTimeoutCounter / 60);
-    if(blinkFlag) oled.print(F(":"));
-    else oled.print(F(" "));
-    if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
-    oled.print(selfDestructTimeoutCounter % 60);
-    oled.print(F("   "));
-    return;
+    if(demoMode){
+      oled.setCursor(90, 3);
+      oled.print(selfDestructTimeoutCounter / 60);
+      if(blinkFlag) oled.print(F(":"));
+      else oled.print(F(" "));
+      if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
+      oled.print(selfDestructTimeoutCounter % 60);
+      oled.print(F("   "));
+      return;
+    }
+    else{
+      oled.home();
+      if(blinkFlag) oled.print(F("*"));
+      else oled.print(F(" "));
+    }
   }    
 }
 

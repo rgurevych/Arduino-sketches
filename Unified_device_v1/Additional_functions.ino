@@ -292,6 +292,7 @@ void changeDemoMode(){
       demoMode = !demoMode;
       EEPROM.put(40, demoMode);
       oled.println(F("Demo-mode changed"));
+      oled.setCursor(0, 2);
       oled.println(F("Restarting device"));
       delay(1000);
       resetFunc();

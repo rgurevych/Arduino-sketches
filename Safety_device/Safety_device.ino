@@ -17,19 +17,19 @@
 
 
 //---------- Include libraries
-#include <GyverTimer.h>
-#include <VirtualButton.h>
+#include <TimerMs.h>
+#include <EncButton.h>
 #include <ServoSmooth.h>
 
 //---------- Initialize devices
-VButton btn1;
+Button btn1(BUTTON_1_PIN, INPUT_PULLUP);
 ServoSmooth mainServo;
 
 //---------- Timers
-GTimer blinkTimer(MS);
-GTimer blinkSeriesTimer(MS);
-GTimer modeChangeTimer(MS);
-GTimer operationTimer(MS);
+TimerMs blinkTimer(DISARMED_LED_BLINK_INTERVAL, 1);
+TimerMs blinkSeriesTimer(DISARMED_LED_SERIES_INTERVAL, 1);
+TimerMs modeChangeTimer(MODE_CHANGE_INDICATION, 1);
+TimerMs operationTimer(1000, 0, 1);
 
 //---------- Variables
 boolean ledFlag = false;
@@ -45,9 +45,9 @@ byte mode = 0;
 
 void setup() {
   //Pin modes
-  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
   mainServo.attach(SERVO_PIN);
+  btn1.setHoldTimeout(1000);
 
   //Startup check
   ledFlag = true;
@@ -60,10 +60,6 @@ void setup() {
   ledFlag = false;
   ledSwitch();
 
-  //Start timers
-  blinkTimer.setInterval(DISARMED_LED_BLINK_INTERVAL);
-  blinkSeriesTimer.setInterval(DISARMED_LED_SERIES_INTERVAL);
-  modeChangeTimer.setTimeout(MODE_CHANGE_INDICATION);
   mode = 1;
 }
 
@@ -77,7 +73,7 @@ void loop() {
 
 
 void buttonTick(){
-  btn1.poll(!digitalRead(BUTTON_1_PIN));
+  btn1.tick();
   
   if(mode == 1){    
     if(btn1.click()){
@@ -88,7 +84,7 @@ void buttonTick(){
     }
   }
 
-  if(btn1.held()){
+  if(btn1.hold()){
     mode ++;
     
     if(mode > 2){
@@ -96,20 +92,20 @@ void buttonTick(){
     }
     
     if(mode == 1){
-      blinkTimer.setInterval(DISARMED_LED_BLINK_INTERVAL);
-      blinkSeriesTimer.setInterval(DISARMED_LED_SERIES_INTERVAL);
+      blinkTimer.setTime(DISARMED_LED_BLINK_INTERVAL);
+      blinkSeriesTimer.setTime(DISARMED_LED_SERIES_INTERVAL);
       operationTimer.stop();
       closeSafetyGate();
     }
 
     else if(mode == 2){
-      blinkTimer.setInterval(ARMED_LED_BLINK_INTERVAL);
-      blinkSeriesTimer.setInterval(ARMED_LED_SERIES_INTERVAL);
-      operationTimer.setTimeout(setDelayCounter * OPERATION_MULTIPLICATOR * 1000L);
+      blinkTimer.setTime(ARMED_LED_BLINK_INTERVAL);
+      blinkSeriesTimer.setTime(ARMED_LED_SERIES_INTERVAL);
+      operationTimer.setTime(setDelayCounter * OPERATION_MULTIPLICATOR * 1000L);
       operationTimer.start();
     }
     
-    blinkSeriesTimer.reset();
+    blinkSeriesTimer.restart();
     ledBlinkFlag = false;
     modeChangeIndication();
   }
@@ -124,10 +120,10 @@ void modeChangeIndication(){
 
 void ledTick(){
   if(modeChangeFlag){
-    if(modeChangeTimer.isReady()){
+    if(modeChangeTimer.tick()){
       ledFlag = false;
       modeChangeFlag = false;
-      blinkSeriesTimer.reset();
+      blinkSeriesTimer.restart();
     }
     else{
       ledFlag = true;
@@ -135,10 +131,10 @@ void ledTick(){
     }
   }
   
-  if(blinkSeriesTimer.isReady() && (mode == 1 || mode == 2)){
+  if(blinkSeriesTimer.tick() && (mode == 1 || mode == 2)){
     ledBlinkFlag = true;
     blinkCounter = 1;
-    blinkTimer.reset();
+    blinkTimer.restart();
   }
 
   if(ledBlinkFlag){
@@ -146,11 +142,11 @@ void ledTick(){
       ledBlinkFlag = false;
     }
     
-    if(blinkTimer.isReady()){
+    if(blinkTimer.tick()){
       if(ledFlag){
         ledFlag = false;
         blinkCounter ++;
-        blinkSeriesTimer.reset();
+        blinkSeriesTimer.restart();
       }
       else{
         ledFlag = true;
@@ -162,7 +158,7 @@ void ledTick(){
 
 void operationTick(){
   if(mode == 2){
-    if(operationTimer.isReady()){
+    if(operationTimer.tick()){
       mode = 3;
       modeChangeIndication();
       openSafetyGate();

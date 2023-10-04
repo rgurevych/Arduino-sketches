@@ -15,9 +15,12 @@ void changeMode(){
     else oled.print(F(" m   "));
 
     oled.setCursor(90, 3);
-    oled.print(selfDestructTimeout);
-    if(demoMode) oled.print(F(" s   "));
-    else oled.print(F(" m   "));
+    if(selfDestructTimeout == 0) oled.print(F("Off   "));
+    else {
+      oled.print(selfDestructTimeout);
+      if(demoMode) oled.print(F(" s   "));
+      else oled.print(F(" m   "));
+    }
 
     oled.setCursor(90, 4);
     oled.print(accelerationLimit);
@@ -41,9 +44,12 @@ void changeMode(){
     else oled.print(F(" m   "));
 
     oled.setCursor(90, 3);
-    oled.print(selfDestructTimeout);
-    if(demoMode) oled.print(F(" s   "));
-    else oled.print(F(" m   "));
+    if(selfDestructTimeout == 0) oled.print(F("Off   "));
+    else {
+      oled.print(selfDestructTimeout);
+      if(demoMode) oled.print(F(" s   "));
+      else oled.print(F(" m   "));
+    }
 
     oled.setCursor(90, 4);
     oled.print(accelerationLimit);
@@ -65,9 +71,12 @@ void changeMode(){
     else oled.print(F(" m"));
 
     oled.setCursor(90, 3);
-    oled.print(selfDestructTimeout);
-    if(demoMode) oled.print(F(" s"));
-    else oled.print(F(" m"));
+    if(selfDestructTimeout == 0) oled.print(F("Off   "));
+    else{
+      oled.print(selfDestructTimeout);
+      if(demoMode) oled.print(F(" s"));
+      else oled.print(F(" m"));
+    }
 
     oled.setCursor(90, 4);
     oled.print(accelerationLimit);
@@ -189,9 +198,12 @@ void updateScreen(){
     if(pointer == 3){
       oled.setCursor(90, 3);
       if(blinkFlag) {
-        oled.print(selfDestructTimeout);
-        if(demoMode) oled.print(F(" s"));
-        else oled.print(F(" m"));
+        if(selfDestructTimeout == 0) oled.print(F("Off   "));
+        else{
+          oled.print(selfDestructTimeout);
+          if(demoMode) oled.print(F(" s"));
+          else oled.print(F(" m"));
+        }
       }
       else oled.print(F("       "));
       return;
@@ -218,24 +230,30 @@ void updateScreen(){
     oled.print(F("   "));
 
     oled.setCursor(90, 3);
-    oled.print(selfDestructTimeoutCounter / 60);
-    if(blinkFlag) oled.print(F(":"));
-    else oled.print(F(" "));
-    if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
-    oled.print(selfDestructTimeoutCounter % 60);
-    oled.print(F("   "));
-    return;
-  }
-
-  if(mode == 5){
-    if(demoMode){
-      oled.setCursor(90, 3);
+    if(selfDestructTimeout == 0) oled.print(F("Off   "));
+    else{
       oled.print(selfDestructTimeoutCounter / 60);
       if(blinkFlag) oled.print(F(":"));
       else oled.print(F(" "));
       if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
       oled.print(selfDestructTimeoutCounter % 60);
       oled.print(F("   "));
+    }
+    return;
+  }
+
+  if(mode == 5){
+    if(demoMode){
+      oled.setCursor(90, 3);
+      if(selfDestructTimeout == 0) oled.print(F("Off   "));
+      else{
+        oled.print(selfDestructTimeoutCounter / 60);
+        if(blinkFlag) oled.print(F(":"));
+        else oled.print(F(" "));
+        if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
+        oled.print(selfDestructTimeoutCounter % 60);
+        oled.print(F("   "));
+      }
       return;
     }
     else{
@@ -269,6 +287,10 @@ void drawDefaultScreen(){
 void drawIntroScreen(){
   oled.clear();
   oled.setScale(1);
+  oled.setCursor(102, 0);
+  oled.print(F("v"));
+  oled.print(VERSION, 1);
+
   oled.setCursor(42, 1);
   oled.println(F("MAY THE"));
 

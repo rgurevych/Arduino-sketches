@@ -10,6 +10,7 @@ Mode description:
 */
 
 //---------- Define pins and settings
+#define VERSION 0.9                            //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
@@ -66,7 +67,7 @@ bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFl
 bool blinkFlag = true, ledFlag = true;
 bool demoMode;
 uint8_t max_acc, accelerationLimit;
-unsigned int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
+int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
 uint8_t mode = 1, oldMode = 0;
 uint8_t pointer = 2;
 int32_t acc_x, acc_y, acc_z;
@@ -207,7 +208,10 @@ void buttonTick(){
     if(leftBtn.click()){
       if(pointer == 2) safetyGuardTimeout -= 10;
       
-      else if(pointer == 3) selfDestructTimeout -= 10;
+      else if(pointer == 3) {
+        selfDestructTimeout -= 10;
+        if(selfDestructTimeout < MIN_SELF_DESTRUCT_TIMER_VALUE) selfDestructTimeout = 0;
+      }
   
       else if(pointer == 4) accelerationLimit --;
     }
@@ -215,13 +219,16 @@ void buttonTick(){
     if(rightBtn.click()){
       if(pointer == 2) safetyGuardTimeout += 10;
       
-      else if(pointer == 3) selfDestructTimeout += 10;
+      else if(pointer == 3){
+        selfDestructTimeout += 10;
+        if(selfDestructTimeout < MIN_SELF_DESTRUCT_TIMER_VALUE) selfDestructTimeout = MIN_SELF_DESTRUCT_TIMER_VALUE;
+      }
   
       else if(pointer == 4) accelerationLimit ++;
     }
 
     safetyGuardTimeout = constrain(safetyGuardTimeout, MIN_GUARD_TIMER_VALUE, MAX_GUARD_TIMER_VALUE);
-    selfDestructTimeout = constrain(selfDestructTimeout, MIN_SELF_DESTRUCT_TIMER_VALUE, MAX_SELF_DESTRUCT_TIMER_VALUE);
+    selfDestructTimeout = constrain(selfDestructTimeout, 0, MAX_SELF_DESTRUCT_TIMER_VALUE);
     accelerationLimit = constrain(accelerationLimit, MIN_ACCELERATION, MAX_ACCELERATION);
 
     if(leftBtn.hold()){
@@ -319,6 +326,13 @@ void safetyGuardCountdownStart(){
 }
 
 void selfDestructCountdownStart(){
+  if(selfDestructTimeout == 0){
+    if(DEBUG_MODE){
+      Serial.println(F("Self-destruct timer is turned off and not activated"));
+      return;
+    }
+  }
+  
   if(!selfDestructActiveFlag){
     selfDestructTimeoutCounter = selfDestructTimeout;
     if(!demoMode) selfDestructTimeoutCounter *= 60;

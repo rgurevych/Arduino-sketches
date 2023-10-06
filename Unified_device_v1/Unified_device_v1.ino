@@ -30,8 +30,8 @@ Mode description:
 #define MAX_ACCELERATION 16                    //Maximum acceleration limit
 #define DEFAULT_ACCELERATION 6                 //Default acceleration limit value
 #define BUTTON_TIMEOUT 20000                   //Timeout after which device will return to idle mode from settings (without saving)
-#define DEMO_MODE 1                            //Demo mode enabled (all times are reduced to seconds)
-#define DEBUG_MODE 1                           //Debug mode enabled (Serial is activated and used for debugging)
+#define DEMO_MODE 1                            //Initially Demo mode enabled (all times are reduced to seconds)
+#define DEBUG_MODE 1                           //Initially Debug mode enabled (Serial is activated and used for debugging)
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
@@ -65,8 +65,8 @@ TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
 //---------- Variables
 bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFlag = false;
 bool blinkFlag = true, ledFlag = true;
-bool demoMode;
-uint8_t max_acc, accelerationLimit;
+bool demoMode, debugMode;
+uint8_t max_acc, accelerationLimit, debugMaxAccel = 0;
 int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
 uint8_t mode = 1, oldMode = 0;
 uint8_t pointer = 2;
@@ -75,7 +75,6 @@ int16_t ax, ay, az;
 long offsets[6] = {0,0,0,0,0,0};
 
 void setup() {
-  if(DEBUG_MODE) Serial.begin(9600);
   Wire.begin();
 
   //Pin modes
@@ -101,22 +100,26 @@ void setup() {
     EEPROM.put(20, DEFAULT_SELF_DESTRUCT_TIMER_VALUE);
     EEPROM.put(30, DEFAULT_ACCELERATION);
     EEPROM.put(40, DEMO_MODE);
+    EEPROM.put(50, DEBUG_MODE);
     EEPROM.put(ACCEL_OFFSETS_BYTE, offsets);
   }
   EEPROM.get(10, safetyGuardTimeout);
   EEPROM.get(20, selfDestructTimeout);
   EEPROM.get(30, accelerationLimit);
   EEPROM.get(40, demoMode);
+  EEPROM.get(50, debugMode);
   EEPROM.get(ACCEL_OFFSETS_BYTE, offsets);
+
+  if(debugMode) Serial.begin(9600);
 
   //Accelerometer
   mpu.initialize();
   if(mpu.testConnection()){
-    if(DEBUG_MODE) Serial.println(F("MPU6050 check - SUCCESS"));
+    if(debugMode) Serial.println(F("MPU6050 check - SUCCESS"));
     drawIntroScreen();
   }
   else{
-    if(DEBUG_MODE) Serial.println(F("MPU6050 check - FAILED"));
+    if(debugMode) Serial.println(F("MPU6050 check - FAILED"));
     drawErrorIntroScreen();
     while(1) {delay(1000);}
   }
@@ -170,6 +173,10 @@ void buttonTick(){
     }
 
     if(rightBtn.hasClicks(5)){
+      changeDebugMode();
+    }
+    
+    if(rightBtn.hasClicks(10)){
       calibrateAccel();
     }
 
@@ -267,7 +274,7 @@ void exitMenu(){
 void operationTick(){
   if(accelCheckFlag){
     if(max_acc >= accelerationLimit){
-      if(DEBUG_MODE){
+      if(debugMode){
         Serial.print(F("Acceleration limit ")); Serial.print(accelerationLimit);
         Serial.print(F(" is reached, current acc = ")); Serial.print(max_acc);
         Serial.println(F(", detonating!!!"));
@@ -278,11 +285,15 @@ void operationTick(){
       selfDestructActiveFlag = false;
       bothBtn.setHoldTimeout(2000);
     }
+
+    if(debugMode){
+      if(max_acc > debugMaxAccel) debugMaxAccel = max_acc;
+    }
   }
   
   if(safetyGuardActiveFlag){
     if(safetyGuardTimeoutCounter == 0){
-      if(DEBUG_MODE) Serial.println(F("Deactivating Safety guard, device armed"));
+      if(debugMode) Serial.println(F("Deactivating Safety guard, device armed"));
       safetyGuardDisable();
       safetyGuardActiveFlag = false;
       accelCheckFlag = true;
@@ -293,12 +304,12 @@ void operationTick(){
 
   if(selfDestructActiveFlag){
     if(selfDestructTimeoutCounter == 0){
-      if(DEBUG_MODE) Serial.print(F("Self-destruct timeout is reached! "));
+      if(debugMode) Serial.print(F("Self-destruct timeout is reached! "));
       if(safetyGuardActiveFlag){
-        if(DEBUG_MODE) Serial.println(F("Safety guard is still on, detonation blocked!"));
+        if(debugMode) Serial.println(F("Safety guard is still on, detonation blocked!"));
       }
       else{
-        if(DEBUG_MODE) Serial.println(F("Detonating!!!"));
+        if(debugMode) Serial.println(F("Detonating!!!"));
         detonateEnable();
         mode = 6;
         selfDestructActiveFlag = false;
@@ -314,7 +325,7 @@ void safetyGuardCountdownStart(){
   if(!safetyGuardActiveFlag){
     safetyGuardTimeoutCounter = safetyGuardTimeout;
     if(!demoMode) safetyGuardTimeoutCounter *= 60;
-    if(DEBUG_MODE){
+    if(debugMode){
       Serial.print(F("Activating Safety guard, timeout: "));
       Serial.print(safetyGuardTimeoutCounter);
       Serial.println(F(" s"));
@@ -327,7 +338,7 @@ void safetyGuardCountdownStart(){
 
 void selfDestructCountdownStart(){
   if(selfDestructTimeout == 0){
-    if(DEBUG_MODE){
+    if(debugMode){
       Serial.println(F("Self-destruct timer is turned off and not activated"));
       return;
     }
@@ -336,7 +347,7 @@ void selfDestructCountdownStart(){
   if(!selfDestructActiveFlag){
     selfDestructTimeoutCounter = selfDestructTimeout;
     if(!demoMode) selfDestructTimeoutCounter *= 60;
-    if(DEBUG_MODE){
+    if(debugMode){
       Serial.print(F("Activating Self-destruct timer with timeout: "));
       Serial.print(selfDestructTimeoutCounter);
       Serial.println(F(" s"));
@@ -357,6 +368,8 @@ void timersCountdown(){
     if(selfDestructActiveFlag){
       if(selfDestructTimeoutCounter > 0) selfDestructTimeoutCounter --;
     }
+
+    if(debugMode) debugMaxAccel = 0; 
   }
 }
 
@@ -372,7 +385,7 @@ void checkAccel(){
   
       max_acc = defineMaxAccel(acc_x, acc_y, acc_z);
   
-      if(DEBUG_MODE){
+      if(debugMode){
         Serial.print(acc_x); Serial.print(F("  "));
         Serial.print(acc_y); Serial.print(F("  "));
         Serial.print(acc_z); Serial.print(F("  Max is: "));

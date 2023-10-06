@@ -112,7 +112,8 @@ void changeMode(){
       oled.print(F("Off   "));
 
       oled.setCursor(0, 6);
-      oled.println(F("                     "));
+      if(debugMode) oled.println(F(" Debug max accel: "));
+      else oled.println(F("                     "));
       oled.println(F("Hold L+R 4s to stop  "));
     }
     return;
@@ -253,6 +254,12 @@ void updateScreen(){
         if(selfDestructTimeoutCounter % 60 < 10) oled.print(F("0"));
         oled.print(selfDestructTimeoutCounter % 60);
         oled.print(F("   "));
+      }
+
+      if(debugMode){
+        oled.setCursor(108, 6);
+        oled.print(debugMaxAccel);
+        oled.print(F("  "));
       }
       return;
     }

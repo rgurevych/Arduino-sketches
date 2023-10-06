@@ -299,3 +299,36 @@ void changeDemoMode(){
     }
   }
 }
+
+
+void changeDebugMode(){
+  oled.clear();
+  oled.home();
+  oled.setScale(1);
+  oled.print(F("Debug mode: "));
+  oled.println(debugMode);
+  oled.print(F("Switch it?"));
+  oled.setCursor(0, 3);
+  oled.println(F("L-Yes, R-Cancel"));
+
+  while (true) {
+    rightBtn.tick();
+    leftBtn.tick();
+    if(rightBtn.click()){
+      resetFunc();
+    }
+    if(leftBtn.click()){
+      oled.clear();
+      oled.home();
+      debugMode = !debugMode;
+      EEPROM.put(50, debugMode);
+      oled.println(F("Debug mode changed"));
+      oled.print(F("New mode: "));
+      oled.println(debugMode);
+      oled.setCursor(0, 3);
+      oled.println(F("Restarting device.."));
+      delay(1000);
+      resetFunc();
+    }
+  }
+}

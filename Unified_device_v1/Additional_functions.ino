@@ -184,8 +184,6 @@ void confirmSelfTest(){
 
 
 void runSelfTest(){
-  digitalWrite(RELAY_1_TEST_PIN, LOW);
-  pinMode(RELAY_1_TEST_PIN, INPUT_PULLUP);
   boolean selfTestSuccessFlag = true;
 
   oled.clear();
@@ -194,7 +192,7 @@ void runSelfTest(){
   oled.setCursor(0, 2);
   oled.print(F("Safety guard relay:"));
 
-  if(digitalRead(RELAY_1_TEST_PIN)) oled.print(F("+"));
+  if(!digitalRead(RELAY_TEST_PIN)) oled.print(F("+"));
   else{
     oled.print(F("-"));
     selfTestSuccessFlag = false;
@@ -203,7 +201,7 @@ void runSelfTest(){
   safetyGuardEnable();
   delay(200);
 
-  if(!digitalRead(RELAY_1_TEST_PIN)){
+  if(digitalRead(RELAY_TEST_PIN)){
     oled.print(F("+"));
   }
   else{
@@ -217,7 +215,7 @@ void runSelfTest(){
   oled.setCursor(0, 3);
   oled.print(F("Detonation relay: "));
 
-  if(!digitalRead(RELAY_2_TEST_PIN)){
+  if(!digitalRead(RELAY_TEST_PIN)){
     oled.print(F("+"));
   }
   else{
@@ -228,7 +226,7 @@ void runSelfTest(){
   detonateEnable();
   delay(200);
 
-  if(digitalRead(RELAY_2_TEST_PIN)){
+  if(digitalRead(RELAY_TEST_PIN)){
     oled.print(F("+"));
   }
   else{

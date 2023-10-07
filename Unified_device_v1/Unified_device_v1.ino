@@ -18,8 +18,8 @@ Mode description:
 #define BUTTON_2_PIN 16                        //Button 2 pin
 #define RELAY_1_PIN 6                          //Safety guard relay pin (relay 1)
 #define RELAY_2_PIN 7                          //Detonation relay pin (relay 2)
-#define RELAY_1_TEST_PIN 8                     //Safety guard relay test pin (relay 1)
-#define RELAY_2_TEST_PIN 9                     //Detonation relay test pin (relay 2)
+#define SAFETY_LED_PIN 8                       //Safety guard LED pin
+#define RELAY_TEST_PIN 9                       //Relay test pin (for self-test)
 #define MIN_GUARD_TIMER_VALUE 10               //Minimum safety guard timer value (in minutes)
 #define MAX_GUARD_TIMER_VALUE 60               //Maximum safety guard timer value (in minutes)
 #define DEFAULT_GUARD_TIMER_VALUE 40           //Default safety guard timer value on startup (in minutes)
@@ -35,7 +35,7 @@ Mode description:
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
-#define ACCEL_REQUEST_TIMEOUT 50               //Delay between accelerometer request
+#define ACCEL_REQUEST_TIMEOUT 25               //Delay between accelerometer request
 
 
 //---------- Include libraries
@@ -84,8 +84,8 @@ void setup() {
   pinMode(RELAY_1_PIN, OUTPUT);
   pinMode(RELAY_2_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(RELAY_1_TEST_PIN, INPUT_PULLUP);
-  pinMode(RELAY_2_TEST_PIN, INPUT_PULLUP);
+  pinMode(SAFETY_LED_PIN, OUTPUT);
+  pinMode(RELAY_TEST_PIN, INPUT_PULLUP);
   bothBtn.setHoldTimeout(2000);
 
   //OLED
@@ -168,7 +168,6 @@ void buttonTick(){
     if(bothBtn.hold()){
       safetyGuardCountdownStart();
       selfDestructCountdownStart();
-      pinMode(RELAY_1_TEST_PIN, OUTPUT);
       mode = 4;
     }
 

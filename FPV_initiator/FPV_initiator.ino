@@ -4,7 +4,7 @@
 #define VERSION 0.9                            //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
-#define DEBUG_MODE 1                           //Enable debug mode
+#define DEBUG_MODE 0                           //Enable debug mode
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
 #define BUTTON_PIN 3                           //Button pin
 #define DETONATION_PIN 5                       //MOSFET pin
@@ -12,20 +12,20 @@
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
-#define ACCEL_REQUEST_TIMEOUT 25               //Delay between accelerometer request
-#define IDLE_LED_SERIES_INTERVAL 2500          //Delay between LED blinks in Idle mode
-#define IDLE_LED_BLINK_INTERVAL 500            //Duration of LED blink in Idle mode
-#define DISARMED_LED_SERIES_INTERVAL 500       //Delay between LED blinks in Disarmed mode
-#define DISARMED_LED_BLINK_INTERVAL 500        //Duration of LED blink in Disarmed mode
-#define SAFETY_LED_SERIES_INTERVAL 200         //Delay between LED blinks in Safety mode
-#define SAFETY_LED_BLINK_INTERVAL 200          //Duration of LED blink in Safety mode
-#define ARMED_LED_SERIES_INTERVAL 100          //Delay between LED blinks in Armed mode
-#define ARMED_LED_BLINK_INTERVAL 100           //Duration of LED blink in Armed mode
+#define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
+#define IDLE_LED_SERIES_INTERVAL 2750          //Delay between LED blinks in Idle mode
+#define IDLE_LED_BLINK_INTERVAL 250            //Duration of LED blink in Idle mode
+#define DISARMED_LED_SERIES_INTERVAL 750       //Delay between LED blinks in Disarmed mode
+#define DISARMED_LED_BLINK_INTERVAL 250        //Duration of LED blink in Disarmed mode
+#define SAFETY_LED_SERIES_INTERVAL 350         //Delay between LED blinks in Safety mode
+#define SAFETY_LED_BLINK_INTERVAL 150          //Duration of LED blink in Safety mode
+#define ARMED_LED_SERIES_INTERVAL 50           //Delay between LED blinks in Armed mode
+#define ARMED_LED_BLINK_INTERVAL 50            //Duration of LED blink in Armed mode
 #define MODE_CHANGE_INDICATION 1000            //How long the LED will be on when mode is changed
 
-#define SAFETY_TIMEOUT 90                      //Safety timeout in seconds
+#define SAFETY_TIMEOUT 60                      //Safety timeout in seconds
 #define SELF_DESTROY_TIMEOUT 13                //Self-destroy timeout in minutes
-#define ACCELERATION_LIMIT 5                   //Acceleration limit to detonate
+#define ACCELERATION_LIMIT 6                  //Acceleration limit to detonate
 
 //---------- Include libraries
 #include <MPU6050.h>
@@ -280,7 +280,9 @@ int8_t defineMaxAccel(int16_t acc_x, int16_t acc_y, int16_t acc_z){
 
 
 void detonateEnable(){
-  digitalWrite(DETONATION_PIN, HIGH);
+  if(digitalRead(SAFETY_PIN)){
+    digitalWrite(DETONATION_PIN, HIGH);
+  }
 }
 
 

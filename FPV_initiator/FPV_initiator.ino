@@ -6,9 +6,10 @@
 #define INIT_KEY 10                            //First launch key
 #define DEBUG_MODE 0                           //Enable debug mode
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
-#define BUTTON_PIN 3                           //Button pin
-#define DETONATION_PIN 5                       //MOSFET pin
-#define SAFETY_PIN 7                           //Safety switch pin
+#define BUTTON_PIN 16                          //Button pin
+#define DETONATION_PIN 17                      //MOSFET pin
+#define SAFETY_PIN 15                          //Safety switch pin
+#define LED_PIN 14                             //External LED pin
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
@@ -60,7 +61,7 @@ void setup() {
   Serial.begin(9600);
   detonateDisable();
   pinMode(DETONATION_PIN, OUTPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
   pinMode(SAFETY_PIN, INPUT_PULLUP);
 
   // EEPROM
@@ -327,5 +328,5 @@ void ledTick(){
 
 
 void ledSwitch() {
-  digitalWrite(LED_BUILTIN, ledFlag);
+  digitalWrite(LED_PIN, ledFlag);
 }

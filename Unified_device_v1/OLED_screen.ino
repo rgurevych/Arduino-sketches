@@ -294,9 +294,9 @@ void drawDefaultScreen(){
 void drawIntroScreen(){
   oled.clear();
   oled.setScale(1);
-  oled.setCursor(102, 0);
+  oled.setCursor(96, 0);
   oled.print(F("v"));
-  oled.print(VERSION, 1);
+  oled.print(VERSION, 2);
 
   oled.setCursor(42, 1);
   oled.println(F("MAY THE"));

@@ -10,7 +10,7 @@ Mode description:
 */
 
 //---------- Define pins and settings
-#define VERSION 0.9                            //Firmware version
+#define VERSION 0.91                            //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
@@ -35,7 +35,8 @@ Mode description:
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
-#define ACCEL_REQUEST_TIMEOUT 25               //Delay between accelerometer request
+#define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
+#define RELEASE_AFTER_DETONATION 5000          //Timeout after which the detonation relay is released (after detonation)
 
 
 //---------- Include libraries
@@ -60,6 +61,7 @@ TimerMs updateScreenTimer(500, 1);
 TimerMs oneSecondTimer(1000, 1);
 TimerMs menuExitTimer(BUTTON_TIMEOUT, 0, 1);
 TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
+TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
 
 
 //---------- Variables
@@ -134,7 +136,7 @@ void setup() {
   //Startup preparation and check
   safetyGuardDisable();
   detonateDisable();
-  delay(1000);
+  delay(1500);
 
   //Draw default screen after setup
   drawDefaultScreen();
@@ -283,6 +285,7 @@ void operationTick(){
       accelCheckFlag = false;
       selfDestructActiveFlag = false;
       bothBtn.setHoldTimeout(2000);
+      releaseDetonationTimer.start();
     }
 
     if(debugMode){
@@ -314,8 +317,13 @@ void operationTick(){
         selfDestructActiveFlag = false;
         accelCheckFlag = false;
         bothBtn.setHoldTimeout(2000);
+        releaseDetonationTimer.start();
       }
     }
+  }
+
+  if(mode >= 6 && mode <= 7){
+    if(releaseDetonationTimer.tick()) detonateDisable();
   }
 }
 

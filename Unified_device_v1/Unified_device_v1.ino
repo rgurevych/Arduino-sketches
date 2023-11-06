@@ -10,7 +10,7 @@ Mode description:
 */
 
 //---------- Define pins and settings
-#define VERSION 0.91                            //Firmware version
+#define VERSION 0.92                            //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
@@ -37,6 +37,8 @@ Mode description:
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
 #define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
 #define RELEASE_AFTER_DETONATION 5000          //Timeout after which the detonation relay is released (after detonation)
+#define LED_BLINK_DURATION 100                 //Duration of LED blinks
+#define LED_BLINK_INTERVAL 1400                //Interval between LED blinks
 
 
 //---------- Include libraries
@@ -59,6 +61,8 @@ MPU6050 mpu;
 //---------- Timers
 TimerMs updateScreenTimer(500, 1);
 TimerMs oneSecondTimer(1000, 1);
+TimerMs blinkTimer(LED_BLINK_DURATION, 1, 1);
+TimerMs blinkIntervalTimer(LED_BLINK_INTERVAL, 1, 1);
 TimerMs menuExitTimer(BUTTON_TIMEOUT, 0, 1);
 TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
 TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
@@ -66,7 +70,7 @@ TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
 
 //---------- Variables
 bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFlag = false;
-bool blinkFlag = true, ledFlag = true;
+bool blinkFlag = true, ledFlag = true, ledBlinkFlag = true;
 bool demoMode, debugMode;
 uint8_t max_acc, accelerationLimit, debugMaxAccel = 0;
 int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
@@ -150,7 +154,7 @@ void loop() {
   updateScreen();
   checkAccel();
   operationTick();
-  ledCheck();
+  ledTick();
 }
 
 
@@ -366,8 +370,6 @@ void selfDestructCountdownStart(){
 
 void timersCountdown(){
   if(oneSecondTimer.tick()){
-    ledFlag = !ledFlag;
-    
     if(safetyGuardActiveFlag){
       if(safetyGuardTimeoutCounter > 0) safetyGuardTimeoutCounter --;
     }

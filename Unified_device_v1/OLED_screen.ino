@@ -6,6 +6,7 @@ void changeMode(){
   oldMode = mode;
   
   if(mode == 1){
+    oled.setContrast(200);
     oled.setCursor(48, 0);
     oled.print(F("IDLE         "));
 
@@ -89,6 +90,7 @@ void changeMode(){
   }
 
   if(mode == 4){
+    oled.setContrast(100);
     updateScreenTimer.start();
     
     oled.setCursor(48, 0);
@@ -102,7 +104,7 @@ void changeMode(){
 
   if(mode == 5){
     if(!demoMode){
-      drawIntroScreen();
+      oled.clear();
     }
     else{
       oled.setCursor(48, 0);

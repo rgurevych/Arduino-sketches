@@ -1,3 +1,21 @@
+void ledTick(){
+  if(blinkIntervalTimer.tick()){
+    ledBlinkFlag = true;
+    ledFlag = true;
+    blinkTimer.start();
+  }
+
+  if(ledBlinkFlag){
+    if(blinkTimer.tick()){
+      ledFlag = false;
+      blinkIntervalTimer.start();
+      ledBlinkFlag = false;
+    }
+  }
+
+  ledCheck();
+}
+
 void ledCheck(){
   digitalWrite(LED_BUILTIN, ledFlag);
   if(mode == 4) digitalWrite(SAFETY_LED_PIN, ledFlag);

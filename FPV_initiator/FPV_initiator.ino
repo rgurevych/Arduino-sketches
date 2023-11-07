@@ -1,7 +1,7 @@
 //Initiator by R. Gurevych
 
 //---------- Define pins and settings
-#define VERSION 0.9                            //Firmware version
+#define VERSION 0.95                            //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define DEBUG_MODE 0                           //Enable debug mode
@@ -26,7 +26,7 @@
 #define RELEASE_AFTER_DETONATION 5000          //Timeout after which the detonation relay is released (after detonation)
 
 #define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
-#define SELF_DESTROY_TIMEOUT 1                //Self-destroy timeout in minutes
+#define SELF_DESTROY_TIMEOUT 15                //Self-destroy timeout in minutes
 #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
 
 //---------- Include libraries
@@ -47,7 +47,7 @@ int32_t acc_x, acc_y, acc_z;
 int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
 long offsets[6] = {0,0,0,0,0,0};
 bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFlag = false;
-bool ledFlag = false, ledBlinkFlag = false, modeChangeFlag = false;
+bool ledFlag = true, ledBlinkFlag = true, modeChangeFlag = false;
 
 //---------- Declare timers
 TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
@@ -65,6 +65,9 @@ void setup() {
   pinMode(DETONATION_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
   pinMode(SAFETY_PIN, INPUT_PULLUP);
+
+  Serial.print(F("Firmware version: "));
+  Serial.println(VERSION, 2);
 
   // EEPROM
   if (EEPROM.read(INIT_ADDR) != INIT_KEY){
@@ -108,7 +111,7 @@ void setup() {
     mpu.setYGyroOffset(offsets[4]);
     mpu.setZGyroOffset(offsets[5]);
   }
-  blinkSeriesTimer.start();
+  blinkTimer.start();
 }
 
 

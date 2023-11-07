@@ -24,9 +24,9 @@
 #define ARMED_LED_BLINK_INTERVAL 50            //Duration of LED blink in Armed mode
 #define MODE_CHANGE_INDICATION 1000            //How long the LED will be on when mode is changed
 
-#define SAFETY_TIMEOUT 60                      //Safety timeout in seconds
-#define SELF_DESTROY_TIMEOUT 13                //Self-destroy timeout in minutes
-#define ACCELERATION_LIMIT 6                  //Acceleration limit to detonate
+#define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
+#define SELF_DESTROY_TIMEOUT 1                //Self-destroy timeout in minutes
+#define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
 
 //---------- Include libraries
 #include <MPU6050.h>

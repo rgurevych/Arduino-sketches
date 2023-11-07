@@ -23,6 +23,7 @@
 #define ARMED_LED_SERIES_INTERVAL 50           //Delay between LED blinks in Armed mode
 #define ARMED_LED_BLINK_INTERVAL 50            //Duration of LED blink in Armed mode
 #define MODE_CHANGE_INDICATION 1000            //How long the LED will be on when mode is changed
+#define RELEASE_AFTER_DETONATION 5000          //Timeout after which the detonation relay is released (after detonation)
 
 #define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
 #define SELF_DESTROY_TIMEOUT 1                //Self-destroy timeout in minutes
@@ -54,6 +55,7 @@ TimerMs oneSecondTimer(1000, 1);
 TimerMs blinkTimer(IDLE_LED_BLINK_INTERVAL, 1, 1);
 TimerMs blinkSeriesTimer(IDLE_LED_SERIES_INTERVAL, 1, 1);
 TimerMs modeChangeTimer(MODE_CHANGE_INDICATION, 1);
+TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
 
 
 void setup() {
@@ -225,6 +227,7 @@ void operationTick(){
       accelCheckFlag = false;
       blinkTimer.setTime(IDLE_LED_BLINK_INTERVAL);
       blinkSeriesTimer.setTime(IDLE_LED_SERIES_INTERVAL);
+      releaseDetonationTimer.start();
     }
   }
   
@@ -248,7 +251,12 @@ void operationTick(){
       accelCheckFlag = false;
       blinkTimer.setTime(IDLE_LED_BLINK_INTERVAL);
       blinkSeriesTimer.setTime(IDLE_LED_SERIES_INTERVAL);
+      releaseDetonationTimer.start();
     }
+  }
+
+  if(mode == 5){
+    if(releaseDetonationTimer.tick()) detonateDisable();
   }
 }
 

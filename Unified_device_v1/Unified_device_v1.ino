@@ -73,7 +73,7 @@ bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFl
 bool blinkFlag = true, ledFlag = true, ledBlinkFlag = true;
 bool demoMode, debugMode;
 uint8_t max_acc, accelerationLimit, debugMaxAccel = 0;
-int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
+uint16_t safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
 uint8_t mode = 1, oldMode = 0;
 uint8_t pointer = 2;
 int32_t acc_x, acc_y, acc_z;

@@ -10,7 +10,7 @@ Mode description:
 */
 
 //---------- Define pins and settings
-#define VERSION 0.92                            //Firmware version
+#define VERSION 0.95                            //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
@@ -22,7 +22,7 @@ Mode description:
 #define RELAY_TEST_PIN 9                       //Relay test pin (for self-test)
 #define MIN_GUARD_TIMER_VALUE 10               //Minimum safety guard timer value (in minutes)
 #define MAX_GUARD_TIMER_VALUE 60               //Maximum safety guard timer value (in minutes)
-#define DEFAULT_GUARD_TIMER_VALUE 40           //Default safety guard timer value on startup (in minutes)
+#define DEFAULT_GUARD_TIMER_VALUE 20           //Default safety guard timer value on startup (in minutes)
 #define MIN_SELF_DESTRUCT_TIMER_VALUE 60       //Minimum self-destruction timer value (in minutes)
 #define MAX_SELF_DESTRUCT_TIMER_VALUE 600      //Maximum self-destruction timer value (in minutes)
 #define DEFAULT_SELF_DESTRUCT_TIMER_VALUE 90   //Default self-destruction timer value on startup (in minutes)
@@ -36,7 +36,7 @@ Mode description:
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
 #define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
-#define RELEASE_AFTER_DETONATION 5000          //Timeout after which the detonation relay is released (after detonation)
+#define RELEASE_AFTER_DETONATION 1000          //Timeout after which the detonation relay is released (after detonation)
 #define LED_BLINK_DURATION 100                 //Duration of LED blinks
 #define LED_BLINK_INTERVAL 1400                //Interval between LED blinks
 

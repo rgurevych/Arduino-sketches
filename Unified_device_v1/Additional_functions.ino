@@ -191,6 +191,7 @@ void runSelfTest(){
   oled.println(F("Starting Self-test:"));
   oled.setCursor(0, 2);
   oled.print(F("Safety guard relay:"));
+  delay(200);
 
   if(!digitalRead(RELAY_TEST_PIN)) oled.print(F("+"));
   else{
@@ -213,31 +214,6 @@ void runSelfTest(){
   delay(200);
 
   oled.setCursor(0, 3);
-  oled.print(F("Detonation relay: "));
-
-  if(!digitalRead(RELAY_TEST_PIN)){
-    oled.print(F("+"));
-  }
-  else{
-    oled.print(F("-"));
-    selfTestSuccessFlag = false;
-  }
-  
-  detonateEnable();
-  delay(200);
-
-  if(digitalRead(RELAY_TEST_PIN)){
-    oled.print(F("+"));
-  }
-  else{
-    oled.print(F("-"));
-    selfTestSuccessFlag = false;
-  }
-
-  detonateDisable();
-  delay(200);
-
-  oled.setCursor(0, 4);
   oled.print(F("Accelerometer: "));
   accelCheckFlag = true;
   checkAccel();

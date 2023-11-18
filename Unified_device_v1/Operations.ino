@@ -32,10 +32,10 @@ void safetyGuardDisable(){
 
 
 void detonateEnable(){
-  digitalWrite(RELAY_2_PIN, LOW);
+  digitalWrite(RELAY_2_PIN, HIGH);
 }
 
 
 void detonateDisable(){
-  digitalWrite(RELAY_2_PIN, HIGH);
+  digitalWrite(RELAY_2_PIN, LOW);
 }

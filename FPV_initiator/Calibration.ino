@@ -91,7 +91,7 @@ void doAccelCalibration() {
   else Serial.print(F("FAIL! Reset and retry"));
     
   Serial.println();
-  Serial.print(F("Click device button to reset"));
+  Serial.println(F("Click device button to reset"));
   while (true) {
     btn.tick();
     if(btn.click()) resetFunc();

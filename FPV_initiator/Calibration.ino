@@ -80,7 +80,8 @@ void doAccelCalibration() {
   
   Serial.println();
   if(calibrationSuccessFlag){
-    Serial.print(F("SUCCESS!"));
+    Serial.println(F("SUCCESS!"));
+    Serial.println(F("Calibrated offsets will be saved"));
     for (byte i = 0; i < 6; i++) {
       if (i < 3) offsets[i] /= 8;
       else offsets[i] /= 4;
@@ -88,12 +89,11 @@ void doAccelCalibration() {
     EEPROM.put(ACCEL_OFFSETS_BYTE, offsets);
     EEPROM.put(50, 0);
   }
-  else Serial.print(F("FAIL! Reset and retry"));
-    
-  Serial.println();
-  Serial.println(F("Click device button to reset"));
-  while (true) {
-    btn.tick();
-    if(btn.click()) resetFunc();
-  } 
+  else {
+    Serial.println(F("FAILED!"));
+    Serial.println(F("Calibration data not saved"));
+  }
+  delay(1000);
+  Serial.println(F("Restarting device..."));
+  resetFunc();
 }

@@ -33,7 +33,7 @@ Modes description:
 #define MODE_CHANGE_INDICATION 100             //How long the LED will be on when mode is changed
 #define RELEASE_AFTER_DETONATION 3000          //Timeout after which the detonation relay is released (after detonation)
 
-#define WORK_MODE 1                            //Define the work mode for the device. 0 - FPV, 1 - Bomber
+#define WORK_MODE 0                            //Define the work mode for the device. 0 - FPV, 1 - Bomber
 
 #if WORK_MODE == 0
 #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
@@ -87,6 +87,8 @@ void setup() {
 
   Serial.print(F("Firmware version: "));
   Serial.println(VERSION, 2);
+  Serial.print(F("Work mode: "));
+  if(WORK_MODE == 0) Serial.println(F("FPV")); else Serial.println(F("Bomber"));
 
   // EEPROM
   if (EEPROM.read(INIT_ADDR) != INIT_KEY){

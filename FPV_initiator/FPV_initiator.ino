@@ -24,7 +24,7 @@ Modes description:
 #define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
 #define IDLE_LED_SERIES_INTERVAL 2750          //Delay between LED blinks in Idle mode
 #define IDLE_LED_BLINK_INTERVAL 250            //Duration of LED blink in Idle mode
-#define DISARMED_LED_SERIES_INTERVAL 1250      //Delay between LED blinks in Disarmed mode
+#define DISARMED_LED_SERIES_INTERVAL 1750      //Delay between LED blinks in Disarmed mode
 #define DISARMED_LED_BLINK_INTERVAL 250        //Duration of LED blink in Disarmed mode
 #define SAFETY_LED_SERIES_INTERVAL 350         //Delay between LED blinks in Safety mode
 #define SAFETY_LED_BLINK_INTERVAL 150          //Duration of LED blink in Safety mode
@@ -38,7 +38,7 @@ Modes description:
 #if WORK_MODE == 0
 #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
 #define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
-#define SELF_DESTROY_TIMEOUT 15                //Self-destroy timeout in minutes
+#define SELF_DESTROY_TIMEOUT 18                //Self-destroy timeout in minutes
 #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
 #else
 #define INITIAL_START_TIMEOUT 10               //Initial start timeout before switching to Disarmed mode in minutes

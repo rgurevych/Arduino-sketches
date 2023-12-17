@@ -10,7 +10,7 @@ Mode description:
 */
 
 //---------- Define pins and settings
-#define VERSION 0.95                            //Firmware version
+#define VERSION 0.98                           //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored

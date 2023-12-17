@@ -22,12 +22,12 @@ void ledCheck(){
 }
 
 void safetyGuardEnable(){
-  digitalWrite(RELAY_1_PIN, LOW);
+  digitalWrite(RELAY_1_PIN, HIGH);
 }
 
 
 void safetyGuardDisable(){
-  digitalWrite(RELAY_1_PIN, HIGH);
+  digitalWrite(RELAY_1_PIN, LOW);
 }
 
 

@@ -104,6 +104,8 @@ void setup() {
     }
   else{
     Serial.println(F("MPU6050 accel check - FAILED"));
+    Serial.println(F("Fix this before proceeding"));
+    while (1) {}
     }
 
   //Initial accelerometer calibration

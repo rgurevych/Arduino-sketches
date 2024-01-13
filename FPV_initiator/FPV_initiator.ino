@@ -42,7 +42,7 @@ Modes description:
 #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
 #else
 #define INITIAL_START_TIMEOUT 10               //Initial start timeout before switching to Disarmed mode in minutes
-#define SAFETY_TIMEOUT 1                       //Safety timeout in seconds
+#define SAFETY_TIMEOUT 2                       //Safety timeout in seconds
 #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
 #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
 #endif

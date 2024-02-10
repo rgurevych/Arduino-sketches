@@ -9,16 +9,16 @@ Modes description:
 5 - Detonate mode: triggered by accelerometer or by self-destroy timer (for FPV mode)
 */
 
-//---------- Presets
+//---------- Select preset
 /*
 Presets description:
 10 - FPV mode with safety pin and accelerometer
 11 - FPV mode with PWM remote and accelerometer
 20 - Bomber mode with safety pin and accelerometer
 */
-#define PRESET 10                              //Selected preset
+#define PRESET 11                              //Selected preset
 
-
+//---------- Presets and dependencies
 #if PRESET == 10                               //Standard FPV mode with safety pin and accelerometer
 #define WORK_MODE 0                            //FPV
 #define REMOTE_CONTROL 0                       //Arming is done via Safety pin
@@ -30,8 +30,8 @@ Presets description:
 #define WORK_MODE 0                            //FPV
 #define REMOTE_CONTROL 1                       //Arming is done via Remote control
 #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
-#define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
-#define SELF_DESTROY_TIMEOUT 18                //Self-destroy timeout in minutes
+#define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
+#define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
 
 #elif PRESET == 20                             //Standard Bomber mode with safety pin and accelerometer
 #define WORK_MODE 1                            //Bomber
@@ -41,8 +41,17 @@ Presets description:
 #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
 #endif
 
+#if REMOTE_CONTROL
+#define PWM_REQUEST_TIMEOUT 100                //Delay between PWM checks
+#define PWM_PIN 15                             //PWM remote pin
+#define DISARMED_PWM 1000                      //PWM value which enables disarmed mode
+#define SAFETY_PWM 1500                        //PWM value which enables safety mode
+#define DETONATE_PWM 2000                      //PWM value which enables detonation mode
+#else
+#define SAFETY_PIN 15                          //Safety pin
+#endif
 
-//---------- Define pins and settings
+//---------- Define constant pins and settings
 #define VERSION 3.0                            //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
@@ -54,8 +63,8 @@ Presets description:
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
 #define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
-#define STARTUP_LED_SERIES_INTERVAL 4500          //Delay between LED blinks in Idle mode
-#define STARTUP_LED_BLINK_INTERVAL 500            //Duration of LED blink in Idle mode
+#define STARTUP_LED_SERIES_INTERVAL 4500       //Delay between LED blinks in Idle mode
+#define STARTUP_LED_BLINK_INTERVAL 500         //Duration of LED blink in Idle mode
 #define IDLE_LED_SERIES_INTERVAL 2750          //Delay between LED blinks in Idle mode
 #define IDLE_LED_BLINK_INTERVAL 250            //Duration of LED blink in Idle mode
 #define DISARMED_LED_SERIES_INTERVAL 1250      //Delay between LED blinks in Disarmed mode
@@ -68,11 +77,6 @@ Presets description:
 #define RELEASE_AFTER_DETONATION 3000          //Timeout after which the detonation relay is released (after detonation)
 #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
 
-#if REMOTE_CONTROL == 0
-#define SAFETY_PIN 15                          //Safety pin
-#else
-#define PWM_PIN 15                             //PWM remote pin
-#endif
 
 //---------- Include libraries
 #include <MPU6050.h>
@@ -89,6 +93,7 @@ uint8_t max_acc, mode = 0;
 int16_t ax, ay, az;
 int32_t acc_x, acc_y, acc_z;
 int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
+int PWMvalue;
 long offsets[6] = {0,0,0,0,0,0};
 bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFlag = false;
 bool ledFlag = true, ledBlinkFlag = true, modeChangeFlag = false;
@@ -101,6 +106,9 @@ TimerMs blinkSeriesTimer(STARTUP_LED_SERIES_INTERVAL, 1, 1);
 TimerMs modeChangeTimer(MODE_CHANGE_INDICATION, 1);
 TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
 TimerMs initialStartTimer(INITIAL_START_TIMEOUT*60000L, 0, 1);
+#if REMOTE_CONTROL
+TimerMs PWMCheckTimer(PWM_REQUEST_TIMEOUT, 1);
+#endif
 
 
 void setup() {
@@ -111,11 +119,12 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   
   #if REMOTE_CONTROL
-  pinMode(PWM_PIN, INPUT);
+  pinMode(PWM_PIN, INPUT_PULLUP);
   #else
   pinMode(SAFETY_PIN, INPUT_PULLUP);
   #endif
 
+  Serial.println();
   Serial.print(F("Firmware version: ")); Serial.println(VERSION, 2);
   Serial.print(F("Configured preset: ")); Serial.println(PRESET);
   Serial.print(F("Work mode: ")); if(WORK_MODE == 0) Serial.println(F("FPV")); else Serial.println(F("Bomber"));
@@ -179,11 +188,19 @@ void setup() {
 
 
 void loop() {
-  checkAccel();
+  checkSensors();
   timersCountdown();
   operationTick();
   ledTick();
   ledSwitch();
+}
+
+
+void checkSensors() {
+  #if REMOTE_CONTROL
+  getPWM();
+  #endif
+  checkAccel();
 }
 
 
@@ -248,20 +265,48 @@ void operationTick(){
   }
   
   if(mode == 1){
+    #if !REMOTE_CONTROL
     if(digitalRead(SAFETY_PIN)){
       if(DEBUG_MODE) Serial.println(F("Safety pin missing, switch to disarmed mode not possible"));
       return;
     }
+    #else
+    if(abs(PWMvalue - DISARMED_PWM) > 100) {
+      if(DEBUG_MODE) Serial.println(F("Initial PWM value is not detected, switch to disarmed mode not possible"));
+      return;
+    }
+    #endif
     switchToDisarmedMode();
     return;
   }
 
   if(mode == 2){
+    #if !REMOTE_CONTROL
     if(digitalRead(SAFETY_PIN)){
       swtichToSafetyMode();
       return;
     }
+    #else
+    if(abs(PWMvalue - SAFETY_PWM) < 100) {
+      swtichToSafetyMode();
+      return;
+    }
+    #endif
   }
+
+  #if REMOTE_CONTROL
+  if(mode == 3 || mode == 4) {
+    if(abs(PWMvalue - DISARMED_PWM) < 100) {
+      switchToDisarmedMode();
+      return;
+    }
+
+    if(abs(PWMvalue - DETONATE_PWM) < 100) {
+      switchToDetonateMode();
+      return;
+    }
+  }
+  #endif
 
   if(mode == 3 && safetyGuardActiveFlag){
     if(safetyGuardTimeoutCounter == 0){
@@ -296,6 +341,7 @@ void operationTick(){
   }
 }
 
+
 void switchToIdleMode() {
   if(DEBUG_MODE) {
     Serial.println(F("Switching to Idle mode"));
@@ -306,15 +352,18 @@ void switchToIdleMode() {
   modeChangeIndication();
 }
 
+
 void switchToDisarmedMode() {
   if(DEBUG_MODE) {
     Serial.println(F("Switching to Disarmed mode"));
   }
+  accelCheckFlag = false;
   blinkTimer.setTime(DISARMED_LED_BLINK_INTERVAL);
   blinkSeriesTimer.setTime(DISARMED_LED_SERIES_INTERVAL);
   mode = 2;
   modeChangeIndication();
 }
+
 
 void swtichToSafetyMode() {
   if(DEBUG_MODE) {
@@ -328,6 +377,7 @@ void swtichToSafetyMode() {
   modeChangeIndication();
 }
 
+
 void switchToArmedMode() {
   if(DEBUG_MODE) {
     Serial.println(F("Switching to Armed mode"));
@@ -338,6 +388,7 @@ void switchToArmedMode() {
   mode = 4;
   modeChangeIndication();
 }
+
 
 void switchToDetonateMode() {
   if(DEBUG_MODE) {
@@ -352,6 +403,7 @@ void switchToDetonateMode() {
   releaseDetonationTimer.start();
 }
 
+
 void switchToReleaseAfterDetonation() {
   if(DEBUG_MODE) {
     Serial.println(F("Releasing after detonation and restart"));
@@ -359,6 +411,7 @@ void switchToReleaseAfterDetonation() {
   detonateDisable();
   resetFunc();
 }
+
 
 void checkAccel(){
   if(accelCheckFlag){
@@ -381,15 +434,19 @@ void checkAccel(){
   }
 }
 
+
 int8_t defineMaxAccel(int16_t acc_x, int16_t acc_y, int16_t acc_z){
   return max(max(acc_x, acc_y), acc_z);
 }
 
 
 void detonateEnable(){
+  #if !REMOTE_CONTROL
   if(!digitalRead(SAFETY_PIN)){
     return;
   }
+  #endif
+  
   digitalWrite(DETONATION_PIN, HIGH);
 }
 
@@ -427,10 +484,6 @@ void ledTick(){
     ledBlinkFlag = true;
     ledFlag = true;
     blinkTimer.start();
-    #if REMOTE_CONTROL
-    uint16_t pwm_value = getPWM();
-    Serial.print(F("PWM Value = ")); Serial.println(pwm_value);
-    #endif
   }
 
   if(ledBlinkFlag){
@@ -449,8 +502,9 @@ void ledSwitch() {
 
 
 #if REMOTE_CONTROL
-uint16_t getPWM() {
-  uint16_t highTime = pulseIn(PWM_PIN, HIGH, 50000UL);  // 50 millisecond timeout
-  return highTime;
+void getPWM() {
+  if (PWMCheckTimer.tick()) {
+    PWMvalue = pulseIn(PWM_PIN, HIGH, 50000UL);  // 50 millisecond timeout
+  }
 }
 #endif

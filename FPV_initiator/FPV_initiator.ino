@@ -9,6 +9,39 @@ Modes description:
 5 - Detonate mode: triggered by accelerometer or by self-destroy timer (for FPV mode)
 */
 
+//---------- Presets
+/*
+Presets description:
+10 - FPV mode with safety pin and accelerometer
+11 - FPV mode with PWM remote and accelerometer
+20 - Bomber mode with safety pin and accelerometer
+*/
+#define PRESET 10                              //Selected preset
+
+
+#if PRESET == 10                               //Standard FPV mode with safety pin and accelerometer
+#define WORK_MODE 0                            //FPV
+#define REMOTE_CONTROL 0                       //Arming is done via Safety pin
+#define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
+#define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
+#define SELF_DESTROY_TIMEOUT 18                //Self-destroy timeout in minutes
+
+#elif PRESET == 11                             //FPV mode with PWM remote control and accelerometer
+#define WORK_MODE 0                            //FPV
+#define REMOTE_CONTROL 1                       //Arming is done via Remote control
+#define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
+#define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
+#define SELF_DESTROY_TIMEOUT 18                //Self-destroy timeout in minutes
+
+#elif PRESET == 20                             //Standard Bomber mode with safety pin and accelerometer
+#define WORK_MODE 1                            //Bomber
+#define REMOTE_CONTROL 0                       //Arming is done via Safety pin
+#define INITIAL_START_TIMEOUT 10               //Initial start timeout before switching to Disarmed mode in minutes
+#define SAFETY_TIMEOUT 2                       //Safety timeout in seconds
+#define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
+#endif
+
+
 //---------- Define pins and settings
 #define VERSION 3.0                            //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
@@ -16,9 +49,6 @@ Modes description:
 #define DEBUG_MODE 1                           //Enable debug mode
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
 #define DETONATION_PIN 17                      //MOSFET pin
-#define SAFETY_PIN 16                          //Safety switch pin
-#define PWM_PIN 15
-
 #define LED_PIN 14                             //External LED pin
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
@@ -36,21 +66,13 @@ Modes description:
 #define ARMED_LED_BLINK_INTERVAL 50            //Duration of LED blink in Armed mode
 #define MODE_CHANGE_INDICATION 100             //How long the LED will be on when mode is changed
 #define RELEASE_AFTER_DETONATION 3000          //Timeout after which the detonation relay is released (after detonation)
-
-#define WORK_MODE 0                            //Define the work mode for the device. 0 - FPV, 1 - Bomber
-
-#if WORK_MODE == 0
-#define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
-#define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
-#define SELF_DESTROY_TIMEOUT 18                //Self-destroy timeout in minutes
 #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
+
+#if REMOTE_CONTROL == 0
+#define SAFETY_PIN 15                          //Safety pin
 #else
-#define INITIAL_START_TIMEOUT 10               //Initial start timeout before switching to Disarmed mode in minutes
-#define SAFETY_TIMEOUT 2                       //Safety timeout in seconds
-#define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
-#define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
+#define PWM_PIN 15                             //PWM remote pin
 #endif
-
 
 //---------- Include libraries
 #include <MPU6050.h>
@@ -87,15 +109,19 @@ void setup() {
   detonateDisable();
   pinMode(DETONATION_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
-  pinMode(SAFETY_PIN, INPUT_PULLUP);
+  
+  #if REMOTE_CONTROL
   pinMode(PWM_PIN, INPUT);
+  #else
+  pinMode(SAFETY_PIN, INPUT_PULLUP);
+  #endif
 
-  Serial.print(F("Firmware version: "));
-  Serial.println(VERSION, 2);
-  Serial.print(F("Work mode: "));
-  if(WORK_MODE == 0) Serial.println(F("FPV")); else Serial.println(F("Bomber"));
+  Serial.print(F("Firmware version: ")); Serial.println(VERSION, 2);
+  Serial.print(F("Configured preset: ")); Serial.println(PRESET);
+  Serial.print(F("Work mode: ")); if(WORK_MODE == 0) Serial.println(F("FPV")); else Serial.println(F("Bomber"));
+  Serial.print(F("Arming mode: ")); if(REMOTE_CONTROL == 0) Serial.println(F("Safety pin")); else Serial.println(F("PWM remote control"));
   Serial.print(F("Inital unconditional safety timeout: ")); Serial.print(INITIAL_START_TIMEOUT); Serial.println(F(" min"));
-  Serial.print(F("Pin pull-out safety timeout: ")); Serial.print(SAFETY_TIMEOUT); Serial.println(F(" sec"));
+  Serial.print(F("Arming safety timeout: ")); Serial.print(SAFETY_TIMEOUT); Serial.println(F(" sec"));
   Serial.print(F("Self-destroy timeout: ")); Serial.print(SELF_DESTROY_TIMEOUT); Serial.println(F(" min"));
   Serial.print(F("Accelerator limit: ")); Serial.print(ACCELERATION_LIMIT); Serial.println(F(" G"));
 
@@ -401,8 +427,10 @@ void ledTick(){
     ledBlinkFlag = true;
     ledFlag = true;
     blinkTimer.start();
+    #if REMOTE_CONTROL
     uint16_t pwm_value = getPWM();
     Serial.print(F("PWM Value = ")); Serial.println(pwm_value);
+    #endif
   }
 
   if(ledBlinkFlag){
@@ -420,7 +448,9 @@ void ledSwitch() {
 }
 
 
+#if REMOTE_CONTROL
 uint16_t getPWM() {
   uint16_t highTime = pulseIn(PWM_PIN, HIGH, 50000UL);  // 50 millisecond timeout
   return highTime;
 }
+#endif

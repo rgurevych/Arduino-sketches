@@ -10,21 +10,25 @@ Modes description:
 */
 
 //---------- Define pins and settings
-#define VERSION 2.0                            //Firmware version
+#define VERSION 3.0                            //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
-#define DEBUG_MODE 0                           //Enable debug mode
+#define DEBUG_MODE 1                           //Enable debug mode
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
 #define DETONATION_PIN 17                      //MOSFET pin
-#define SAFETY_PIN 15                          //Safety switch pin
+#define SAFETY_PIN 16                          //Safety switch pin
+#define PWM_PIN 15
+
 #define LED_PIN 14                             //External LED pin
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
 #define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
+#define STARTUP_LED_SERIES_INTERVAL 4500          //Delay between LED blinks in Idle mode
+#define STARTUP_LED_BLINK_INTERVAL 500            //Duration of LED blink in Idle mode
 #define IDLE_LED_SERIES_INTERVAL 2750          //Delay between LED blinks in Idle mode
 #define IDLE_LED_BLINK_INTERVAL 250            //Duration of LED blink in Idle mode
-#define DISARMED_LED_SERIES_INTERVAL 1750      //Delay between LED blinks in Disarmed mode
+#define DISARMED_LED_SERIES_INTERVAL 1250      //Delay between LED blinks in Disarmed mode
 #define DISARMED_LED_BLINK_INTERVAL 250        //Duration of LED blink in Disarmed mode
 #define SAFETY_LED_SERIES_INTERVAL 350         //Delay between LED blinks in Safety mode
 #define SAFETY_LED_BLINK_INTERVAL 150          //Duration of LED blink in Safety mode
@@ -33,7 +37,7 @@ Modes description:
 #define MODE_CHANGE_INDICATION 100             //How long the LED will be on when mode is changed
 #define RELEASE_AFTER_DETONATION 3000          //Timeout after which the detonation relay is released (after detonation)
 
-#define WORK_MODE 1                            //Define the work mode for the device. 0 - FPV, 1 - Bomber
+#define WORK_MODE 0                            //Define the work mode for the device. 0 - FPV, 1 - Bomber
 
 #if WORK_MODE == 0
 #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
@@ -70,8 +74,8 @@ bool ledFlag = true, ledBlinkFlag = true, modeChangeFlag = false;
 //---------- Declare timers
 TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
 TimerMs oneSecondTimer(1000, 1);
-TimerMs blinkTimer(IDLE_LED_BLINK_INTERVAL, 1, 1);
-TimerMs blinkSeriesTimer(IDLE_LED_SERIES_INTERVAL, 1, 1);
+TimerMs blinkTimer(STARTUP_LED_BLINK_INTERVAL, 1, 1);
+TimerMs blinkSeriesTimer(STARTUP_LED_SERIES_INTERVAL, 1, 1);
 TimerMs modeChangeTimer(MODE_CHANGE_INDICATION, 1);
 TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
 TimerMs initialStartTimer(INITIAL_START_TIMEOUT*60000L, 0, 1);
@@ -84,6 +88,7 @@ void setup() {
   pinMode(DETONATION_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
   pinMode(SAFETY_PIN, INPUT_PULLUP);
+  pinMode(PWM_PIN, INPUT);
 
   Serial.print(F("Firmware version: "));
   Serial.println(VERSION, 2);
@@ -176,7 +181,7 @@ void safetyGuardCountdownStart(){
 void selfDestructCountdownStart(){
   if(!selfDestructActiveFlag){
     if(SELF_DESTROY_TIMEOUT == 0){
-      if(DEBUG_MODE) Serial.println(F("Self-destroy timer won't be activated"));
+      if(DEBUG_MODE) Serial.println(F("Self-destroy timer won't be activated because it's disabled in the preset"));
       return;
     }
     selfDestructTimeoutCounter = SELF_DESTROY_TIMEOUT * 60;
@@ -199,25 +204,20 @@ void timersCountdown(){
     if(selfDestructActiveFlag){
       if(selfDestructTimeoutCounter > 0) selfDestructTimeoutCounter --;
     }
+
+    if(DEBUG_MODE) {
+      if(safetyGuardActiveFlag && safetyGuardTimeoutCounter == 0) Serial.println(F("Safety guard timer reached 0"));
+      if(selfDestructActiveFlag && selfDestructTimeoutCounter == 0) Serial.println(F("Self-destroy timer reached 0"));
+    }
   }
 }
 
 
 void operationTick(){
   if(mode == 0){
-    if(INITIAL_START_TIMEOUT == 0){
-      if(DEBUG_MODE) Serial.println(F("Inital start timeout is 0, switching to Idle mode directly"));
-      mode = 1;
+    if(INITIAL_START_TIMEOUT == 0 || initialStartTimer.tick()) {
+      switchToIdleMode();
       return;
-    }
-    else{
-      if(initialStartTimer.tick()){
-        if(DEBUG_MODE) {
-          Serial.println(F("Inital start timeout was reached, switching to Idle mode"));
-        }
-        mode = 1;
-        return;
-      }
     }
   }
   
@@ -226,36 +226,21 @@ void operationTick(){
       if(DEBUG_MODE) Serial.println(F("Safety pin missing, switch to disarmed mode not possible"));
       return;
     }
-    if(DEBUG_MODE) Serial.println(F("Disarmed mode enabled"));
-    blinkTimer.setTime(DISARMED_LED_BLINK_INTERVAL);
-    blinkSeriesTimer.setTime(DISARMED_LED_SERIES_INTERVAL);
-    mode = 2;
-    modeChangeIndication();
+    switchToDisarmedMode();
     return;
   }
 
   if(mode == 2){
     if(digitalRead(SAFETY_PIN)){
-      if(DEBUG_MODE) Serial.println(F("Safety mode enabled"));
-      safetyGuardCountdownStart();
-      selfDestructCountdownStart();
-      blinkTimer.setTime(SAFETY_LED_BLINK_INTERVAL);
-      blinkSeriesTimer.setTime(SAFETY_LED_SERIES_INTERVAL);
-      mode = 3;
-      modeChangeIndication();
+      swtichToSafetyMode();
       return;
     }
   }
 
   if(mode == 3 && safetyGuardActiveFlag){
     if(safetyGuardTimeoutCounter == 0){
-      if(DEBUG_MODE) Serial.println(F("Safety timeout reached, armed mode enabled"));
       safetyGuardActiveFlag = false;
-      accelCheckFlag = true;
-      mode = 4;
-      blinkTimer.setTime(ARMED_LED_BLINK_INTERVAL);
-      blinkSeriesTimer.setTime(ARMED_LED_SERIES_INTERVAL);
-      modeChangeIndication();
+      switchToArmedMode();
       return;
      }
   }
@@ -264,42 +249,90 @@ void operationTick(){
     if(max_acc >= ACCELERATION_LIMIT){
       if(DEBUG_MODE){
         Serial.print(F("Acceleration limit ")); Serial.print(ACCELERATION_LIMIT);
-        Serial.print(F(" is reached, current acc = ")); Serial.print(max_acc);
-        Serial.println(F(", detonating!!!"));
+        Serial.print(F(" is reached, current acc = ")); Serial.println(max_acc);
       }
-
-      detonateEnable();
-      mode = 5;
-      selfDestructActiveFlag = false;
-      accelCheckFlag = false;
-      blinkTimer.setTime(IDLE_LED_BLINK_INTERVAL);
-      blinkSeriesTimer.setTime(IDLE_LED_SERIES_INTERVAL);
-      releaseDetonationTimer.start();
+      switchToDetonateMode();
       return;
     }
   }
   
   if(mode != 1 && selfDestructActiveFlag){
     if(selfDestructTimeoutCounter == 0){
-      if(DEBUG_MODE) Serial.println(F("Self-destruct timeout is reached! Detonating!"));
-      detonateEnable();
-      mode = 5;
-      selfDestructActiveFlag = false;
-      accelCheckFlag = false;
-      blinkTimer.setTime(IDLE_LED_BLINK_INTERVAL);
-      blinkSeriesTimer.setTime(IDLE_LED_SERIES_INTERVAL);
-      releaseDetonationTimer.start();
+      switchToDetonateMode();
+      return;
     }
   }
 
   if(mode == 5){
     if(releaseDetonationTimer.tick()) {
-      detonateDisable();
-      resetFunc();
+      switchToReleaseAfterDetonation();
     }
   }
 }
 
+void switchToIdleMode() {
+  if(DEBUG_MODE) {
+    Serial.println(F("Switching to Idle mode"));
+  }
+  blinkTimer.setTime(IDLE_LED_BLINK_INTERVAL);
+  blinkSeriesTimer.setTime(IDLE_LED_SERIES_INTERVAL);
+  mode = 1;
+  modeChangeIndication();
+}
+
+void switchToDisarmedMode() {
+  if(DEBUG_MODE) {
+    Serial.println(F("Switching to Disarmed mode"));
+  }
+  blinkTimer.setTime(DISARMED_LED_BLINK_INTERVAL);
+  blinkSeriesTimer.setTime(DISARMED_LED_SERIES_INTERVAL);
+  mode = 2;
+  modeChangeIndication();
+}
+
+void swtichToSafetyMode() {
+  if(DEBUG_MODE) {
+    Serial.println(F("Switching to Safety mode"));
+  }
+  safetyGuardCountdownStart();
+  selfDestructCountdownStart();
+  blinkTimer.setTime(SAFETY_LED_BLINK_INTERVAL);
+  blinkSeriesTimer.setTime(SAFETY_LED_SERIES_INTERVAL);
+  mode = 3;
+  modeChangeIndication();
+}
+
+void switchToArmedMode() {
+  if(DEBUG_MODE) {
+    Serial.println(F("Switching to Armed mode"));
+  }
+  accelCheckFlag = true;
+  blinkTimer.setTime(ARMED_LED_BLINK_INTERVAL);
+  blinkSeriesTimer.setTime(ARMED_LED_SERIES_INTERVAL);
+  mode = 4;
+  modeChangeIndication();
+}
+
+void switchToDetonateMode() {
+  if(DEBUG_MODE) {
+    Serial.println(F("Switching to Detonate mode"));
+  }
+  detonateEnable();
+  selfDestructActiveFlag = false;
+  accelCheckFlag = false;
+  blinkTimer.setTime(STARTUP_LED_BLINK_INTERVAL);
+  blinkSeriesTimer.setTime(STARTUP_LED_SERIES_INTERVAL);
+  mode = 5;
+  releaseDetonationTimer.start();
+}
+
+void switchToReleaseAfterDetonation() {
+  if(DEBUG_MODE) {
+    Serial.println(F("Releasing after detonation and restart"));
+  }
+  detonateDisable();
+  resetFunc();
+}
 
 void checkAccel(){
   if(accelCheckFlag){
@@ -322,16 +355,16 @@ void checkAccel(){
   }
 }
 
-
 int8_t defineMaxAccel(int16_t acc_x, int16_t acc_y, int16_t acc_z){
   return max(max(acc_x, acc_y), acc_z);
 }
 
 
 void detonateEnable(){
-  if(digitalRead(SAFETY_PIN)){
-    digitalWrite(DETONATION_PIN, HIGH);
+  if(!digitalRead(SAFETY_PIN)){
+    return;
   }
+  digitalWrite(DETONATION_PIN, HIGH);
 }
 
 
@@ -368,6 +401,8 @@ void ledTick(){
     ledBlinkFlag = true;
     ledFlag = true;
     blinkTimer.start();
+    uint16_t pwm_value = getPWM();
+    Serial.print(F("PWM Value = ")); Serial.println(pwm_value);
   }
 
   if(ledBlinkFlag){
@@ -382,4 +417,10 @@ void ledTick(){
 
 void ledSwitch() {
   digitalWrite(LED_PIN, ledFlag);
+}
+
+
+uint16_t getPWM() {
+  uint16_t highTime = pulseIn(PWM_PIN, HIGH, 50000UL);  // 50 millisecond timeout
+  return highTime;
 }

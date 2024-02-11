@@ -15,9 +15,10 @@ Presets description:
 10 - FPV mode with safety pin and accelerometer
 11 - FPV mode with PWM remote and accelerometer
 12 - FPV mode with PWM remote control and horns
+13 - FPV mode with PWM remote control and accelerometer, detonation delay - 5 seconds
 20 - Bomber mode with safety pin and accelerometer
 */
-#define PRESET 12                              //Selected preset
+#define PRESET 13                              //Selected preset
 
 //---------- Presets and dependencies
 #if PRESET == 10                               //Standard FPV mode with safety pin and accelerometer
@@ -28,6 +29,7 @@ Presets description:
   #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
   #define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 18                //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
 
 #elif PRESET == 11                             //FPV mode with PWM remote control and accelerometer
   #define WORK_MODE 0                            //FPV
@@ -37,6 +39,7 @@ Presets description:
   #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
   #define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
 
 #elif PRESET == 12                             //FPV mode with PWM remote control and contact horns
   #define WORK_MODE 0                            //FPV
@@ -46,6 +49,17 @@ Presets description:
   #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
   #define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+
+#elif PRESET == 13                             //FPV mode with PWM remote control and accelerometer, detonation delay - 5 seconds
+  #define WORK_MODE 0                            //FPV
+  #define ACCEL_PRESENT 1                        //Is accelerometer present?
+  #define HORNS_PRESENT 0                        //Are contact horns present?
+  #define REMOTE_CONTROL 1                       //Arming is done via Remote control
+  #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
+  #define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 30                //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 5                     //Delay before actual detonation happens after detonation was activated in seconds
 
 #elif PRESET == 20                             //Standard Bomber mode with safety pin and accelerometer
   #define WORK_MODE 1                            //Bomber
@@ -55,6 +69,7 @@ Presets description:
   #define INITIAL_START_TIMEOUT 10               //Initial start timeout before switching to Disarmed mode in minutes
   #define SAFETY_TIMEOUT 2                       //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
 #endif
 
 #if REMOTE_CONTROL
@@ -71,7 +86,7 @@ Presets description:
 #define VERSION 3.0                            //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
-#define DEBUG_MODE 1                           //Enable debug mode
+#define DEBUG_MODE 0                           //Enable debug mode
 #define DETONATION_PIN 17                      //MOSFET pin
 #define LED_PIN 14                             //External LED pin
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
@@ -86,6 +101,8 @@ Presets description:
 #define SAFETY_LED_BLINK_INTERVAL 100          //Duration of LED blink in Safety mode
 #define ARMED_LED_SERIES_INTERVAL 75           //Delay between LED blinks in Armed mode
 #define ARMED_LED_BLINK_INTERVAL 25            //Duration of LED blink in Armed mode
+#define PREDETONATE_LED_SERIES_INTERVAL 40     //Delay between LED blinks in Armed mode
+#define PREDETONATE_LED_BLINK_INTERVAL 10      //Duration of LED blink in Armed mode
 #define MODE_CHANGE_INDICATION 100             //How long the LED will be on when mode is changed
 #define RELEASE_AFTER_DETONATION 3000          //Timeout after which the detonation relay is released (after detonation)
 
@@ -130,6 +147,7 @@ TimerMs blinkTimer(STARTUP_LED_BLINK_INTERVAL, 1, 1);
 TimerMs blinkSeriesTimer(STARTUP_LED_SERIES_INTERVAL, 1, 1);
 TimerMs modeChangeTimer(MODE_CHANGE_INDICATION, 1);
 TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
+TimerMs predetonationTimer(DETONATION_DELAY*1000, 0, 1);
 TimerMs initialStartTimer(INITIAL_START_TIMEOUT*60000L, 0, 1);
 #if ACCEL_PRESENT
   TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
@@ -360,7 +378,7 @@ void operationTick(){
           Serial.print(F("Acceleration limit ")); Serial.print(ACCELERATION_LIMIT);
           Serial.print(F(" is reached, current acc = ")); Serial.println(max_acc);
         }
-        switchToDetonateMode();
+        switchToPredetonateMode();
         return;
       }
     }
@@ -372,7 +390,7 @@ void operationTick(){
         if(DEBUG_MODE){
           Serial.println(F("Contact horns touch detected!"));
         }
-        switchToDetonateMode();
+        switchToPredetonateMode();
         return;
       }
     }
@@ -386,6 +404,12 @@ void operationTick(){
   }
 
   if(mode == 5){
+    if(predetonationTimer.tick()) {
+      switchToDetonateMode();
+    }
+  }
+  
+  if(mode == 6){
     if(releaseDetonationTimer.tick()) {
       switchToReleaseAfterDetonation();
     }
@@ -460,11 +484,32 @@ void switchToArmedMode() {
 }
 
 
+void switchToPredetonateMode() {
+  if (DETONATION_DELAY == 0) {
+    if(DEBUG_MODE) {
+    Serial.println(F("Detonation delay is 0, detonating directly"));
+    }
+    switchToDetonateMode();
+  }
+
+  else {
+    if(DEBUG_MODE) {
+      Serial.println(F("Switching to Predetonate mode"));
+    }
+    mode = 5;
+    predetonationTimer.start();
+    blinkTimer.setTime(PREDETONATE_LED_BLINK_INTERVAL);
+    blinkSeriesTimer.setTime(PREDETONATE_LED_SERIES_INTERVAL);
+    modeChangeIndication();
+  }
+}
+
+
 void switchToDetonateMode() {
   if(DEBUG_MODE) {
     Serial.println(F("Switching to Detonate mode"));
   }
-  mode = 5;
+  mode = 6;
   detonateEnable();
   selfDestructActiveFlag = false;
   blinkTimer.setTime(STARTUP_LED_BLINK_INTERVAL);
@@ -483,10 +528,12 @@ void switchToDetonateMode() {
 void switchToReleaseAfterDetonation() {
   if(DEBUG_MODE) {
     Serial.println(F("Releasing after detonation and restart"));
+    delay(100);
   }
   detonateDisable();
   resetFunc();
 }
+
 
 #if ACCEL_PRESENT
   void checkAccel(){
@@ -500,12 +547,12 @@ void switchToReleaseAfterDetonation() {
     
         max_acc = defineMaxAccel(acc_x, acc_y, acc_z);
     
-        if(DEBUG_MODE){
-          Serial.print(acc_x); Serial.print(F("  "));
-          Serial.print(acc_y); Serial.print(F("  "));
-          Serial.print(acc_z); Serial.print(F("  Max is: "));
-          Serial.println(max_acc);
-        }
+        // if(DEBUG_MODE){
+        //   Serial.print(acc_x); Serial.print(F("  "));
+        //   Serial.print(acc_y); Serial.print(F("  "));
+        //   Serial.print(acc_z); Serial.print(F("  Max is: "));
+        //   Serial.println(max_acc);
+        // }
       }
     }
   }
@@ -546,7 +593,7 @@ void modeChangeIndication(){
 
 
 void ledTick(){
-  if(mode == 5){
+  if(mode == 6){
     ledFlag = true;
     return;
   }
@@ -603,6 +650,7 @@ void configPrintout() {
   Serial.print(F("Inital unconditional safety timeout: ")); Serial.print(INITIAL_START_TIMEOUT); Serial.println(F(" min"));
   Serial.print(F("Arming safety timeout: ")); Serial.print(SAFETY_TIMEOUT); Serial.println(F(" sec"));
   Serial.print(F("Self-destroy timeout: ")); Serial.print(SELF_DESTROY_TIMEOUT); Serial.println(F(" min"));
+  Serial.print(F("Detonation delay timeout: ")); Serial.print(DETONATION_DELAY); Serial.println(F(" sec"));
   #if ACCEL_PRESENT
     Serial.print(F("Accelerator limit: ")); Serial.print(ACCELERATION_LIMIT); Serial.println(F(" G"));
   #endif

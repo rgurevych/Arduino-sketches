@@ -14,6 +14,7 @@ Modes description:
 Presets description:
 10 - FPV mode with safety pin and accelerometer
 11 - FPV mode with PWM remote and accelerometer
+12 - FPV mode with PWM remote control and horns
 20 - Bomber mode with safety pin and accelerometer
 */
 #define PRESET 12                              //Selected preset
@@ -37,7 +38,7 @@ Presets description:
   #define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
 
-#elif PRESET == 12                             //FPV mode with PWM remote control and accelerometer
+#elif PRESET == 12                             //FPV mode with PWM remote control and contact horns
   #define WORK_MODE 0                            //FPV
   #define ACCEL_PRESENT 0                        //Is accelerometer present?
   #define HORNS_PRESENT 1                        //Are contact horns present?
@@ -109,6 +110,13 @@ Presets description:
   bool accelCheckFlag = false;
 #endif
 
+//---------- Setup related to horns
+#if HORNS_PRESENT
+  #define HORNS_PIN 2                            //Horns pin
+  bool hornsCheckFlag = false;
+  bool hornsTouch = false;
+#endif
+
 //---------- Declare variables
 uint8_t mode = 0;
 int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
@@ -142,6 +150,10 @@ void setup() {
     pinMode(PWM_PIN, INPUT_PULLUP);
   #else
     pinMode(SAFETY_PIN, INPUT_PULLUP);
+  #endif
+
+  #if HORNS_PRESENT
+    pinMode(HORNS_PIN, INPUT_PULLUP);
   #endif
 
   configPrintout();
@@ -220,6 +232,10 @@ void checkSensors() {
 
   #if ACCEL_PRESENT
     checkAccel();
+  #endif
+
+  #if HORNS_PRESENT
+    checkHorns();
   #endif
 }
 
@@ -349,6 +365,18 @@ void operationTick(){
       }
     }
   #endif
+
+  #if HORNS_PRESENT
+    if(mode == 4 && hornsCheckFlag){
+      if(hornsTouch){
+        if(DEBUG_MODE){
+          Serial.println(F("Contact horns touch detected!"));
+        }
+        switchToDetonateMode();
+        return;
+      }
+    }
+  #endif
   
   if(mode != 1 && selfDestructActiveFlag){
     if(selfDestructTimeoutCounter == 0){
@@ -387,6 +415,10 @@ void switchToDisarmedMode() {
   #if ACCEL_PRESENT
     accelCheckFlag = false;
   #endif
+
+  #if HORNS_PRESENT
+    hornsCheckFlag = false;
+  #endif
 }
 
 
@@ -403,6 +435,10 @@ void swtichToSafetyMode() {
   #if ACCEL_PRESENT
     accelCheckFlag = false;
   #endif
+
+  #if HORNS_PRESENT
+    hornsCheckFlag = false;
+  #endif
 }
 
 
@@ -417,6 +453,10 @@ void switchToArmedMode() {
   #if ACCEL_PRESENT
     accelCheckFlag = true;
   #endif
+
+  #if HORNS_PRESENT
+    hornsCheckFlag = true;
+  #endif  
 }
 
 
@@ -432,6 +472,10 @@ void switchToDetonateMode() {
   releaseDetonationTimer.start();
   #if ACCEL_PRESENT
     accelCheckFlag = false;
+  #endif
+
+  #if HORNS_PRESENT
+    hornsCheckFlag = false;
   #endif
 }
 
@@ -468,6 +512,13 @@ void switchToReleaseAfterDetonation() {
 
   int8_t defineMaxAccel(int16_t acc_x, int16_t acc_y, int16_t acc_z){
     return max(max(acc_x, acc_y), acc_z);
+  }
+#endif
+
+
+#if HORNS_PRESENT
+  void checkHorns() {
+    hornsTouch = !digitalRead(HORNS_PIN);
   }
 #endif
 

@@ -6,7 +6,8 @@ Modes description:
 2 - Disarmed mode: safety and self-destroy timers are off;
 3 - Safety mode: safety timer is running, self-destroy timer is running (for FPV mode);
 4 - Armed mode: reading accelerometer, ready to detonate, self-destroy timer is running (for FPV mode);
-5 - Detonate mode: triggered by accelerometer or by self-destroy timer (for FPV mode)
+5 - Predetonate mode: enabled if detonation delay is set up. Not possible to exit, detonation delay timer is activated;
+6 - Detonate mode: triggered by accelerometer, horns, PWM command or by self-destroy timer
 */
 
 //---------- Select preset
@@ -18,7 +19,7 @@ Presets description:
 13 - FPV mode with PWM remote control and accelerometer, detonation delay - 5 seconds
 20 - Bomber mode with safety pin and accelerometer
 */
-#define PRESET 13                              //Selected preset
+#define PRESET 10                              //Selected preset
 
 //---------- Presets and dependencies
 #if PRESET == 10                               //Standard FPV mode with safety pin and accelerometer
@@ -91,16 +92,16 @@ Presets description:
 #define LED_PIN 14                             //External LED pin
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
-#define STARTUP_LED_SERIES_INTERVAL 4500       //Delay between LED blinks in Idle mode
-#define STARTUP_LED_BLINK_INTERVAL 500         //Duration of LED blink in Idle mode
-#define IDLE_LED_SERIES_INTERVAL 2750          //Delay between LED blinks in Idle mode
-#define IDLE_LED_BLINK_INTERVAL 250            //Duration of LED blink in Idle mode
-#define DISARMED_LED_SERIES_INTERVAL 1300      //Delay between LED blinks in Disarmed mode
+#define STARTUP_LED_SERIES_INTERVAL 5000       //Delay between LED blinks in Idle mode
+#define STARTUP_LED_BLINK_INTERVAL 1000         //Duration of LED blink in Idle mode
+#define IDLE_LED_SERIES_INTERVAL 3500          //Delay between LED blinks in Idle mode
+#define IDLE_LED_BLINK_INTERVAL 500            //Duration of LED blink in Idle mode
+#define DISARMED_LED_SERIES_INTERVAL 1800      //Delay between LED blinks in Disarmed mode
 #define DISARMED_LED_BLINK_INTERVAL 200        //Duration of LED blink in Disarmed mode
-#define SAFETY_LED_SERIES_INTERVAL 400         //Delay between LED blinks in Safety mode
-#define SAFETY_LED_BLINK_INTERVAL 100          //Duration of LED blink in Safety mode
-#define ARMED_LED_SERIES_INTERVAL 75           //Delay between LED blinks in Armed mode
-#define ARMED_LED_BLINK_INTERVAL 25            //Duration of LED blink in Armed mode
+#define SAFETY_LED_SERIES_INTERVAL 450         //Delay between LED blinks in Safety mode
+#define SAFETY_LED_BLINK_INTERVAL 50           //Duration of LED blink in Safety mode
+#define ARMED_LED_SERIES_INTERVAL 80           //Delay between LED blinks in Armed mode
+#define ARMED_LED_BLINK_INTERVAL 20            //Duration of LED blink in Armed mode
 #define PREDETONATE_LED_SERIES_INTERVAL 40     //Delay between LED blinks in Armed mode
 #define PREDETONATE_LED_BLINK_INTERVAL 10      //Duration of LED blink in Armed mode
 #define MODE_CHANGE_INDICATION 100             //How long the LED will be on when mode is changed
@@ -353,6 +354,7 @@ void operationTick(){
     if(abs(PWMvalue - DISARMED_PWM) < 100) {
       switchToDisarmedMode();
       safetyGuardActiveFlag = false;
+      selfDestructActiveFlag = false;
       return;
     }
 
@@ -546,13 +548,6 @@ void switchToReleaseAfterDetonation() {
         acc_z = abs(az / ACC_COEF);
     
         max_acc = defineMaxAccel(acc_x, acc_y, acc_z);
-    
-        // if(DEBUG_MODE){
-        //   Serial.print(acc_x); Serial.print(F("  "));
-        //   Serial.print(acc_y); Serial.print(F("  "));
-        //   Serial.print(acc_z); Serial.print(F("  Max is: "));
-        //   Serial.println(max_acc);
-        // }
       }
     }
   }

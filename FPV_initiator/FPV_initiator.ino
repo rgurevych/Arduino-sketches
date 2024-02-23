@@ -31,6 +31,8 @@ Presets description:
   #define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 18                //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
 
 #elif PRESET == 11                             //FPV mode with PWM remote control and accelerometer
   #define WORK_MODE 0                            //FPV
@@ -41,6 +43,8 @@ Presets description:
   #define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate  
 
 #elif PRESET == 12                             //FPV mode with PWM remote control and contact horns
   #define WORK_MODE 0                            //FPV
@@ -61,6 +65,8 @@ Presets description:
   #define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 30                //Self-destroy timeout in minutes
   #define DETONATION_DELAY 5                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 10               //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
 
 #elif PRESET == 20                             //Standard Bomber mode with safety pin and accelerometer
   #define WORK_MODE 1                            //Bomber
@@ -71,6 +77,8 @@ Presets description:
   #define SAFETY_TIMEOUT 2                       //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 2                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 10                  //Acceleration limit to detonate
 #endif
 
 #if REMOTE_CONTROL
@@ -84,7 +92,7 @@ Presets description:
 #endif
 
 //---------- Define constant pins and settings
-#define VERSION 3.0                            //Firmware version
+#define VERSION 3.11                           //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define DEBUG_MODE 0                           //Enable debug mode
@@ -92,8 +100,8 @@ Presets description:
 #define LED_PIN 14                             //External LED pin
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
-#define STARTUP_LED_SERIES_INTERVAL 5000       //Delay between LED blinks in Idle mode
-#define STARTUP_LED_BLINK_INTERVAL 1000         //Duration of LED blink in Idle mode
+#define STARTUP_LED_SERIES_INTERVAL 2000       //Delay between LED blinks in Idle mode
+#define STARTUP_LED_BLINK_INTERVAL 2000         //Duration of LED blink in Idle mode
 #define IDLE_LED_SERIES_INTERVAL 3500          //Delay between LED blinks in Idle mode
 #define IDLE_LED_BLINK_INTERVAL 500            //Duration of LED blink in Idle mode
 #define DISARMED_LED_SERIES_INTERVAL 1800      //Delay between LED blinks in Disarmed mode
@@ -118,8 +126,6 @@ Presets description:
   #include <MPU6050.h>
   #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
   #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
-  #define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
-  #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
   MPU6050 mpu;
   long offsets[6] = {0,0,0,0,0,0};
   uint8_t max_acc;
@@ -140,7 +146,7 @@ uint8_t mode = 0;
 int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
 int PWMvalue;
 bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false;
-bool ledFlag = true, ledBlinkFlag = true, modeChangeFlag = false;
+bool ledFlag = true, ledBlinkFlag = false, modeChangeFlag = false;
 
 //---------- Declare timers
 TimerMs oneSecondTimer(1000, 1);
@@ -223,7 +229,6 @@ void setup() {
     }
   #endif
 
-  blinkTimer.start();
   if(INITIAL_START_TIMEOUT != 0){
     initialStartTimer.start();
     if(DEBUG_MODE) {
@@ -232,6 +237,8 @@ void setup() {
       Serial.println(F(" m"));
     }
   }
+
+  modeChangeIndication();
 }
 
 
@@ -540,14 +547,12 @@ void switchToReleaseAfterDetonation() {
 #if ACCEL_PRESENT
   void checkAccel(){
     if(accelCheckFlag){
-      if(accelTimer.tick()){
+      if(accelTimer.tick()){       
         mpu.getAcceleration(&ax, &ay, &az);
-    
         acc_x = abs(ax / ACC_COEF);
         acc_y = abs(ay / ACC_COEF);
         acc_z = abs(az / ACC_COEF);
-    
-        max_acc = defineMaxAccel(acc_x, acc_y, acc_z);
+        max_acc = defineMaxAccel(acc_x, acc_y, acc_z);       
       }
     }
   }
@@ -647,6 +652,7 @@ void configPrintout() {
   Serial.print(F("Self-destroy timeout: ")); Serial.print(SELF_DESTROY_TIMEOUT); Serial.println(F(" min"));
   Serial.print(F("Detonation delay timeout: ")); Serial.print(DETONATION_DELAY); Serial.println(F(" sec"));
   #if ACCEL_PRESENT
+    Serial.print(F("Accelerator request period: ")); Serial.print(ACCEL_REQUEST_TIMEOUT); Serial.println(F(" milliseconds"));
     Serial.print(F("Accelerator limit: ")); Serial.print(ACCELERATION_LIMIT); Serial.println(F(" G"));
   #endif
 }

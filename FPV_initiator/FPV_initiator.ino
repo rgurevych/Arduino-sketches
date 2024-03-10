@@ -32,7 +32,7 @@ Presets description:
   #define SELF_DESTROY_TIMEOUT 18                //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
   #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
-  #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
+  #define ACCELERATION_LIMIT 12                   //Acceleration limit to detonate
 
 #elif PRESET == 11                             //FPV mode with PWM remote control and accelerometer
   #define WORK_MODE 0                            //FPV

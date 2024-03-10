@@ -35,7 +35,7 @@ Mode description:
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
-#define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
+#define ACCEL_REQUEST_TIMEOUT 5               //Delay between accelerometer request
 #define RELEASE_AFTER_DETONATION 1000          //Timeout after which the detonation relay is released (after detonation)
 #define LED_BLINK_DURATION 100                 //Duration of LED blinks
 #define LED_BLINK_INTERVAL 1400                //Interval between LED blinks

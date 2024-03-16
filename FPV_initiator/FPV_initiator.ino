@@ -28,11 +28,11 @@ Presets description:
   #define HORNS_PRESENT 0                        //Are contact horns present?
   #define REMOTE_CONTROL 0                       //Arming is done via Safety pin
   #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
-  #define SAFETY_TIMEOUT 45                      //Safety timeout in seconds
-  #define SELF_DESTROY_TIMEOUT 18                //Self-destroy timeout in minutes
+  #define SAFETY_TIMEOUT 120                     //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 20                //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
   #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
-  #define ACCELERATION_LIMIT 12                   //Acceleration limit to detonate
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
 
 #elif PRESET == 11                             //FPV mode with PWM remote control and accelerometer
   #define WORK_MODE 0                            //FPV

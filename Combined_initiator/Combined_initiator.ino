@@ -1,4 +1,4 @@
-/*Unified device by Rostyslav Gurevych
+/*Combined initator by Rostyslav Gurevych
 Mode description:
 1 - Idle
 2 - Settings
@@ -10,7 +10,7 @@ Mode description:
 */
 
 //---------- Define pins and settings
-#define VERSION 2.01                           //Firmware version
+#define VERSION 2.05                           //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
@@ -26,19 +26,19 @@ Mode description:
 #define MIN_SELF_DESTRUCT_TIMER_VALUE 60       //Minimum self-destruction timer value (in minutes)
 #define MAX_SELF_DESTRUCT_TIMER_VALUE 600      //Maximum self-destruction timer value (in minutes)
 #define DEFAULT_SELF_DESTRUCT_TIMER_VALUE 90   //Default self-destruction timer value on startup (in minutes)
-#define MIN_ACCELERATION 4                     //Minimum acceleration limit
-#define MAX_ACCELERATION 16                    //Maximum acceleration limit
-#define DEFAULT_ACCELERATION 6                 //Default acceleration limit value
+#define MIN_ACCELERATION 5                     //Minimum acceleration limit
+#define MAX_ACCELERATION 15                    //Maximum acceleration limit
+#define DEFAULT_ACCELERATION 10                //Default acceleration limit value
 #define BUTTON_TIMEOUT 20000                   //Timeout after which device will return to idle mode from settings (without saving)
 #define DEMO_MODE 1                            //Initially Demo mode enabled (all times are reduced to seconds)
-#define DEBUG_MODE 1                           //Initially Debug mode enabled (Serial is activated and used for debugging)
+#define DEBUG_MODE 0                           //Initially Debug mode enabled (Serial is activated and used for debugging)
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
-#define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
-#define RELEASE_AFTER_DETONATION 1000          //Timeout after which the detonation relay is released (after detonation)
+#define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request
+#define RELEASE_AFTER_DETONATION 3000          //Timeout after which the detonation relay is released (after detonation)
 #define LED_BLINK_DURATION 100                 //Duration of LED blinks
-#define LED_BLINK_INTERVAL 1400                //Interval between LED blinks
+#define LED_BLINK_INTERVAL 900                 //Interval between LED blinks
 
 
 //---------- Include libraries

@@ -28,6 +28,7 @@ void safetyGuardEnable(){
 
 void safetyGuardDisable(){
   digitalWrite(RELAY_1_PIN, LOW);
+  delay(200);
 }
 
 

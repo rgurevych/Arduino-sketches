@@ -652,8 +652,8 @@ void configPrintout() {
   Serial.print(F("Self-destroy timeout: ")); Serial.print(SELF_DESTROY_TIMEOUT); Serial.println(F(" min"));
   Serial.print(F("Detonation delay timeout: ")); Serial.print(DETONATION_DELAY); Serial.println(F(" sec"));
   #if ACCEL_PRESENT
-    Serial.print(F("Accelerator request period: ")); Serial.print(ACCEL_REQUEST_TIMEOUT); Serial.println(F(" milliseconds"));
-    Serial.print(F("Accelerator limit: ")); Serial.print(ACCELERATION_LIMIT); Serial.println(F(" G"));
+    Serial.print(F("Accelerometer request period: ")); Serial.print(ACCEL_REQUEST_TIMEOUT); Serial.println(F(" milliseconds"));
+    Serial.print(F("Acceleration limit: ")); Serial.print(ACCELERATION_LIMIT); Serial.println(F(" G"));
   #endif
 }
 

@@ -92,7 +92,7 @@ Presets description:
 #endif
 
 //---------- Define constant pins and settings
-#define VERSION 3.11                           //Firmware version
+#define VERSION 3.12                           //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define DEBUG_MODE 0                           //Enable debug mode
@@ -201,6 +201,7 @@ void setup() {
     else{
       Serial.println(F("MPU6050 accel check - FAILED"));
       Serial.println(F("Fix this before proceeding"));
+      ledSwitch();
       while (1) {}
       }
     
@@ -208,6 +209,7 @@ void setup() {
     if(EEPROM.read(50)){
       Serial.println(F("Send any character to start calibration"));
       delay(100);
+      ledSwitch();
       while (1) {
         if (Serial.available() > 0) {
           Serial.read();

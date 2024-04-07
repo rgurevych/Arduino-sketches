@@ -10,9 +10,11 @@ Mode description:
 */
 
 //---------- Define pins and settings
-#define VERSION 2.05                           //Firmware version
+#define VERSION 3.01                           //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
+#define INIT_CALIBRATION_ADDR 1022             //Number of EEPROM initial calibration check cell
+#define INIT_CALIBRATION_KEY 20                //Initial calibration key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
 #define BUTTON_1_PIN 17                        //Button 1 pin
 #define BUTTON_2_PIN 16                        //Button 2 pin
@@ -28,7 +30,7 @@ Mode description:
 #define DEFAULT_SELF_DESTRUCT_TIMER_VALUE 90   //Default self-destruction timer value on startup (in minutes)
 #define MIN_ACCELERATION 5                     //Minimum acceleration limit
 #define MAX_ACCELERATION 15                    //Maximum acceleration limit
-#define DEFAULT_ACCELERATION 10                //Default acceleration limit value
+#define DEFAULT_ACCELERATION 12                //Default acceleration limit value
 #define BUTTON_TIMEOUT 20000                   //Timeout after which device will return to idle mode from settings (without saving)
 #define DEMO_MODE 1                            //Initially Demo mode enabled (all times are reduced to seconds)
 #define DEBUG_MODE 0                           //Initially Debug mode enabled (Serial is activated and used for debugging)
@@ -37,8 +39,8 @@ Mode description:
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
 #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request
 #define RELEASE_AFTER_DETONATION 3000          //Timeout after which the detonation relay is released (after detonation)
-#define LED_BLINK_DURATION 100                 //Duration of LED blinks
-#define LED_BLINK_INTERVAL 900                 //Interval between LED blinks
+#define LED_BLINK_DURATION 200                 //Duration of LED blinks
+#define LED_BLINK_INTERVAL 800                 //Interval between LED blinks
 
 
 //---------- Include libraries
@@ -101,20 +103,18 @@ void setup() {
 
   // EEPROM
   if (EEPROM.read(INIT_ADDR) != INIT_KEY){
-    EEPROM.write(INIT_ADDR, INIT_KEY);
+    EEPROM.put(INIT_ADDR, INIT_KEY);
     EEPROM.put(10, DEFAULT_GUARD_TIMER_VALUE);
     EEPROM.put(20, DEFAULT_SELF_DESTRUCT_TIMER_VALUE);
     EEPROM.put(30, DEFAULT_ACCELERATION);
     EEPROM.put(40, DEMO_MODE);
     EEPROM.put(50, DEBUG_MODE);
-    EEPROM.put(ACCEL_OFFSETS_BYTE, offsets);
   }
   EEPROM.get(10, safetyGuardTimeout);
   EEPROM.get(20, selfDestructTimeout);
   EEPROM.get(30, accelerationLimit);
   EEPROM.get(40, demoMode);
   EEPROM.get(50, debugMode);
-  EEPROM.get(ACCEL_OFFSETS_BYTE, offsets);
 
   if(debugMode) Serial.begin(9600);
 
@@ -122,27 +122,35 @@ void setup() {
   mpu.initialize();
   if(mpu.testConnection()){
     if(debugMode) Serial.println(F("MPU6050 check - SUCCESS"));
-    drawIntroScreen();
   }
   else{
     if(debugMode) Serial.println(F("MPU6050 check - FAILED"));
     drawErrorIntroScreen();
     while(1) {delay(1000);}
   }
-  mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
-  mpu.setXAccelOffset(offsets[0]);
-  mpu.setYAccelOffset(offsets[1]);
-  mpu.setZAccelOffset(offsets[2]);
-  mpu.setXGyroOffset(offsets[3]);
-  mpu.setYGyroOffset(offsets[4]);
-  mpu.setZGyroOffset(offsets[5]);
   
-  //Startup preparation and check
+  //Switch to calibration when first launch happens
+  if (EEPROM.read(INIT_CALIBRATION_ADDR) != INIT_CALIBRATION_KEY){
+    calibrateAccel();
+  }
+  else{
+    drawIntroScreen();
+    EEPROM.get(ACCEL_OFFSETS_BYTE, offsets);
+    mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
+    mpu.setXAccelOffset(offsets[0]);
+    mpu.setYAccelOffset(offsets[1]);
+    mpu.setZAccelOffset(offsets[2]);
+    mpu.setXGyroOffset(offsets[3]);
+    mpu.setYGyroOffset(offsets[4]);
+    mpu.setZGyroOffset(offsets[5]);
+  }
+  
+  //Startup final output setup
   safetyGuardDisable();
   detonateDisable();
-  delay(1500);
 
   //Draw default screen after setup
+  delay(1500);
   drawDefaultScreen();
 }
 

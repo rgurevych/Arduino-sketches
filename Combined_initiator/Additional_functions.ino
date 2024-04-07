@@ -128,6 +128,7 @@ void doAccelCalibration() {
       else offsets[i] /= 4;
     }
     EEPROM.put(ACCEL_OFFSETS_BYTE, offsets);
+    EEPROM.update(INIT_CALIBRATION_ADDR, INIT_CALIBRATION_KEY);
   }
   else oled.print(F("FAIL! Reset and retry"));
     
@@ -250,8 +251,10 @@ void changeDemoMode(){
   oled.clear();
   oled.home();
   oled.setScale(1);
-  oled.println(F("Switch Demo-mode?"));
-  oled.setCursor(0, 2);
+  oled.print(F("Demo-mode: "));
+  oled.println(demoMode);
+  oled.print(F("Switch it?"));
+  oled.setCursor(0, 3);
   oled.println(F("L-Yes, R-Cancel"));
 
   while (true) {
@@ -266,8 +269,10 @@ void changeDemoMode(){
       demoMode = !demoMode;
       EEPROM.put(40, demoMode);
       oled.println(F("Demo-mode changed"));
-      oled.setCursor(0, 2);
-      oled.println(F("Restarting device"));
+      oled.print(F("New mode: "));
+      oled.println(demoMode);
+      oled.setCursor(0, 3);
+      oled.println(F("Restarting device.."));
       delay(1000);
       resetFunc();
     }

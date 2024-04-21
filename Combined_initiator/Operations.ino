@@ -7,9 +7,9 @@ void ledTick(){
 
   if(ledBlinkFlag){
     if(blinkTimer.tick()){
+      ledBlinkFlag = false;
       ledFlag = false;
       blinkIntervalTimer.start();
-      ledBlinkFlag = false;
     }
   }
 

@@ -3,14 +3,15 @@ Mode description:
 1 - Idle
 2 - Settings
 3 - Change value
-4 - Working, safety guard enabled
-5 - Working, armed (safety guard off)
-6 - Detonation by timer
-7 - Detonation by accelerometer
+4 - Disarmed
+5 - Safety
+6 - Armed
+7 - Detonation by timer
+8 - Detonation by accelerometer
 */
 
 //---------- Define pins and settings
-#define VERSION 3.01                           //Firmware version
+#define VERSION 3.02                           //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define INIT_CALIBRATION_ADDR 1022             //Number of EEPROM initial calibration check cell
@@ -76,7 +77,7 @@ bool blinkFlag = true, ledFlag = true, ledBlinkFlag = true;
 bool demoMode, debugMode;
 uint8_t max_acc, accelerationLimit, debugMaxAccel = 0;
 int16_t safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
-uint8_t mode = 1, oldMode = 0, pointer = 2;
+uint8_t mode, oldMode = 0, pointer = 2;
 int32_t acc_x, acc_y, acc_z;
 int16_t ax, ay, az;
 long offsets[6] = {0,0,0,0,0,0};
@@ -84,18 +85,18 @@ long offsets[6] = {0,0,0,0,0,0};
 void setup() {
   Wire.begin();
 
-  //Pin modes
+  // Set both executive outputs to 0
   safetyGuardDisable();
   detonateDisable();
-    
+  
+  // Pin modes  
   pinMode(RELAY_1_PIN, OUTPUT);
   pinMode(RELAY_2_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(SAFETY_LED_PIN, OUTPUT);
   pinMode(RELAY_TEST_PIN, INPUT_PULLUP);
-  bothBtn.setHoldTimeout(2000);
 
-  //OLED
+  // OLED
   oled.init();
   oled.clear();
   oled.setContrast(200);
@@ -115,9 +116,10 @@ void setup() {
   EEPROM.get(40, demoMode);
   EEPROM.get(50, debugMode);
 
+  // Open Serial output in Debug mode
   if(debugMode) Serial.begin(9600);
 
-  //Accelerometer
+  //Initialize accelerometer, show error screen if fail
   mpu.initialize();
   if(mpu.testConnection()){
     if(debugMode) Serial.println(F("MPU6050 check - SUCCESS"));
@@ -128,7 +130,7 @@ void setup() {
     while(1) {delay(1000);}
   }
   
-  //Switch to calibration when first launch happens
+  // Switch to calibration when first launch happens
   if (EEPROM.read(INIT_CALIBRATION_ADDR) != INIT_CALIBRATION_KEY){
     calibrateAccel();
   }
@@ -142,15 +144,10 @@ void setup() {
     mpu.setXGyroOffset(offsets[3]);
     mpu.setYGyroOffset(offsets[4]);
     mpu.setZGyroOffset(offsets[5]);
-  }
-  
-  //Startup final output setup
-  safetyGuardDisable();
-  detonateDisable();
 
-  //Draw default screen after setup
-  delay(1500);
-  drawDefaultScreen();
+    delay(1500);
+    switchToIdleMode();
+  }  
 }
 
 
@@ -174,8 +171,8 @@ void buttonTick(){
   
   if(mode == 1){
     if(rightBtn.hold()){
-      mode = 2;
       pointer = 2;
+      switchToSettingsMode();
     }
     
     if(bothBtn.hold()){
@@ -212,11 +209,11 @@ void buttonTick(){
       EEPROM.put(10, safetyGuardTimeout);
       EEPROM.put(20, selfDestructTimeout);
       EEPROM.put(30, accelerationLimit);
-      mode = 1;
+      switchToIdleMode();
     }
 
     if(rightBtn.hold()){
-      mode = 3;
+      switchToChangeValueMode();
     }
 
     exitMenu();
@@ -251,7 +248,7 @@ void buttonTick(){
     accelerationLimit = constrain(accelerationLimit, MIN_ACCELERATION, MAX_ACCELERATION);
 
     if(leftBtn.hold()){
-      mode = 2;
+      switchToSettingsMode();
     }
 
     exitMenu();
@@ -260,16 +257,51 @@ void buttonTick(){
 
   if(mode >= 4 && mode <= 7){
     if(bothBtn.hold()){
-      safetyGuardActiveFlag = false;
-      selfDestructActiveFlag = false;
-      accelCheckFlag = false;
-      detonateDisable();
-      safetyGuardDisable();
-      mode = 1;
-      bothBtn.setHoldTimeout(2000);
-      if(!demoMode) drawDefaultScreen();
+      switchToIdleMode();
     }
   }
+}
+
+void switchToIdleMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to Idle mode"));
+  }
+  mode = 1;
+  safetyGuardActiveFlag = false;
+  selfDestructActiveFlag = false;
+  accelCheckFlag = false;
+  detonateDisable();
+  safetyGuardDisable();
+  bothBtn.setHoldTimeout(2000);
+  drawDefaultScreen();
+  // changeMode();
+}
+
+
+void switchToSettingsMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to Settings mode"));
+  }
+  mode = 2;
+  // changeMode();
+}
+
+
+void switchToChangeValueMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to Change Value mode"));
+  }
+  mode = 3;
+  // changeMode();
+}
+
+
+void switchToDisarmedMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to Change Value mode"));
+  }
+  mode = 4;
+  // changeMode();
 }
 
 
@@ -278,7 +310,7 @@ void exitMenu(){
     EEPROM.get(10, safetyGuardTimeout);
     EEPROM.get(20, selfDestructTimeout);
     EEPROM.get(30, accelerationLimit);
-    mode = 1;
+    switchToIdleMode();
   }
 }
 

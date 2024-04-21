@@ -18,7 +18,7 @@ void ledTick(){
 
 void ledCheck(){
   digitalWrite(LED_BUILTIN, ledFlag);
-  if(mode == 4) digitalWrite(SAFETY_LED_PIN, ledFlag);
+  digitalWrite(SAFETY_LED_PIN, ledFlag);
 }
 
 void safetyGuardEnable(){

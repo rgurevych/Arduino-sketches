@@ -88,7 +88,7 @@ void changeMode(){
     return;
   }
 
-  if(mode == 4){
+  if(mode == 5){
     updateScreenTimer.start();
     
     oled.setCursor(48, 0);
@@ -100,7 +100,7 @@ void changeMode(){
     return;
   }
 
-  if(mode == 5){
+  if(mode == 6){
     if(!demoMode){
       oled.clear();
     }
@@ -119,40 +119,22 @@ void changeMode(){
     return;
   }
 
-  if(mode == 6){
+  if(mode == 7){
     if(!demoMode) drawDefaultScreen();
 
     oled.setCursor(48, 0);
-    oled.print(F("COMPLETED    "));
+    oled.print(F("DETONATE     "));
 
     oled.setCursor(90, 3);
-    oled.print(F("Boom  "));
+    if (detonateByTimerFlag) oled.print(F("Boom  ")); else oled.print(F("Off  "));
 
     oled.setCursor(90, 4);
-    oled.print(F("Off   "));
+    if (detonateByAccelFlag) oled.print(F("Boom   ")); else oled.print(F("Off  "));
 
     oled.setCursor(0, 6);
     oled.println(F("                     "));
     oled.println(F("Hold L+R 2s to reset ")); 
     return;
-  }
-
-  if(mode == 7){
-    if(!demoMode) drawDefaultScreen();
-
-    oled.setCursor(48, 0);
-    oled.print(F("COMPLETED    "));
-
-    oled.setCursor(90, 3);
-    oled.print(F("Off  "));
-
-    oled.setCursor(90, 4);
-    oled.print(F("Boom  "));
-
-    oled.setCursor(0, 6);
-    oled.println(F("                     "));
-    oled.println(F("Hold L+R 2s to reset "));
-    return;   
   }
 }
 
@@ -221,7 +203,7 @@ void updateScreen(){
     }
   }
 
-  if(mode == 4){
+  if(mode == 5){
     oled.setCursor(90, 2);
     oled.print(safetyGuardTimeoutCounter / 60);
     if(blinkFlag) oled.print(F(":"));
@@ -243,7 +225,7 @@ void updateScreen(){
     return;
   }
 
-  if(mode == 5){
+  if(mode == 6){
     if(demoMode){
       oled.setCursor(90, 3);
       if(selfDestructTimeout == 0) oled.print(F("Off   "));
@@ -319,9 +301,7 @@ void drawErrorIntroScreen(){
   oled.setCursor(0, 2);
   oled.println(F("Device is not usable"));
   oled.setCursor(0, 3);
-  oled.println(F("Re-connect battery or"));
-  oled.setCursor(0, 4);
-  oled.println(F("check the wires"));
+  oled.println(F("Check the wiring"));
 
   delay(1000);
 }

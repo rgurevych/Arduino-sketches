@@ -6,8 +6,7 @@ Mode description:
 4 - Disarmed
 5 - Safety
 6 - Armed
-7 - Detonation by timer
-8 - Detonation by accelerometer
+7 - Detonate mode
 */
 
 //---------- Define pins and settings
@@ -73,7 +72,7 @@ TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
 
 //---------- Variables
 bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFlag = false;
-bool blinkFlag = true, ledFlag = true, ledBlinkFlag = true;
+bool blinkFlag = true, ledFlag = true, ledBlinkFlag = true, detonateByTimerFlag = false, detonateByAccelFlag = false;
 bool demoMode, debugMode;
 uint8_t max_acc, accelerationLimit, debugMaxAccel = 0;
 int16_t safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
@@ -154,7 +153,6 @@ void setup() {
 void loop() {
   buttonTick();
   timersCountdown();
-  changeMode();
   updateScreen();
   checkAccel();
   operationTick();
@@ -176,9 +174,7 @@ void buttonTick(){
     }
     
     if(bothBtn.hold()){
-      safetyGuardCountdownStart();
-      selfDestructCountdownStart();
-      mode = 4;
+      switchToSafetyMode();
     }
 
     if(rightBtn.hasClicks(5)){
@@ -266,7 +262,6 @@ void switchToIdleMode() {
   if(debugMode) {
     Serial.println(F("Switching to Idle mode"));
   }
-  mode = 1;
   safetyGuardActiveFlag = false;
   selfDestructActiveFlag = false;
   accelCheckFlag = false;
@@ -274,7 +269,8 @@ void switchToIdleMode() {
   safetyGuardDisable();
   bothBtn.setHoldTimeout(2000);
   drawDefaultScreen();
-  // changeMode();
+  mode = 1;
+  changeMode();
 }
 
 
@@ -283,7 +279,7 @@ void switchToSettingsMode() {
     Serial.println(F("Switching to Settings mode"));
   }
   mode = 2;
-  // changeMode();
+  changeMode();
 }
 
 
@@ -292,16 +288,52 @@ void switchToChangeValueMode() {
     Serial.println(F("Switching to Change Value mode"));
   }
   mode = 3;
-  // changeMode();
+  changeMode();
 }
 
 
 void switchToDisarmedMode() {
   if(debugMode) {
-    Serial.println(F("Switching to Change Value mode"));
+    Serial.println(F("Switching to Disarmed mode"));
   }
   mode = 4;
-  // changeMode();
+  changeMode();
+}
+
+
+void switchToSafetyMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to Safety mode"));
+  }
+  safetyGuardCountdownStart();
+  selfDestructCountdownStart();
+  mode = 5;
+  changeMode();
+}
+
+
+void switchToArmedMode() {
+  if(debugMode) Serial.println(F("Switching to Armed mode"));
+  detonateByTimerFlag = false;
+  detonateByAccelFlag = false;
+  safetyGuardActiveFlag = false;
+  accelCheckFlag = true;
+  safetyGuardDisable();
+  bothBtn.setHoldTimeout(4000);
+  mode = 6;
+  changeMode();
+}
+
+
+void switchToDetonateMode() {
+  if(debugMode) Serial.println(F("Switching to Detonate mode"));
+  detonateEnable();
+  accelCheckFlag = false;
+  selfDestructActiveFlag = false;
+  bothBtn.setHoldTimeout(2000);
+  releaseDetonationTimer.start();
+  mode = 7;
+  changeMode();
 }
 
 
@@ -323,12 +355,8 @@ void operationTick(){
         Serial.print(F(" is reached, current acc = ")); Serial.print(max_acc);
         Serial.println(F(", detonating!!!"));
       }
-      detonateEnable();
-      mode = 7;
-      accelCheckFlag = false;
-      selfDestructActiveFlag = false;
-      bothBtn.setHoldTimeout(2000);
-      releaseDetonationTimer.start();
+      detonateByAccelFlag = true;
+      switchToDetonateMode();
     }
 
     if(debugMode){
@@ -338,12 +366,7 @@ void operationTick(){
   
   if(safetyGuardActiveFlag){
     if(safetyGuardTimeoutCounter == 0){
-      if(debugMode) Serial.println(F("Deactivating Safety guard, device armed"));
-      safetyGuardDisable();
-      safetyGuardActiveFlag = false;
-      accelCheckFlag = true;
-      mode = 5;
-      bothBtn.setHoldTimeout(4000);
+      switchToArmedMode();
     }
   }
 
@@ -354,19 +377,17 @@ void operationTick(){
         if(debugMode) Serial.println(F("Safety guard is still on, detonation blocked!"));
       }
       else{
-        if(debugMode) Serial.println(F("Detonating!!!"));
-        detonateEnable();
-        mode = 6;
-        selfDestructActiveFlag = false;
-        accelCheckFlag = false;
-        bothBtn.setHoldTimeout(2000);
-        releaseDetonationTimer.start();
+        detonateByTimerFlag = true;
+        switchToDetonateMode();
       }
     }
   }
 
-  if(mode >= 6 && mode <= 7){
-    if(releaseDetonationTimer.tick()) detonateDisable();
+  if(mode == 7){
+    if(releaseDetonationTimer.tick()) {
+      if(debugMode) Serial.println(F("Releasing fire pin"));
+      detonateDisable();
+    }
   }
 }
 
@@ -378,7 +399,8 @@ void safetyGuardCountdownStart(){
     if(debugMode){
       Serial.print(F("Activating Safety guard, timeout: "));
       Serial.print(safetyGuardTimeoutCounter);
-      Serial.println(F(" s"));
+      if(demoMode) Serial.println(F(" s"));
+      else Serial.println(F(" m"));
     }
     safetyGuardEnable();
     safetyGuardActiveFlag = true;
@@ -400,7 +422,8 @@ void selfDestructCountdownStart(){
     if(debugMode){
       Serial.print(F("Activating Self-destruct timer with timeout: "));
       Serial.print(selfDestructTimeoutCounter);
-      Serial.println(F(" s"));
+      if(demoMode) Serial.println(F(" s"));
+      else Serial.println(F(" m"));
     }
     selfDestructActiveFlag = true;
   }
@@ -433,12 +456,12 @@ void checkAccel(){
   
       max_acc = defineMaxAccel(acc_x, acc_y, acc_z);
   
-      if(debugMode){
-        Serial.print(acc_x); Serial.print(F("  "));
-        Serial.print(acc_y); Serial.print(F("  "));
-        Serial.print(acc_z); Serial.print(F("  Max is: "));
-        Serial.println(max_acc);
-      }
+      // if(debugMode){
+      //   Serial.print(acc_x); Serial.print(F("  "));
+      //   Serial.print(acc_y); Serial.print(F("  "));
+      //   Serial.print(acc_z); Serial.print(F("  Max is: "));
+      //   Serial.println(max_acc);
+      // }
     }
   }
 }

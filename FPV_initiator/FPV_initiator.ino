@@ -31,7 +31,7 @@ Presets description:
   #define SAFETY_TIMEOUT 120                     //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 20                //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
-  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCEL_REQUEST_TIMEOUT 7                //Delay between accelerometer request, milliseconds
   #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
 
 #elif PRESET == 11                             //FPV mode with PWM remote control and accelerometer
@@ -43,8 +43,8 @@ Presets description:
   #define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
-  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
-  #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate  
+  #define ACCEL_REQUEST_TIMEOUT 7                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate  
 
 #elif PRESET == 12                             //FPV mode with PWM remote control and contact horns
   #define WORK_MODE 0                            //FPV
@@ -92,7 +92,7 @@ Presets description:
 #endif
 
 //---------- Define constant pins and settings
-#define VERSION 3.12                           //Firmware version
+#define VERSION 3.13                           //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define DEBUG_MODE 0                           //Enable debug mode

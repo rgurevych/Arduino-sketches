@@ -128,6 +128,7 @@ void doAccelCalibration() {
       else offsets[i] /= 4;
     }
     EEPROM.put(ACCEL_OFFSETS_BYTE, offsets);
+    EEPROM.update(INIT_CALIBRATION_ADDR, INIT_CALIBRATION_KEY);
   }
   else oled.print(F("FAIL! Reset and retry"));
     
@@ -191,6 +192,7 @@ void runSelfTest(){
   oled.println(F("Starting Self-test:"));
   oled.setCursor(0, 2);
   oled.print(F("Safety guard relay:"));
+  delay(200);
 
   if(!digitalRead(RELAY_TEST_PIN)) oled.print(F("+"));
   else{
@@ -213,31 +215,6 @@ void runSelfTest(){
   delay(200);
 
   oled.setCursor(0, 3);
-  oled.print(F("Detonation relay: "));
-
-  if(!digitalRead(RELAY_TEST_PIN)){
-    oled.print(F("+"));
-  }
-  else{
-    oled.print(F("-"));
-    selfTestSuccessFlag = false;
-  }
-  
-  detonateEnable();
-  delay(200);
-
-  if(digitalRead(RELAY_TEST_PIN)){
-    oled.print(F("+"));
-  }
-  else{
-    oled.print(F("-"));
-    selfTestSuccessFlag = false;
-  }
-
-  detonateDisable();
-  delay(200);
-
-  oled.setCursor(0, 4);
   oled.print(F("Accelerometer: "));
   accelCheckFlag = true;
   checkAccel();
@@ -274,8 +251,10 @@ void changeDemoMode(){
   oled.clear();
   oled.home();
   oled.setScale(1);
-  oled.println(F("Switch Demo-mode?"));
-  oled.setCursor(0, 2);
+  oled.print(F("Demo-mode: "));
+  oled.println(demoMode);
+  oled.print(F("Switch it?"));
+  oled.setCursor(0, 3);
   oled.println(F("L-Yes, R-Cancel"));
 
   while (true) {
@@ -290,8 +269,10 @@ void changeDemoMode(){
       demoMode = !demoMode;
       EEPROM.put(40, demoMode);
       oled.println(F("Demo-mode changed"));
-      oled.setCursor(0, 2);
-      oled.println(F("Restarting device"));
+      oled.print(F("New mode: "));
+      oled.println(demoMode);
+      oled.setCursor(0, 3);
+      oled.println(F("Restarting device.."));
       delay(1000);
       resetFunc();
     }

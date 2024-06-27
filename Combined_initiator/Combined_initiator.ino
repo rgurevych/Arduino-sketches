@@ -10,7 +10,8 @@ Mode description:
 */
 
 //---------- Define pins and settings
-#define VERSION 3.02                           //Firmware version
+#define VERSION 3.10                           //Firmware version
+#define REMOTE_CONTROL 1                       //Arming is done via Remote control
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define INIT_CALIBRATION_ADDR 1022             //Number of EEPROM initial calibration check cell
@@ -33,7 +34,7 @@ Mode description:
 #define DEFAULT_ACCELERATION 12                //Default acceleration limit value
 #define BUTTON_TIMEOUT 20000                   //Timeout after which device will return to idle mode from settings (without saving)
 #define DEMO_MODE 1                            //Initially Demo mode enabled (all times are reduced to seconds)
-#define DEBUG_MODE 0                           //Initially Debug mode enabled (Serial is activated and used for debugging)
+#define DEBUG_MODE 1                           //Initially Debug mode enabled (Serial is activated and used for debugging)
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
@@ -42,6 +43,11 @@ Mode description:
 #define LED_BLINK_DURATION 200                 //Duration of LED blinks
 #define LED_BLINK_INTERVAL 800                 //Interval between LED blinks
 
+#if REMOTE_CONTROL
+  #define PWM_REQUEST_TIMEOUT 100                //Delay between PWM checks
+  #define PWM_PIN 2                              //PWM remote pin
+  #define SAFETY_PWM 2000                        //PWM value which enables safety mode
+#endif
 
 //---------- Include libraries
 #include <TimerMs.h>
@@ -68,6 +74,9 @@ TimerMs blinkIntervalTimer(LED_BLINK_INTERVAL, 1, 1);
 TimerMs menuExitTimer(BUTTON_TIMEOUT, 0, 1);
 TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
 TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
+#if REMOTE_CONTROL
+  TimerMs PWMCheckTimer(PWM_REQUEST_TIMEOUT, 1);
+#endif
 
 
 //---------- Variables
@@ -80,6 +89,7 @@ uint8_t mode, oldMode = 0, pointer = 2;
 int32_t acc_x, acc_y, acc_z;
 int16_t ax, ay, az;
 long offsets[6] = {0,0,0,0,0,0};
+int PWMvalue;
 
 void setup() {
   Wire.begin();
@@ -94,6 +104,9 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(SAFETY_LED_PIN, OUTPUT);
   pinMode(RELAY_TEST_PIN, INPUT_PULLUP);
+  #if REMOTE_CONTROL
+    pinMode(PWM_PIN, INPUT_PULLUP);
+  #endif
 
   // OLED
   oled.init();
@@ -128,6 +141,10 @@ void setup() {
     drawErrorIntroScreen();
     while(1) {delay(1000);}
   }
+
+  #if REMOTE_CONTROL
+    if(debugMode) Serial.println(F("PWM readout enabled"));
+  #endif
   
   // Switch to calibration when first launch happens
   if (EEPROM.read(INIT_CALIBRATION_ADDR) != INIT_CALIBRATION_KEY){
@@ -389,6 +406,16 @@ void operationTick(){
       detonateDisable();
     }
   }
+  
+  #if REMOTE_CONTROL
+    if(mode == 1){
+      getPWM();
+      if(abs(PWMvalue - SAFETY_PWM) < 100) {
+        switchToSafetyMode();
+        return;
+      }
+    }
+  #endif
 }
 
 

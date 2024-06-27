@@ -40,3 +40,11 @@ void detonateEnable(){
 void detonateDisable(){
   digitalWrite(RELAY_2_PIN, LOW);
 }
+
+#if REMOTE_CONTROL
+void getPWM() {
+  if (PWMCheckTimer.tick()) {
+    PWMvalue = pulseIn(PWM_PIN, HIGH, 50000UL);  // 50 millisecond timeout
+  }
+}
+#endif

@@ -92,7 +92,7 @@ Presets description:
 #endif
 
 //---------- Define constant pins and settings
-#define VERSION 3.14                           //Firmware version
+#define VERSION 3.20                           //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define DEBUG_MODE 0                           //Enable debug mode
@@ -112,6 +112,7 @@ Presets description:
 #define ARMED_LED_BLINK_INTERVAL 20            //Duration of LED blink in Armed mode
 #define PREDETONATE_LED_SERIES_INTERVAL 40     //Delay between LED blinks in Armed mode
 #define PREDETONATE_LED_BLINK_INTERVAL 10      //Duration of LED blink in Armed mode
+#define INITIAL_FIRE_BLINK_INTERVAL 350        //Duration of red LED blink before accel calibration is done
 #define MODE_CHANGE_INDICATION 100             //How long the LED will be on when mode is changed
 #define RELEASE_AFTER_DETONATION 3000          //Timeout after which the detonation relay is released (after detonation)
 
@@ -146,7 +147,7 @@ uint8_t mode = 0;
 int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
 int PWMvalue;
 bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false;
-bool ledFlag = true, ledBlinkFlag = false, modeChangeFlag = false;
+bool ledFlag = true, ledBlinkFlag = false, modeChangeFlag = false, initialStarupFireFlag = false;
 
 //---------- Declare timers
 TimerMs oneSecondTimer(1000, 1);
@@ -156,6 +157,7 @@ TimerMs modeChangeTimer(MODE_CHANGE_INDICATION, 1);
 TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
 TimerMs predetonationTimer(DETONATION_DELAY*1000, 0, 1);
 TimerMs initialStartTimer(INITIAL_START_TIMEOUT*60000L, 0, 1);
+TimerMs initialStartupFireLedTimer(INITIAL_FIRE_BLINK_INTERVAL, 1);
 #if ACCEL_PRESENT
   TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
 #endif
@@ -208,15 +210,18 @@ void setup() {
     
     //Initial accelerometer calibration
     if(EEPROM.read(50)){
+      Serial.println(F("Make sure there's no short between FIRE wires! Green LED is ON, red LED is blinking!"));
       Serial.println(F("Send any character to start calibration"));
       delay(100);
       ledSwitch();
       while (1) {
+        initialStartupDetonationBlink();
         if (Serial.available() > 0) {
           Serial.read();
           break;
         }
       }
+      detonateDisable();
       delay(1000);
       doAccelCalibration();
     }
@@ -660,3 +665,15 @@ void configPrintout() {
   #endif
 }
 
+
+void initialStartupDetonationBlink(){
+  if(initialStartupFireLedTimer.tick()){
+    initialStarupFireFlag = !initialStarupFireFlag;
+    if(initialStarupFireFlag) {
+      digitalWrite(DETONATION_PIN, HIGH);
+    }
+    else {
+      detonateDisable();
+    }
+  }
+}

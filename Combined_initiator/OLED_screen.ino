@@ -92,6 +92,18 @@ void changeMode(){
     updateScreenTimer.start();
     
     oled.setCursor(48, 0);
+    oled.print(F("SAFE, PWM exp "));
+
+    oled.setCursor(0, 6);
+    oled.println(F("Waiting for PWM input"));
+    oled.println(F("Hold L+R 2s to stop  "));
+    return;
+  }
+
+  if(mode == 6){
+    updateScreenTimer.start();
+    
+    oled.setCursor(48, 0);
     oled.print(F("ACTIVE, SAFE "));
 
     oled.setCursor(0, 6);
@@ -100,7 +112,7 @@ void changeMode(){
     return;
   }
 
-  if(mode == 6){
+  if(mode == 7){
     if(!demoMode){
       oled.clear();
     }
@@ -119,7 +131,7 @@ void changeMode(){
     return;
   }
 
-  if(mode == 7){
+  if(mode == 8){
     if(!demoMode) drawDefaultScreen();
 
     oled.setCursor(48, 0);
@@ -203,7 +215,7 @@ void updateScreen(){
     }
   }
 
-  if(mode == 5){
+  if(mode == 6){
     oled.setCursor(90, 2);
     oled.print(safetyGuardTimeoutCounter / 60);
     if(blinkFlag) oled.print(F(":"));
@@ -225,7 +237,7 @@ void updateScreen(){
     return;
   }
 
-  if(mode == 6){
+  if(mode == 7){
     if(demoMode){
       oled.setCursor(90, 3);
       if(selfDestructTimeout == 0) oled.print(F("Off   "));

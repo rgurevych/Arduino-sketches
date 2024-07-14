@@ -311,3 +311,36 @@ void changeDebugMode(){
     }
   }
 }
+
+
+void changePWMMode(){
+  oled.clear();
+  oled.home();
+  oled.setScale(1);
+  oled.print(F("PWM remote mode: "));
+  oled.println(PWMremote);
+  oled.print(F("Switch it?"));
+  oled.setCursor(0, 3);
+  oled.println(F("L-Yes, R-Cancel"));
+
+  while (true) {
+    rightBtn.tick();
+    leftBtn.tick();
+    if(rightBtn.click()){
+      resetFunc();
+    }
+    if(leftBtn.click()){
+      oled.clear();
+      oled.home();
+      PWMremote = !PWMremote;
+      EEPROM.put(60, PWMremote);
+      oled.println(F("PWM mode changed"));
+      oled.print(F("New PWM mode: "));
+      oled.println(PWMremote);
+      oled.setCursor(0, 3);
+      oled.println(F("Restarting device.."));
+      delay(1000);
+      resetFunc();
+    }
+  }
+}

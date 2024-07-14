@@ -79,7 +79,33 @@ Presets description:
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
   #define ACCEL_REQUEST_TIMEOUT 2                //Delay between accelerometer request, milliseconds
   #define ACCELERATION_LIMIT 10                  //Acceleration limit to detonate
+
+#elif PRESET == 31                               //Custom preset for Roman 7/40
+  #define WORK_MODE 0                            //FPV
+  #define ACCEL_PRESENT 1                        //Is accelerometer present?
+  #define HORNS_PRESENT 0                        //Are contact horns present?
+  #define REMOTE_CONTROL 0                       //Arming is done via Safety pin
+  #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
+  #define SAFETY_TIMEOUT 420                     //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 40                //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
+
+#elif PRESET == 32                               //Custom preset for Roman 20/0
+  #define WORK_MODE 0                            //FPV
+  #define ACCEL_PRESENT 1                        //Is accelerometer present?
+  #define HORNS_PRESENT 0                        //Are contact horns present?
+  #define REMOTE_CONTROL 0                       //Arming is done via Safety pin
+  #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
+  #define SAFETY_TIMEOUT 1200                     //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
+
 #endif
+
 
 #if REMOTE_CONTROL
   #define PWM_REQUEST_TIMEOUT 100                //Delay between PWM checks

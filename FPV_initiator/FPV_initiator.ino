@@ -40,8 +40,8 @@ Presets description:
   #define HORNS_PRESENT 0                        //Are contact horns present?
   #define REMOTE_CONTROL 1                       //Arming is done via Remote control
   #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
-  #define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
-  #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
+  #define SAFETY_TIMEOUT 5                       //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 20                //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
   #define ACCEL_REQUEST_TIMEOUT 7                //Delay between accelerometer request, milliseconds
   #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate  

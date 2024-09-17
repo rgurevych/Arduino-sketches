@@ -19,7 +19,7 @@ Presets description:
 13 - FPV mode with PWM remote control and accelerometer, detonation delay - 5 seconds
 20 - Bomber mode with safety pin and accelerometer
 */
-#define PRESET 10                              //Selected preset
+#define PRESET 33                              //Selected preset
 
 //---------- Presets and dependencies
 #if PRESET == 10                               //Standard FPV mode with safety pin and accelerometer
@@ -31,7 +31,7 @@ Presets description:
   #define SAFETY_TIMEOUT 120                     //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 20                //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
-  #define ACCEL_REQUEST_TIMEOUT 7                //Delay between accelerometer request, milliseconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
   #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
 
 #elif PRESET == 11                             //FPV mode with PWM remote control and accelerometer
@@ -43,7 +43,7 @@ Presets description:
   #define SAFETY_TIMEOUT 5                       //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 20                //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
-  #define ACCEL_REQUEST_TIMEOUT 7                //Delay between accelerometer request, milliseconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
   #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate  
 
 #elif PRESET == 12                             //FPV mode with PWM remote control and contact horns
@@ -73,14 +73,14 @@ Presets description:
   #define ACCEL_PRESENT 1                        //Is accelerometer present?
   #define HORNS_PRESENT 0                        //Are contact horns present?
   #define REMOTE_CONTROL 0                       //Arming is done via Safety pin
-  #define INITIAL_START_TIMEOUT 10               //Initial start timeout before switching to Disarmed mode in minutes
+  #define INITIAL_START_TIMEOUT 20               //Initial start timeout before switching to Disarmed mode in minutes
   #define SAFETY_TIMEOUT 2                       //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
   #define ACCEL_REQUEST_TIMEOUT 2                //Delay between accelerometer request, milliseconds
-  #define ACCELERATION_LIMIT 10                  //Acceleration limit to detonate
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
 
-#elif PRESET == 31                               //Custom preset for Roman 7/40
+#elif PRESET == 31                             //Custom preset for Roman 7/40
   #define WORK_MODE 0                            //FPV
   #define ACCEL_PRESENT 1                        //Is accelerometer present?
   #define HORNS_PRESENT 0                        //Are contact horns present?
@@ -92,7 +92,7 @@ Presets description:
   #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
   #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
 
-#elif PRESET == 32                               //Custom preset for Roman 20/0
+#elif PRESET == 32                             //Custom preset for Roman 20/0
   #define WORK_MODE 0                            //FPV
   #define ACCEL_PRESENT 1                        //Is accelerometer present?
   #define HORNS_PRESENT 0                        //Are contact horns present?
@@ -103,6 +103,18 @@ Presets description:
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
   #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
   #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
+
+#elif PRESET == 33                             //Long range modee with PWM remote control and accelerometer
+  #define WORK_MODE 0                            //FPV
+  #define ACCEL_PRESENT 1                        //Is accelerometer present?
+  #define HORNS_PRESENT 0                        //Are contact horns present?
+  #define REMOTE_CONTROL 1                       //Arming is done via Remote control
+  #define INITIAL_START_TIMEOUT 5                //Initial start timeout before switching to Disarmed mode in minutes
+  #define SAFETY_TIMEOUT 1                       //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 420               //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate 
 
 #endif
 
@@ -170,7 +182,7 @@ Presets description:
 
 //---------- Declare variables
 uint8_t mode = 0;
-int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
+long safetyGuardTimeoutCounter, selfDestructTimeoutCounter;
 int PWMvalue;
 bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false;
 bool ledFlag = true, ledBlinkFlag = false, modeChangeFlag = false, initialStarupFireFlag = false;
@@ -322,7 +334,7 @@ void selfDestructCountdownStart(){
       if(DEBUG_MODE) Serial.println(F("Self-destroy timer won't be activated because it's disabled in the preset"));
       return;
     }
-    selfDestructTimeoutCounter = SELF_DESTROY_TIMEOUT * 60;
+    selfDestructTimeoutCounter = SELF_DESTROY_TIMEOUT * 60L;
     if(DEBUG_MODE){
       Serial.print(F("Activating Self-destroy timer with timeout: "));
       Serial.print(selfDestructTimeoutCounter);

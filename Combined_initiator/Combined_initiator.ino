@@ -14,7 +14,7 @@ Mode description:
 #define VERSION 3.30                           //Firmware version
 #define REMOTE_CONTROL 1                       //Arming is done via Remote control
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
-#define INIT_KEY 11                            //First launch key
+#define INIT_KEY 10                            //First launch key
 #define INIT_CALIBRATION_ADDR 1022             //Number of EEPROM initial calibration check cell
 #define INIT_CALIBRATION_KEY 20                //Initial calibration key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored

@@ -19,7 +19,7 @@ Presets description:
 13 - FPV mode with PWM remote control and accelerometer, detonation delay - 5 seconds
 20 - Bomber mode with safety pin and accelerometer
 */
-#define PRESET 33                              //Selected preset
+#define PRESET 10                              //Selected preset
 
 //---------- Presets and dependencies
 #if PRESET == 10                               //Standard FPV mode with safety pin and accelerometer

@@ -8,6 +8,10 @@ void changeMode(){
   if(mode == 1){
     oled.setCursor(48, 0);
     oled.print(F("IDLE         "));
+    if(PWMremote){
+      oled.setCursor(72, 0);
+      oled.print(F(", PWM "));
+    }
 
     oled.setCursor(90, 2);
     oled.print(safetyGuardTimeout);
@@ -88,11 +92,35 @@ void changeMode(){
     return;
   }
 
+  if(mode == 4){
+    updateScreenTimer.start();
+    
+    oled.setCursor(48, 0);
+    oled.print(F("DISARMED, PWM "));
+
+    oled.setCursor(0, 6);
+    oled.println(F("Ignoring PWM:        "));
+    oled.println(F("Hold L+R 2s to stop  "));
+    return;
+  }
+
   if(mode == 5){
     updateScreenTimer.start();
     
     oled.setCursor(48, 0);
-    oled.print(F("ACTIVE, SAFE "));
+    oled.print(F("SAFE, PWM exp."));
+
+    oled.setCursor(0, 6);
+    oled.println(F("Waiting for PWM input"));
+    oled.println(F("Hold L+R 2s to stop  "));
+    return;
+  }
+
+  if(mode == 6){
+    updateScreenTimer.start();
+    
+    oled.setCursor(48, 0);
+    oled.print(F("ACTIVE, SAFE  "));
 
     oled.setCursor(0, 6);
     oled.println(F("                     "));
@@ -100,13 +128,13 @@ void changeMode(){
     return;
   }
 
-  if(mode == 6){
+  if(mode == 7){
     if(!demoMode){
       oled.clear();
     }
     else{
       oled.setCursor(48, 0);
-      oled.print(F("ACTIVE, ARMED"));
+      oled.print(F("ACTIVE, ARMED "));
 
       oled.setCursor(90, 2);
       oled.print(F("Off   "));
@@ -119,7 +147,7 @@ void changeMode(){
     return;
   }
 
-  if(mode == 7){
+  if(mode == 8){
     if(!demoMode) drawDefaultScreen();
 
     oled.setCursor(48, 0);
@@ -203,7 +231,25 @@ void updateScreen(){
     }
   }
 
-  if(mode == 5){
+  if(mode == 4){
+    oled.setCursor(84, 6);
+    oled.print(disarmedTimeoutCounter / 60);
+    if(blinkFlag) oled.print(F(":"));
+    else oled.print(F(" "));
+    if(disarmedTimeoutCounter % 60 < 10) oled.print(F("0"));
+    oled.print(disarmedTimeoutCounter % 60);
+    oled.print(F(" "));
+    getPWM();
+    if(abs(PWMvalue - SAFETY_PWM) < 50) {
+      oled.print(F("*  "));  
+    }
+    else {
+      oled.print(F("-  "));
+    }
+    return;
+  }
+
+  if(mode == 6){
     oled.setCursor(90, 2);
     oled.print(safetyGuardTimeoutCounter / 60);
     if(blinkFlag) oled.print(F(":"));
@@ -225,7 +271,7 @@ void updateScreen(){
     return;
   }
 
-  if(mode == 6){
+  if(mode == 7){
     if(demoMode){
       oled.setCursor(90, 3);
       if(selfDestructTimeout == 0) oled.print(F("Off   "));

@@ -94,8 +94,9 @@
       Serial.println(F("FAILED!"));
       Serial.println(F("Calibration data not saved"));
     }
-    delay(1000);
+    delay(500);
     Serial.println(F("Restarting device..."));
+    delay(100);
     resetFunc();
   }
 #endif

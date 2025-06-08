@@ -142,14 +142,15 @@ Presets description:
 #endif
 
 //---------- Define constant pins and settings
-#define VERSION 3.20                           //Firmware version
+// New in 3.30 - modify the way of checking connection with accelerometer.
+#define VERSION 3.30                           //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define DEBUG_MODE 0                           //Enable debug mode
 #define DETONATION_PIN 17                      //MOSFET pin
 #define LED_PIN 14                             //External LED pin
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
-#define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
+#define CALIBRATION_TOLERANCE 2000              //What is the calibration tolerance (units)
 #define STARTUP_LED_SERIES_INTERVAL 2000       //Delay between LED blinks in Idle mode
 #define STARTUP_LED_BLINK_INTERVAL 2000         //Duration of LED blink in Idle mode
 #define IDLE_LED_SERIES_INTERVAL 3500          //Delay between LED blinks in Idle mode
@@ -248,18 +249,36 @@ void setup() {
   #if ACCEL_PRESENT
     //Initial accelerometer check
     mpu.initialize();
-    if(mpu.testConnection()){
-      Serial.println(F("MPU6050 accel check - SUCCESS"));
-      }
+    uint8_t deviceID = mpu.getDeviceID();
+    if(deviceID > 0){
+      Serial.print(F("MPU6050 accel ID check - SUCCESS, ID = "));
+      Serial.println(deviceID);
+    }
     else{
-      Serial.println(F("MPU6050 accel check - FAILED"));
+      Serial.print(F("MPU6050 accel ID check - FAILED, ID = "));
+      Serial.println(deviceID);
       Serial.println(F("Fix this before proceeding"));
       ledSwitch();
       while (1) {}
-      }
+    }
     
     //Initial accelerometer calibration
     if(EEPROM.read(50)){
+      //Perform initial check that acc values for all axes are not 0
+      mpu.getAcceleration(&ax, &ay, &az);
+      acc_x = abs(ax / ACC_COEF);
+      acc_y = abs(ay / ACC_COEF);
+      acc_z = abs(az / ACC_COEF);
+      if((acc_x + acc_y + acc_z) != 0){
+        Serial.println(F("MPU6050 accel pre-calibration check - SUCCESS"));
+      }
+      else{
+        Serial.println(F("MPU6050 accel pre-calibration check - FAILED"));
+        Serial.println(F("Fix this before proceeding"));
+        ledSwitch();
+        while (1) {}
+      }
+
       Serial.println(F("Make sure there's no short between FIRE wires! Green LED is ON, red LED is blinking!"));
       Serial.println(F("Send any character to start calibration"));
       delay(100);
@@ -272,7 +291,7 @@ void setup() {
         }
       }
       detonateDisable();
-      delay(1000);
+      delay(100);
       doAccelCalibration();
     }
     else{

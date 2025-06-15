@@ -5,6 +5,8 @@
 #include <FastBot.h>
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
+#include <NTPClient.h>
  
 //---------- Define pins and constants
 #define DETECTOR_PIN 4                     //Button pin
@@ -18,6 +20,10 @@ const char* password = "3Gurevych+1Mirkina";
 #define INIT_ADDR 500                    // Number of EEPROM initial cell
 #define INIT_KEY 25                      // First launch key
  
+
+// Define NTP Client and Telegram bot
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
 FastBot bot(BOTtoken);
 
 GTimer checkTimer(MS, 1000);
@@ -72,18 +78,22 @@ void setup(){
   waterPresent = digitalRead(DETECTOR_PIN);
   currentState = digitalRead(DETECTOR_PIN);
 
-// Підключення обробника повідомлень до бота, відправлення стартового повідомлення
-  bot.attach(newMsg);
-  sendStartupMessage();
+// Setting up NTP time client
+  timeClient.begin();
   
 // Визначення поточного часу, збереження його та виведення в консоль
   if(savedUnixTime == 0){
-    savedUnixTime = bot.getUnix();
+    timeClient.update();
+    savedUnixTime = timeClient.getEpochTime();
     EEPROM.put(40, savedUnixTime);
     EEPROM.commit();
   }
 
-  currentUnixTime = bot.getUnix();
+//Визначення поточного часу через сервер
+  timeClient.update();
+  currentUnixTime = timeClient.getEpochTime();
+  Serial.print("Поточний час через NTP Сервер: ");
+  Serial.println(currentUnixTime);
   
   FB_Time savedTime(savedUnixTime);
   FB_Time currentTime(currentUnixTime);
@@ -97,11 +107,18 @@ void setup(){
   Serial.print(currentTime.timeString());
   Serial.print(' ');
   Serial.println(currentTime.dateString());
+
+// Підключення обробника повідомлень до бота, відправлення стартового повідомлення
+  bot.attach(newMsg);
+  sendStartupMessage();
 }
 
 
 // Стартове повідомлення, що генерується і відправляється в чат його власнику
 void sendStartupMessage(){
+  FB_Time currentTime(currentUnixTime);
+  String currentTimeString = currentTime.timeString();
+  String currentDateString = currentTime.dateString();
   String startUpMessage = F("\U000026A0 Я втрачав живлення, але зараз знову готовий до роботи! \n");
   startUpMessage += F("WiFi підключено, IP адреса: ");
   startUpMessage += WiFi.localIP().toString();
@@ -113,6 +130,10 @@ void sendStartupMessage(){
     }
   startUpMessage += F("\nПоточний стан: ");
   startUpMessage += defineCurrentWaterState();
+  startUpMessage += F("\nПоточний час і дата UTC: ");
+  startUpMessage += currentTime.timeString();
+  startUpMessage += F(" ");
+  startUpMessage += currentTime.dateString();
   bot.sendMessage(startUpMessage, MASTER_CHAT_ID);
 }
 
@@ -179,8 +200,9 @@ void checkWaterState(){
     checkWiFi();
     waterPresent = digitalRead(DETECTOR_PIN);
     if(waterPresent != currentState){
+      timeClient.update();
       currentState = waterPresent;
-      currentUnixTime = bot.getUnix();
+      currentUnixTime = timeClient.getEpochTime();
       sendCurrentWaterState(CHAT_ID);
 
       savedUnixTime = currentUnixTime;
@@ -293,7 +315,8 @@ void newMsg(FB_msg& msg) {
   }
 
   if(msg.text == "/status") {
-    currentUnixTime = bot.getUnix();
+    timeClient.update();
+    currentUnixTime = timeClient.getEpochTime();
     unixTimeDelta = currentUnixTime - savedUnixTime;
     String statusMessage = defineCurrentWaterState();
     statusMessage += F("\n\U000023F1 Це триває вже ");
@@ -324,7 +347,8 @@ void newMsg(FB_msg& msg) {
   }
 
   if(msg.text == "/reset_timer") {
-    savedUnixTime = bot.getUnix();
+    timeClient.update();
+    savedUnixTime = timeClient.getEpochTime();
     EEPROM.put(40, savedUnixTime);
     EEPROM.commit();
     bot.sendMessage("Таймер розрахунку поточного періоду наявності/вісутності води скинуто, облік часу почався з 0", MASTER_CHAT_ID);

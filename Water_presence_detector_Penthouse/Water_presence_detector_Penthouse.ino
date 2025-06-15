@@ -10,13 +10,10 @@
 #define DETECTOR_PIN 4                     //Button pin
 
 //---------- Define variables
-//const char* ssid = "Gurevych_2";   // SSID for Uzhgorod
 const char* ssid = "Penthouse_72";   // SSID for Penthouse
 const char* password = "3Gurevych+1Mirkina";
-//#define BOTtoken "6407096726:AAHM8kWsL6e8i0PyrulmfoBPbQig98h1xUg"     //BOTtoken for Uzhgorod
 #define BOTtoken "7107560647:AAEGsxdtWN0NAPAfYt1THw_eIXXI76Fv6yo"     //BOTtoken for Penthouse
 #define MASTER_CHAT_ID "1289811885"
-//#define CHAT_ID "-1001813650904"     // Chat_ID for Uzhgorod
 #define CHAT_ID "1289811885"     // Chat_ID for Penthouse
 #define INIT_ADDR 500                    // Number of EEPROM initial cell
 #define INIT_KEY 25                      // First launch key

@@ -1,18 +1,22 @@
-/*Unified device by Rostyslav Gurevych
+/*Combined initator by Rostyslav Gurevych
 Mode description:
 1 - Idle
 2 - Settings
 3 - Change value
-4 - Working, safety guard enabled
-5 - Working, armed (safety guard off)
-6 - Detonation by timer
-7 - Detonation by accelerometer
+4 - Disarmed
+5 - Safe waiting for PWM
+6 - Safe, active
+7 - Armed
+8 - Detonate
 */
 
 //---------- Define pins and settings
-#define VERSION 0.92                            //Firmware version
+#define VERSION 3.30                           //Firmware version
+#define REMOTE_CONTROL 1                       //Arming is done via Remote control
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
+#define INIT_CALIBRATION_ADDR 1022             //Number of EEPROM initial calibration check cell
+#define INIT_CALIBRATION_KEY 20                //Initial calibration key
 #define ACCEL_OFFSETS_BYTE 900                 //Nubmer of EEPROM cell where accel offsets are stored
 #define BUTTON_1_PIN 17                        //Button 1 pin
 #define BUTTON_2_PIN 16                        //Button 2 pin
@@ -20,26 +24,30 @@ Mode description:
 #define RELAY_2_PIN 7                          //Detonation relay pin (relay 2)
 #define SAFETY_LED_PIN 8                       //Safety guard LED pin
 #define RELAY_TEST_PIN 9                       //Relay test pin (for self-test)
-#define MIN_GUARD_TIMER_VALUE 10               //Minimum safety guard timer value (in minutes)
+#define MIN_GUARD_TIMER_VALUE 1                //Minimum safety guard timer value (in minutes)
 #define MAX_GUARD_TIMER_VALUE 60               //Maximum safety guard timer value (in minutes)
-#define DEFAULT_GUARD_TIMER_VALUE 40           //Default safety guard timer value on startup (in minutes)
+#define DEFAULT_GUARD_TIMER_VALUE 20           //Default safety guard timer value on startup (in minutes)
 #define MIN_SELF_DESTRUCT_TIMER_VALUE 60       //Minimum self-destruction timer value (in minutes)
 #define MAX_SELF_DESTRUCT_TIMER_VALUE 600      //Maximum self-destruction timer value (in minutes)
 #define DEFAULT_SELF_DESTRUCT_TIMER_VALUE 90   //Default self-destruction timer value on startup (in minutes)
-#define MIN_ACCELERATION 4                     //Minimum acceleration limit
-#define MAX_ACCELERATION 16                    //Maximum acceleration limit
-#define DEFAULT_ACCELERATION 6                 //Default acceleration limit value
+#define MIN_ACCELERATION 5                     //Minimum acceleration limit
+#define MAX_ACCELERATION 15                    //Maximum acceleration limit
+#define DEFAULT_ACCELERATION 12                //Default acceleration limit value
 #define BUTTON_TIMEOUT 20000                   //Timeout after which device will return to idle mode from settings (without saving)
 #define DEMO_MODE 1                            //Initially Demo mode enabled (all times are reduced to seconds)
 #define DEBUG_MODE 1                           //Initially Debug mode enabled (Serial is activated and used for debugging)
 #define ACC_COEF 2048                          //Divider to be used with 16G accelerometer
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
 #define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
-#define ACCEL_REQUEST_TIMEOUT 20               //Delay between accelerometer request
-#define RELEASE_AFTER_DETONATION 5000          //Timeout after which the detonation relay is released (after detonation)
-#define LED_BLINK_DURATION 100                 //Duration of LED blinks
-#define LED_BLINK_INTERVAL 1400                //Interval between LED blinks
+#define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request
+#define RELEASE_AFTER_DETONATION 3000          //Timeout after which the detonation relay is released (after detonation)
+#define LED_BLINK_DURATION 200                 //Duration of LED blinks
+#define LED_BLINK_INTERVAL 800                 //Interval between LED blinks
 
+#define PWM_REQUEST_TIMEOUT 100                //Delay between PWM checks
+#define PWM_PIN 2                              //PWM remote pin
+#define SAFETY_PWM 2000                        //PWM value which enables safety mode
+#define DISARMED_TIMEOUT 10                    //Timeout after which the disarmed PWM mode is switched off
 
 //---------- Include libraries
 #include <TimerMs.h>
@@ -66,91 +74,101 @@ TimerMs blinkIntervalTimer(LED_BLINK_INTERVAL, 1, 1);
 TimerMs menuExitTimer(BUTTON_TIMEOUT, 0, 1);
 TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
 TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
+TimerMs PWMCheckTimer(PWM_REQUEST_TIMEOUT, 1);
 
 
 //---------- Variables
-bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFlag = false;
-bool blinkFlag = true, ledFlag = true, ledBlinkFlag = true;
-bool demoMode, debugMode;
+bool disarmedActiveFlag = false, safetyGuardActiveFlag = false, selfDestructActiveFlag = false, accelCheckFlag = false;
+bool blinkFlag = true, ledFlag = true, ledBlinkFlag = true, detonateByTimerFlag = false, detonateByAccelFlag = false;
+bool demoMode, debugMode, PWMremote;
 uint8_t max_acc, accelerationLimit, debugMaxAccel = 0;
-uint16_t safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
-uint8_t mode = 1, oldMode = 0;
-uint8_t pointer = 2;
+int16_t safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter, disarmedTimeoutCounter;
+uint8_t mode, oldMode = 0, pointer = 2;
 int32_t acc_x, acc_y, acc_z;
 int16_t ax, ay, az;
 long offsets[6] = {0,0,0,0,0,0};
+int PWMvalue;
 
 void setup() {
   Wire.begin();
 
-  //Pin modes
+  // Set both executive outputs to 0
   safetyGuardDisable();
   detonateDisable();
-    
+  
+  // Pin modes  
   pinMode(RELAY_1_PIN, OUTPUT);
   pinMode(RELAY_2_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(SAFETY_LED_PIN, OUTPUT);
   pinMode(RELAY_TEST_PIN, INPUT_PULLUP);
-  bothBtn.setHoldTimeout(2000);
+  pinMode(PWM_PIN, INPUT_PULLUP);
 
-  //OLED
+  // OLED
   oled.init();
   oled.clear();
   oled.setContrast(200);
 
   // EEPROM
   if (EEPROM.read(INIT_ADDR) != INIT_KEY){
-    EEPROM.write(INIT_ADDR, INIT_KEY);
+    EEPROM.put(INIT_ADDR, INIT_KEY);
     EEPROM.put(10, DEFAULT_GUARD_TIMER_VALUE);
     EEPROM.put(20, DEFAULT_SELF_DESTRUCT_TIMER_VALUE);
     EEPROM.put(30, DEFAULT_ACCELERATION);
     EEPROM.put(40, DEMO_MODE);
     EEPROM.put(50, DEBUG_MODE);
-    EEPROM.put(ACCEL_OFFSETS_BYTE, offsets);
+    EEPROM.put(60, REMOTE_CONTROL);
   }
   EEPROM.get(10, safetyGuardTimeout);
   EEPROM.get(20, selfDestructTimeout);
   EEPROM.get(30, accelerationLimit);
   EEPROM.get(40, demoMode);
   EEPROM.get(50, debugMode);
-  EEPROM.get(ACCEL_OFFSETS_BYTE, offsets);
+  EEPROM.get(60, PWMremote);
 
+  // Open Serial output in Debug mode
   if(debugMode) Serial.begin(9600);
 
-  //Accelerometer
+  //Initialize accelerometer, show error screen if fail
   mpu.initialize();
   if(mpu.testConnection()){
     if(debugMode) Serial.println(F("MPU6050 check - SUCCESS"));
-    drawIntroScreen();
   }
   else{
     if(debugMode) Serial.println(F("MPU6050 check - FAILED"));
     drawErrorIntroScreen();
     while(1) {delay(1000);}
   }
-  mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
-  mpu.setXAccelOffset(offsets[0]);
-  mpu.setYAccelOffset(offsets[1]);
-  mpu.setZAccelOffset(offsets[2]);
-  mpu.setXGyroOffset(offsets[3]);
-  mpu.setYGyroOffset(offsets[4]);
-  mpu.setZGyroOffset(offsets[5]);
-  
-  //Startup preparation and check
-  safetyGuardDisable();
-  detonateDisable();
-  delay(1500);
 
-  //Draw default screen after setup
-  drawDefaultScreen();
+  if(PWMremote){
+    if(debugMode) Serial.println(F("PWM remote enabled"));
+  }
+
+  
+  // Switch to calibration when first launch happens
+  if (EEPROM.read(INIT_CALIBRATION_ADDR) != INIT_CALIBRATION_KEY){
+    calibrateAccel();
+  }
+  else{
+    drawIntroScreen();
+    EEPROM.get(ACCEL_OFFSETS_BYTE, offsets);
+    mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
+    mpu.setXAccelOffset(offsets[0]);
+    mpu.setYAccelOffset(offsets[1]);
+    mpu.setZAccelOffset(offsets[2]);
+    mpu.setXGyroOffset(offsets[3]);
+    mpu.setYGyroOffset(offsets[4]);
+    mpu.setZGyroOffset(offsets[5]);
+
+    delay(1500);
+    switchToIdleMode();
+  }  
 }
 
 
 void loop() {
   buttonTick();
   timersCountdown();
-  changeMode();
   updateScreen();
   checkAccel();
   operationTick();
@@ -167,14 +185,17 @@ void buttonTick(){
   
   if(mode == 1){
     if(rightBtn.hold()){
-      mode = 2;
       pointer = 2;
+      switchToSettingsMode();
     }
     
     if(bothBtn.hold()){
-      safetyGuardCountdownStart();
-      selfDestructCountdownStart();
-      mode = 4;
+      if(PWMremote) {
+        switchToDisarmedMode();
+      }
+      else {
+        switchToSafetyMode();
+      }
     }
 
     if(rightBtn.hasClicks(5)){
@@ -192,6 +213,10 @@ void buttonTick(){
     if(leftBtn.hasClicks(7)){
       changeDemoMode();
     }
+
+    if(leftBtn.hasClicks(10)){
+      changePWMMode();
+    }
     return;
   }
 
@@ -205,11 +230,11 @@ void buttonTick(){
       EEPROM.put(10, safetyGuardTimeout);
       EEPROM.put(20, selfDestructTimeout);
       EEPROM.put(30, accelerationLimit);
-      mode = 1;
+      switchToIdleMode();
     }
 
     if(rightBtn.hold()){
-      mode = 3;
+      switchToChangeValueMode();
     }
 
     exitMenu();
@@ -218,7 +243,7 @@ void buttonTick(){
 
   if(mode == 3){
     if(leftBtn.click()){
-      if(pointer == 2) safetyGuardTimeout -= 10;
+      if(pointer == 2) safetyGuardTimeout -= 5;
       
       else if(pointer == 3) {
         selfDestructTimeout -= 10;
@@ -229,7 +254,10 @@ void buttonTick(){
     }
 
     if(rightBtn.click()){
-      if(pointer == 2) safetyGuardTimeout += 10;
+      if(pointer == 2){
+        if(safetyGuardTimeout <= 1) safetyGuardTimeout = 5;
+        else safetyGuardTimeout += 5;
+      }
       
       else if(pointer == 3){
         selfDestructTimeout += 10;
@@ -244,25 +272,108 @@ void buttonTick(){
     accelerationLimit = constrain(accelerationLimit, MIN_ACCELERATION, MAX_ACCELERATION);
 
     if(leftBtn.hold()){
-      mode = 2;
+      switchToSettingsMode();
     }
 
     exitMenu();
     return;
   }
 
-  if(mode >= 4 && mode <= 7){
+  if(mode >= 4 && mode <= 8){
     if(bothBtn.hold()){
-      safetyGuardActiveFlag = false;
-      selfDestructActiveFlag = false;
-      accelCheckFlag = false;
-      detonateDisable();
-      safetyGuardDisable();
-      mode = 1;
-      bothBtn.setHoldTimeout(2000);
-      if(!demoMode) drawDefaultScreen();
+      switchToIdleMode();
     }
   }
+}
+
+void switchToIdleMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to Idle mode"));
+  }
+  safetyGuardActiveFlag = false;
+  selfDestructActiveFlag = false;
+  accelCheckFlag = false;
+  detonateDisable();
+  safetyGuardDisable();
+  bothBtn.setHoldTimeout(2000);
+  drawDefaultScreen();
+  mode = 1;
+  changeMode();
+}
+
+
+void switchToSettingsMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to Settings mode"));
+  }
+  mode = 2;
+  changeMode();
+}
+
+
+void switchToChangeValueMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to Change Value mode"));
+  }
+  mode = 3;
+  changeMode();
+}
+
+
+void switchToDisarmedMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to Disarmed mode"));
+  }
+  disarmedCountdownStart();
+  mode = 4;
+  changeMode();
+}
+
+
+void switchToPWMSafetyMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to PWM Safety mode"));
+  }
+  disarmedActiveFlag = false;
+  safetyGuardEnable();
+  mode = 5;
+  changeMode();
+}
+
+
+void switchToSafetyMode() {
+  if(debugMode) {
+    Serial.println(F("Switching to Safety mode"));
+  }
+  safetyGuardCountdownStart();
+  selfDestructCountdownStart();
+  mode = 6;
+  changeMode();
+}
+
+
+void switchToArmedMode() {
+  if(debugMode) Serial.println(F("Switching to Armed mode"));
+  detonateByTimerFlag = false;
+  detonateByAccelFlag = false;
+  safetyGuardActiveFlag = false;
+  accelCheckFlag = true;
+  safetyGuardDisable();
+  bothBtn.setHoldTimeout(4000);
+  mode = 7;
+  changeMode();
+}
+
+
+void switchToDetonateMode() {
+  if(debugMode) Serial.println(F("Switching to Detonate mode"));
+  detonateEnable();
+  accelCheckFlag = false;
+  selfDestructActiveFlag = false;
+  bothBtn.setHoldTimeout(2000);
+  releaseDetonationTimer.start();
+  mode = 8;
+  changeMode();
 }
 
 
@@ -271,7 +382,7 @@ void exitMenu(){
     EEPROM.get(10, safetyGuardTimeout);
     EEPROM.get(20, selfDestructTimeout);
     EEPROM.get(30, accelerationLimit);
-    mode = 1;
+    switchToIdleMode();
   }
 }
 
@@ -284,12 +395,8 @@ void operationTick(){
         Serial.print(F(" is reached, current acc = ")); Serial.print(max_acc);
         Serial.println(F(", detonating!!!"));
       }
-      detonateEnable();
-      mode = 7;
-      accelCheckFlag = false;
-      selfDestructActiveFlag = false;
-      bothBtn.setHoldTimeout(2000);
-      releaseDetonationTimer.start();
+      detonateByAccelFlag = true;
+      switchToDetonateMode();
     }
 
     if(debugMode){
@@ -297,14 +404,15 @@ void operationTick(){
     }
   }
   
+  if(disarmedActiveFlag){
+    if(disarmedTimeoutCounter == 0){
+      switchToPWMSafetyMode();
+    }
+  }
+
   if(safetyGuardActiveFlag){
     if(safetyGuardTimeoutCounter == 0){
-      if(debugMode) Serial.println(F("Deactivating Safety guard, device armed"));
-      safetyGuardDisable();
-      safetyGuardActiveFlag = false;
-      accelCheckFlag = true;
-      mode = 5;
-      bothBtn.setHoldTimeout(4000);
+      switchToArmedMode();
     }
   }
 
@@ -315,19 +423,40 @@ void operationTick(){
         if(debugMode) Serial.println(F("Safety guard is still on, detonation blocked!"));
       }
       else{
-        if(debugMode) Serial.println(F("Detonating!!!"));
-        detonateEnable();
-        mode = 6;
-        selfDestructActiveFlag = false;
-        accelCheckFlag = false;
-        bothBtn.setHoldTimeout(2000);
-        releaseDetonationTimer.start();
+        detonateByTimerFlag = true;
+        switchToDetonateMode();
       }
     }
   }
 
-  if(mode >= 6 && mode <= 7){
-    if(releaseDetonationTimer.tick()) detonateDisable();
+  if(mode == 8){
+    if(releaseDetonationTimer.tick()) {
+      if(debugMode) Serial.println(F("Releasing fire pin"));
+      detonateDisable();
+    }
+  }
+  
+  if(mode == 5){
+    getPWM();
+    if(abs(PWMvalue - SAFETY_PWM) < 50) {
+      switchToSafetyMode();
+      return;
+    }
+  }
+}
+
+void disarmedCountdownStart(){
+  if(!disarmedActiveFlag){
+    disarmedTimeoutCounter = DISARMED_TIMEOUT;
+    if(!demoMode) disarmedTimeoutCounter *= 60;
+    if(debugMode){
+      Serial.print(F("Activating Disarmed mode, PWM ignored, timeout: "));
+      Serial.print(disarmedTimeoutCounter);
+      Serial.println(F(" s"));
+    }
+    safetyGuardEnable();
+    disarmedActiveFlag = true;
+    accelCheckFlag = false;
   }
 }
 
@@ -378,6 +507,10 @@ void timersCountdown(){
       if(selfDestructTimeoutCounter > 0) selfDestructTimeoutCounter --;
     }
 
+    if(disarmedActiveFlag){
+      if(disarmedTimeoutCounter > 0) disarmedTimeoutCounter --;
+    }
+
     if(debugMode) debugMaxAccel = 0; 
   }
 }
@@ -394,12 +527,12 @@ void checkAccel(){
   
       max_acc = defineMaxAccel(acc_x, acc_y, acc_z);
   
-      if(debugMode){
-        Serial.print(acc_x); Serial.print(F("  "));
-        Serial.print(acc_y); Serial.print(F("  "));
-        Serial.print(acc_z); Serial.print(F("  Max is: "));
-        Serial.println(max_acc);
-      }
+      // if(debugMode){
+      //   Serial.print(acc_x); Serial.print(F("  "));
+      //   Serial.print(acc_y); Serial.print(F("  "));
+      //   Serial.print(acc_z); Serial.print(F("  Max is: "));
+      //   Serial.println(max_acc);
+      // }
     }
   }
 }

@@ -29,10 +29,10 @@ Presets description:
   #define REMOTE_CONTROL 0                       //Arming is done via Safety pin
   #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
   #define SAFETY_TIMEOUT 120                     //Safety timeout in seconds
-  #define SELF_DESTROY_TIMEOUT 20                //Self-destroy timeout in minutes
+  #define SELF_DESTROY_TIMEOUT 30                //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
   #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
-  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
+  #define ACCELERATION_LIMIT 14                  //Acceleration limit to detonate
 
 #elif PRESET == 11                             //FPV mode with PWM remote control and accelerometer
   #define WORK_MODE 0                            //FPV
@@ -40,11 +40,11 @@ Presets description:
   #define HORNS_PRESENT 0                        //Are contact horns present?
   #define REMOTE_CONTROL 1                       //Arming is done via Remote control
   #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
-  #define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
-  #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
+  #define SAFETY_TIMEOUT 5                       //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 30                //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
   #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
-  #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate  
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate  
 
 #elif PRESET == 12                             //FPV mode with PWM remote control and contact horns
   #define WORK_MODE 0                            //FPV
@@ -73,13 +73,63 @@ Presets description:
   #define ACCEL_PRESENT 1                        //Is accelerometer present?
   #define HORNS_PRESENT 0                        //Are contact horns present?
   #define REMOTE_CONTROL 0                       //Arming is done via Safety pin
-  #define INITIAL_START_TIMEOUT 10               //Initial start timeout before switching to Disarmed mode in minutes
+  #define INITIAL_START_TIMEOUT 20               //Initial start timeout before switching to Disarmed mode in minutes
   #define SAFETY_TIMEOUT 2                       //Safety timeout in seconds
   #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
   #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
   #define ACCEL_REQUEST_TIMEOUT 2                //Delay between accelerometer request, milliseconds
-  #define ACCELERATION_LIMIT 10                  //Acceleration limit to detonate
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
+
+#elif PRESET == 31                             //Custom preset for Roman 7/40
+  #define WORK_MODE 0                            //FPV
+  #define ACCEL_PRESENT 1                        //Is accelerometer present?
+  #define HORNS_PRESENT 0                        //Are contact horns present?
+  #define REMOTE_CONTROL 0                       //Arming is done via Safety pin
+  #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
+  #define SAFETY_TIMEOUT 420                     //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 40                //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
+
+#elif PRESET == 32                             //Custom preset for Roman 20/0
+  #define WORK_MODE 0                            //FPV
+  #define ACCEL_PRESENT 1                        //Is accelerometer present?
+  #define HORNS_PRESENT 0                        //Are contact horns present?
+  #define REMOTE_CONTROL 0                       //Arming is done via Safety pin
+  #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
+  #define SAFETY_TIMEOUT 1200                     //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 0                 //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
+
+#elif PRESET == 33                             //Long range mode with PWM remote control and accelerometer
+  #define WORK_MODE 0                            //FPV
+  #define ACCEL_PRESENT 1                        //Is accelerometer present?
+  #define HORNS_PRESENT 0                        //Are contact horns present?
+  #define REMOTE_CONTROL 1                       //Arming is done via Remote control
+  #define INITIAL_START_TIMEOUT 5                //Initial start timeout before switching to Disarmed mode in minutes
+  #define SAFETY_TIMEOUT 1                       //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 420               //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate 
+
+#elif PRESET == 34                             //Long range mode without PWM
+  #define WORK_MODE 0                            //FPV
+  #define ACCEL_PRESENT 1                        //Is accelerometer present?
+  #define HORNS_PRESENT 0                        //Are contact horns present?
+  #define REMOTE_CONTROL 0                       //Arming is done via Remote control
+  #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
+  #define SAFETY_TIMEOUT 1200                    //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 420               //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 15                  //Acceleration limit to detonate
+
 #endif
+
 
 #if REMOTE_CONTROL
   #define PWM_REQUEST_TIMEOUT 100                //Delay between PWM checks
@@ -92,14 +142,15 @@ Presets description:
 #endif
 
 //---------- Define constant pins and settings
-#define VERSION 3.12                           //Firmware version
+// New in 3.30 - modify the way of checking connection with accelerometer.
+#define VERSION 3.30                           //Firmware version
 #define INIT_ADDR 1023                         //Number of EEPROM first launch check cell
 #define INIT_KEY 10                            //First launch key
 #define DEBUG_MODE 0                           //Enable debug mode
 #define DETONATION_PIN 17                      //MOSFET pin
 #define LED_PIN 14                             //External LED pin
 #define CALIBRATION_BUFFER_SIZE 100            //Buffer size needed for calibration function
-#define CALIBRATION_TOLERANCE 500              //What is the calibration tolerance (units)
+#define CALIBRATION_TOLERANCE 2000              //What is the calibration tolerance (units)
 #define STARTUP_LED_SERIES_INTERVAL 2000       //Delay between LED blinks in Idle mode
 #define STARTUP_LED_BLINK_INTERVAL 2000         //Duration of LED blink in Idle mode
 #define IDLE_LED_SERIES_INTERVAL 3500          //Delay between LED blinks in Idle mode
@@ -112,6 +163,7 @@ Presets description:
 #define ARMED_LED_BLINK_INTERVAL 20            //Duration of LED blink in Armed mode
 #define PREDETONATE_LED_SERIES_INTERVAL 40     //Delay between LED blinks in Armed mode
 #define PREDETONATE_LED_BLINK_INTERVAL 10      //Duration of LED blink in Armed mode
+#define INITIAL_FIRE_BLINK_INTERVAL 350        //Duration of red LED blink before accel calibration is done
 #define MODE_CHANGE_INDICATION 100             //How long the LED will be on when mode is changed
 #define RELEASE_AFTER_DETONATION 3000          //Timeout after which the detonation relay is released (after detonation)
 
@@ -143,10 +195,10 @@ Presets description:
 
 //---------- Declare variables
 uint8_t mode = 0;
-int safetyGuardTimeout, safetyGuardTimeoutCounter, selfDestructTimeout, selfDestructTimeoutCounter;
+long safetyGuardTimeoutCounter, selfDestructTimeoutCounter;
 int PWMvalue;
 bool safetyGuardActiveFlag = false, selfDestructActiveFlag = false;
-bool ledFlag = true, ledBlinkFlag = false, modeChangeFlag = false;
+bool ledFlag = true, ledBlinkFlag = false, modeChangeFlag = false, initialStarupFireFlag = false;
 
 //---------- Declare timers
 TimerMs oneSecondTimer(1000, 1);
@@ -156,6 +208,7 @@ TimerMs modeChangeTimer(MODE_CHANGE_INDICATION, 1);
 TimerMs releaseDetonationTimer(RELEASE_AFTER_DETONATION, 0, 1);
 TimerMs predetonationTimer(DETONATION_DELAY*1000, 0, 1);
 TimerMs initialStartTimer(INITIAL_START_TIMEOUT*60000L, 0, 1);
+TimerMs initialStartupFireLedTimer(INITIAL_FIRE_BLINK_INTERVAL, 1);
 #if ACCEL_PRESENT
   TimerMs accelTimer(ACCEL_REQUEST_TIMEOUT, 1);
 #endif
@@ -164,12 +217,13 @@ TimerMs initialStartTimer(INITIAL_START_TIMEOUT*60000L, 0, 1);
 #endif
 
 
-void setup() {
-  Wire.begin();
-  Serial.begin(9600);
-  detonateDisable();
+void setup() { 
   pinMode(DETONATION_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
+  detonateDisable();
+
+  Wire.begin();
+  Serial.begin(9600);
   
   #if REMOTE_CONTROL
     pinMode(PWM_PIN, INPUT_PULLUP);
@@ -195,28 +249,49 @@ void setup() {
   #if ACCEL_PRESENT
     //Initial accelerometer check
     mpu.initialize();
-    if(mpu.testConnection()){
-      Serial.println(F("MPU6050 accel check - SUCCESS"));
-      }
+    uint8_t deviceID = mpu.getDeviceID();
+    if(deviceID > 0){
+      Serial.print(F("MPU6050 accel ID check - SUCCESS, ID = "));
+      Serial.println(deviceID);
+    }
     else{
-      Serial.println(F("MPU6050 accel check - FAILED"));
+      Serial.print(F("MPU6050 accel ID check - FAILED, ID = "));
+      Serial.println(deviceID);
       Serial.println(F("Fix this before proceeding"));
       ledSwitch();
       while (1) {}
-      }
+    }
     
     //Initial accelerometer calibration
     if(EEPROM.read(50)){
+      //Perform initial check that acc values for all axes are not 0
+      mpu.getAcceleration(&ax, &ay, &az);
+      acc_x = abs(ax / ACC_COEF);
+      acc_y = abs(ay / ACC_COEF);
+      acc_z = abs(az / ACC_COEF);
+      if((acc_x + acc_y + acc_z) != 0){
+        Serial.println(F("MPU6050 accel pre-calibration check - SUCCESS"));
+      }
+      else{
+        Serial.println(F("MPU6050 accel pre-calibration check - FAILED"));
+        Serial.println(F("Fix this before proceeding"));
+        ledSwitch();
+        while (1) {}
+      }
+
+      Serial.println(F("Make sure there's no short between FIRE wires! Green LED is ON, red LED is blinking!"));
       Serial.println(F("Send any character to start calibration"));
       delay(100);
       ledSwitch();
       while (1) {
+        initialStartupDetonationBlink();
         if (Serial.available() > 0) {
           Serial.read();
           break;
         }
       }
-      delay(1000);
+      detonateDisable();
+      delay(100);
       doAccelCalibration();
     }
     else{
@@ -290,7 +365,7 @@ void selfDestructCountdownStart(){
       if(DEBUG_MODE) Serial.println(F("Self-destroy timer won't be activated because it's disabled in the preset"));
       return;
     }
-    selfDestructTimeoutCounter = SELF_DESTROY_TIMEOUT * 60;
+    selfDestructTimeoutCounter = SELF_DESTROY_TIMEOUT * 60L;
     if(DEBUG_MODE){
       Serial.print(F("Activating Self-destroy timer with timeout: "));
       Serial.print(selfDestructTimeoutCounter);
@@ -659,3 +734,15 @@ void configPrintout() {
   #endif
 }
 
+
+void initialStartupDetonationBlink(){
+  if(initialStartupFireLedTimer.tick()){
+    initialStarupFireFlag = !initialStarupFireFlag;
+    if(initialStarupFireFlag) {
+      digitalWrite(DETONATION_PIN, HIGH);
+    }
+    else {
+      detonateDisable();
+    }
+  }
+}

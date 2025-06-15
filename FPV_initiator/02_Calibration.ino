@@ -1,7 +1,7 @@
 #if ACCEL_PRESENT
   void doAccelCalibration() {
-    Serial.print(F("Calibration starts in 5 seconds"));
-    for(int8_t i = 5; i >= 0; i--){
+    Serial.print(F("Calibration starts in 2 seconds"));
+    for(int8_t i = 2; i >= 0; i--){
       Serial.print(F("."));
       delay(1000);
     }
@@ -94,8 +94,9 @@
       Serial.println(F("FAILED!"));
       Serial.println(F("Calibration data not saved"));
     }
-    delay(1000);
+    delay(500);
     Serial.println(F("Restarting device..."));
+    delay(100);
     resetFunc();
   }
 #endif

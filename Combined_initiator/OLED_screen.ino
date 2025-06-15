@@ -6,9 +6,12 @@ void changeMode(){
   oldMode = mode;
   
   if(mode == 1){
-    oled.setContrast(200);
     oled.setCursor(48, 0);
     oled.print(F("IDLE         "));
+    if(PWMremote){
+      oled.setCursor(72, 0);
+      oled.print(F(", PWM "));
+    }
 
     oled.setCursor(90, 2);
     oled.print(safetyGuardTimeout);
@@ -90,11 +93,34 @@ void changeMode(){
   }
 
   if(mode == 4){
-    oled.setContrast(100);
     updateScreenTimer.start();
     
     oled.setCursor(48, 0);
-    oled.print(F("ACTIVE, SAFE "));
+    oled.print(F("DISARMED, PWM "));
+
+    oled.setCursor(0, 6);
+    oled.println(F("Ignoring PWM:        "));
+    oled.println(F("Hold L+R 2s to stop  "));
+    return;
+  }
+
+  if(mode == 5){
+    updateScreenTimer.start();
+    
+    oled.setCursor(48, 0);
+    oled.print(F("SAFE, PWM exp."));
+
+    oled.setCursor(0, 6);
+    oled.println(F("Waiting for PWM input"));
+    oled.println(F("Hold L+R 2s to stop  "));
+    return;
+  }
+
+  if(mode == 6){
+    updateScreenTimer.start();
+    
+    oled.setCursor(48, 0);
+    oled.print(F("ACTIVE, SAFE  "));
 
     oled.setCursor(0, 6);
     oled.println(F("                     "));
@@ -102,13 +128,13 @@ void changeMode(){
     return;
   }
 
-  if(mode == 5){
+  if(mode == 7){
     if(!demoMode){
       oled.clear();
     }
     else{
       oled.setCursor(48, 0);
-      oled.print(F("ACTIVE, ARMED"));
+      oled.print(F("ACTIVE, ARMED "));
 
       oled.setCursor(90, 2);
       oled.print(F("Off   "));
@@ -121,40 +147,22 @@ void changeMode(){
     return;
   }
 
-  if(mode == 6){
+  if(mode == 8){
     if(!demoMode) drawDefaultScreen();
 
     oled.setCursor(48, 0);
-    oled.print(F("COMPLETED    "));
+    oled.print(F("DETONATE     "));
 
     oled.setCursor(90, 3);
-    oled.print(F("Boom  "));
+    if (detonateByTimerFlag) oled.print(F("Boom  ")); else oled.print(F("Off  "));
 
     oled.setCursor(90, 4);
-    oled.print(F("Off   "));
+    if (detonateByAccelFlag) oled.print(F("Boom   ")); else oled.print(F("Off  "));
 
     oled.setCursor(0, 6);
     oled.println(F("                     "));
     oled.println(F("Hold L+R 2s to reset ")); 
     return;
-  }
-
-  if(mode == 7){
-    if(!demoMode) drawDefaultScreen();
-
-    oled.setCursor(48, 0);
-    oled.print(F("COMPLETED    "));
-
-    oled.setCursor(90, 3);
-    oled.print(F("Off  "));
-
-    oled.setCursor(90, 4);
-    oled.print(F("Boom  "));
-
-    oled.setCursor(0, 6);
-    oled.println(F("                     "));
-    oled.println(F("Hold L+R 2s to reset "));
-    return;   
   }
 }
 
@@ -224,6 +232,24 @@ void updateScreen(){
   }
 
   if(mode == 4){
+    oled.setCursor(84, 6);
+    oled.print(disarmedTimeoutCounter / 60);
+    if(blinkFlag) oled.print(F(":"));
+    else oled.print(F(" "));
+    if(disarmedTimeoutCounter % 60 < 10) oled.print(F("0"));
+    oled.print(disarmedTimeoutCounter % 60);
+    oled.print(F(" "));
+    getPWM();
+    if(abs(PWMvalue - SAFETY_PWM) < 50) {
+      oled.print(F("*  "));  
+    }
+    else {
+      oled.print(F("-  "));
+    }
+    return;
+  }
+
+  if(mode == 6){
     oled.setCursor(90, 2);
     oled.print(safetyGuardTimeoutCounter / 60);
     if(blinkFlag) oled.print(F(":"));
@@ -245,7 +271,7 @@ void updateScreen(){
     return;
   }
 
-  if(mode == 5){
+  if(mode == 7){
     if(demoMode){
       oled.setCursor(90, 3);
       if(selfDestructTimeout == 0) oled.print(F("Off   "));
@@ -321,9 +347,7 @@ void drawErrorIntroScreen(){
   oled.setCursor(0, 2);
   oled.println(F("Device is not usable"));
   oled.setCursor(0, 3);
-  oled.println(F("Re-connect battery or"));
-  oled.setCursor(0, 4);
-  oled.println(F("check the wires"));
+  oled.println(F("Check the wiring"));
 
   delay(1000);
 }

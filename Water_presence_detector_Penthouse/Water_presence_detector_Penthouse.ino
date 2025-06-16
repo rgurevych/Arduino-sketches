@@ -4,9 +4,7 @@
 #include <GyverTimer.h>
 #include <FastBot.h>
 #include <EEPROM.h>
-#include <ESP8266WiFi.h>
-#include <WiFiUdp.h>
-#include <NTPClient.h>
+#include <GyverNTP.h>
  
 //---------- Define pins and constants
 #define DETECTOR_PIN 4                     //Button pin
@@ -22,10 +20,7 @@ const char* password = "3Gurevych+1Mirkina";
  
 
 // Define NTP Client and Telegram bot
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org");
 FastBot bot(BOTtoken);
-
 GTimer checkTimer(MS, 1000);
  
 bool waterPresent;
@@ -33,7 +28,6 @@ bool currentState;
 bool WiFiReady;
 bool broadcastFlag = true;
 unsigned long savedUnixTime, currentUnixTime, unixTimeDelta;
-
 
 void setup(){
   Serial.begin(9600);
@@ -79,20 +73,19 @@ void setup(){
   currentState = digitalRead(DETECTOR_PIN);
 
 // Setting up NTP time client
-  timeClient.begin();
+  NTP.begin();
+  while(!NTP.tick()) {}
   
 // Визначення поточного часу, збереження його та виведення в консоль
   if(savedUnixTime == 0){
-    timeClient.update();
-    savedUnixTime = timeClient.getEpochTime();
+    savedUnixTime = getCurrentTimestamp();
     EEPROM.put(40, savedUnixTime);
     EEPROM.commit();
   }
 
-//Визначення поточного часу через сервер
-  timeClient.update();
-  currentUnixTime = timeClient.getEpochTime();
-  Serial.print("Поточний час через NTP Сервер: ");
+//Визначення поточного часу через бібліотеку GyverNTP  
+  currentUnixTime = getCurrentTimestamp();
+  Serial.print("Поточний час через бібліотеку GyverNTP: ");
   Serial.println(currentUnixTime);
   
   FB_Time savedTime(savedUnixTime);
@@ -117,8 +110,6 @@ void setup(){
 // Стартове повідомлення, що генерується і відправляється в чат його власнику
 void sendStartupMessage(){
   FB_Time currentTime(currentUnixTime);
-  String currentTimeString = currentTime.timeString();
-  String currentDateString = currentTime.dateString();
   String startUpMessage = F("\U000026A0 Я втрачав живлення, але зараз знову готовий до роботи! \n");
   startUpMessage += F("WiFi підключено, IP адреса: ");
   startUpMessage += WiFi.localIP().toString();
@@ -140,6 +131,7 @@ void sendStartupMessage(){
 
 void loop() {
   checkWaterState();
+  NTP.tick();
   bot.tick();
 }
 
@@ -177,12 +169,11 @@ String defineCurrentWaterState(){
 // Відправка поточного статусу води в телеграм
 void sendCurrentWaterState(String ChatId){
   String botMessage = defineCurrentWaterState();
-  unixTimeDelta = currentUnixTime - savedUnixTime;
   if(currentState){
-    botMessage += F("\n\U000023F1 Посуха тривала ");
+    botMessage += F("\n\U000023F1 Води не було ");
   }
   else{
-    botMessage += F("\n\U000023F1 Період гідратації тривав ");
+    botMessage += F("\n\U000023F1 Вода була ");
   }
   botMessage += prepareTimeDeltaString(unixTimeDelta);
   
@@ -200,9 +191,9 @@ void checkWaterState(){
     checkWiFi();
     waterPresent = digitalRead(DETECTOR_PIN);
     if(waterPresent != currentState){
-      timeClient.update();
       currentState = waterPresent;
-      currentUnixTime = timeClient.getEpochTime();
+      currentUnixTime = getCurrentTimestamp();
+      unixTimeDelta = currentUnixTime - savedUnixTime;
       sendCurrentWaterState(CHAT_ID);
 
       savedUnixTime = currentUnixTime;
@@ -315,8 +306,7 @@ void newMsg(FB_msg& msg) {
   }
 
   if(msg.text == "/status") {
-    timeClient.update();
-    currentUnixTime = timeClient.getEpochTime();
+    currentUnixTime = getCurrentTimestamp();
     unixTimeDelta = currentUnixTime - savedUnixTime;
     String statusMessage = defineCurrentWaterState();
     statusMessage += F("\n\U000023F1 Це триває вже ");
@@ -347,8 +337,7 @@ void newMsg(FB_msg& msg) {
   }
 
   if(msg.text == "/reset_timer") {
-    timeClient.update();
-    savedUnixTime = timeClient.getEpochTime();
+    savedUnixTime = getCurrentTimestamp();
     EEPROM.put(40, savedUnixTime);
     EEPROM.commit();
     bot.sendMessage("Таймер розрахунку поточного періоду наявності/вісутності води скинуто, облік часу почався з 0", MASTER_CHAT_ID);
@@ -358,4 +347,8 @@ void newMsg(FB_msg& msg) {
   if (msg.OTA){
     bot.update();
   }
+}
+
+unsigned long getCurrentTimestamp(){
+  return NTP.getUnix();
 }

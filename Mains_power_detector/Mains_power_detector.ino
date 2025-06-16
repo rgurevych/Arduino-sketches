@@ -10,14 +10,11 @@
 #define DETECTOR_PIN 4                     //Button pin
 
 //---------- Define variables
-//const char* ssid = "Gurevych_2";   // SSID for Uzhgorod
-const char* ssid = "Penthouse_72";   // SSID for Penthouse
+const char* ssid = "Gurevych_2";
 const char* password = "3Gurevych+1Mirkina";
-//#define BOTtoken "6408191151:AAG_VAOgyXl1x61B6gV9CJYbDpgD3t1Lygw"    //BOTtoken for Uzhgorod
-#define BOTtoken "6554214917:AAGRzFOJuQTdOi3jf-Y9BlkMufUx8WrJzro"     //BOTtoken for Penthouse
+#define BOTtoken "6408191151:AAG_VAOgyXl1x61B6gV9CJYbDpgD3t1Lygw"
 #define MASTER_CHAT_ID "1289811885"
-// #define CHAT_ID "-1001813650904"     // Chat_ID for Uzhgorod
-#define CHAT_ID "1289811885"     // Chat_ID for Penthouse
+#define CHAT_ID "-1001813650904"
 #define INIT_ADDR 500                    // Number of EEPROM initial cell
 #define INIT_KEY 25                      // First launch key
  
@@ -282,7 +279,7 @@ void newMsg(FB_msg& msg) {
   
   if(msg.text == "/start") {
     String welcome = "Привіт, " + msg.username + "!\n";
-    welcome += F("Цей бот повідомлятиме про наявність світла в ОСББ 'Славутич-22' \n");
+    welcome += F("Цей бот повідомлятиме про наявність світла в ОСББ 'Парковий' \n");
     welcome += F("Нагадую команди, які ви можете відправляти боту: \n");
     welcome += F("/start: вивід цього повідомлення \n");
     welcome += F("/status: дізнатись поточну наявність світла \n");

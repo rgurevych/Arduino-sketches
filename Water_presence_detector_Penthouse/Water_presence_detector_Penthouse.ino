@@ -72,11 +72,11 @@ void setup(){
   waterPresent = digitalRead(DETECTOR_PIN);
   currentState = digitalRead(DETECTOR_PIN);
 
-// Setting up NTP time client
+// Установка клієнта NTP, отримання часу з сервера
   NTP.begin();
-  while(!NTP.tick()) {}
+  while(!NTP.updateNow()) {}
   
-// Визначення поточного часу, збереження його та виведення в консоль
+// Визначення збереженого часу, збереження його за відсутності
   if(savedUnixTime == 0){
     savedUnixTime = getCurrentTimestamp();
     EEPROM.put(40, savedUnixTime);
@@ -85,8 +85,8 @@ void setup(){
 
 //Визначення поточного часу через бібліотеку GyverNTP  
   currentUnixTime = getCurrentTimestamp();
-  Serial.print("Поточний час через бібліотеку GyverNTP: ");
-  Serial.println(currentUnixTime);
+//  Serial.print("Поточний час через бібліотеку GyverNTP: ");
+//  Serial.println(currentUnixTime);
   
   FB_Time savedTime(savedUnixTime);
   FB_Time currentTime(currentUnixTime);
@@ -300,6 +300,7 @@ void newMsg(FB_msg& msg) {
     welcome += F("/broadcast: відсилати повідомлення в загальний канал \n");
     welcome += F("/no_broadcast: не відсилати повідомлення в загальний канал \n");
     welcome += F("/reset_timer: скинути таймер тривалості і почати новий відлік \n");
+    welcome += F("/current_time: повідомити поточну дату і час \n");
     welcome += F("Також можна відправити .bin файл з оновленням прошивки \n");
     bot.sendMessage(welcome, MASTER_CHAT_ID);
     return;
@@ -341,6 +342,17 @@ void newMsg(FB_msg& msg) {
     EEPROM.put(40, savedUnixTime);
     EEPROM.commit();
     bot.sendMessage("Таймер розрахунку поточного періоду наявності/вісутності води скинуто, облік часу почався з 0", MASTER_CHAT_ID);
+    return;
+  }
+
+  if(msg.text == "/current_time") {
+    currentUnixTime = getCurrentTimestamp();
+    FB_Time currentTime(currentUnixTime);
+    String timeMessage = F("\nПоточний час і дата UTC: ");
+    timeMessage += currentTime.timeString();
+    timeMessage += F(" ");
+    timeMessage += currentTime.dateString();
+    bot.sendMessage(timeMessage, MASTER_CHAT_ID);
     return;
   }
 

@@ -61,12 +61,12 @@ Presets description:
   #define ACCEL_PRESENT 1                        //Is accelerometer present?
   #define HORNS_PRESENT 0                        //Are contact horns present?
   #define REMOTE_CONTROL 1                       //Arming is done via Remote control
-  #define INITIAL_START_TIMEOUT 0                //Initial start timeout before switching to Disarmed mode in minutes
-  #define SAFETY_TIMEOUT 30                      //Safety timeout in seconds
-  #define SELF_DESTROY_TIMEOUT 30                //Self-destroy timeout in minutes
-  #define DETONATION_DELAY 5                     //Delay before actual detonation happens after detonation was activated in seconds
-  #define ACCEL_REQUEST_TIMEOUT 10               //Delay between accelerometer request, milliseconds
-  #define ACCELERATION_LIMIT 6                   //Acceleration limit to detonate
+  #define INITIAL_START_TIMEOUT 2                //Initial start timeout before switching to Disarmed mode in minutes
+  #define SAFETY_TIMEOUT 5                       //Safety timeout in seconds
+  #define SELF_DESTROY_TIMEOUT 10                //Self-destroy timeout in minutes
+  #define DETONATION_DELAY 0                     //Delay before actual detonation happens after detonation was activated in seconds
+  #define ACCEL_REQUEST_TIMEOUT 5                //Delay between accelerometer request, milliseconds
+  #define ACCELERATION_LIMIT 10                  //Acceleration limit to detonate
 
 #elif PRESET == 20                             //Standard Bomber mode with safety pin and accelerometer
   #define WORK_MODE 1                            //Bomber
@@ -441,7 +441,9 @@ void operationTick(){
       selfDestructActiveFlag = false;
       return;
     }
+  }
 
+  if(mode == 4) {
     if(abs(PWMvalue - DETONATE_PWM) < 100) {
       switchToDetonateMode();
       return;
